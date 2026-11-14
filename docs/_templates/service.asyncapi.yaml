@@ -1,0 +1,72 @@
+# TEMPLATE: AsyncAPI 3.0 specification (events / messages)
+# Copy to: docs/02-architecture/api/<service>.asyncapi.yaml   (one file per container that publishes or consumes events)
+# Rules:
+# - Rename the example "ResourceCreated" event to your real events; keep the structure.
+# - Event names: past tense, PascalCase (InvoiceApproved). Channel addresses: <domain>.<entity>.<event>.v<major>
+#   in lowercase dot notation (e.g. ap.invoice.approved.v1).
+# - Envelope: CloudEvents 1.0 attributes in headers; business data in the payload.
+# - Payload properties camelCase; timestamps ISO 8601 UTC.
+# - Consumers MUST be idempotent (use the CloudEvents id). Breaking payload changes → new major version channel + ADR.
+# - Describe only what this container sends (action: send) and receives (action: receive).
+# - Placeholders are {{...}} inside quoted strings; replace all before status: in-review.
+asyncapi: 3.0.0
+info:
+  title: "{{Service name}} Events"
+  version: "0.1.0"
+  description: |
+    {{Events published and consumed by this container.}}
+
+    Owner container: {{container name}} — see arc42 §5.
+
+servers:
+  prod:
+    host: "{{broker host, e.g. events.ap-southeast-1.amazonaws.com / <namespace>.servicebus.windows.net}}"
+    protocol: "{{amqp / https / sqs / sns / kafka}}"
+    description: "{{Amazon EventBridge / SQS / Azure Service Bus …}}"
+
+channels:
+  resourceCreated:
+    address: "{{domain}}.resource.created.v1"
+    description: Emitted after a resource is created and committed.
+    messages:
+      resourceCreated:
+        $ref: "#/components/messages/ResourceCreated"
+
+operations:
+  publishResourceCreated:
+    action: send
+    summary: Publish when a resource is created
+    channel:
+      $ref: "#/channels/resourceCreated"
+    messages:
+      - $ref: "#/channels/resourceCreated/messages/resourceCreated"
+
+components:
+  messages:
+    ResourceCreated:
+      name: ResourceCreated
+      title: Resource created
+      contentType: application/json
+      headers:
+        $ref: "#/components/schemas/CloudEventHeaders"
+      payload:
+        $ref: "#/components/schemas/ResourceCreatedPayload"
+
+  schemas:
+    CloudEventHeaders:
+      type: object
+      required: [ce_specversion, ce_id, ce_source, ce_type, ce_time]
+      properties:
+        ce_specversion: { type: string, const: "1.0" }
+        ce_id: { type: string, format: uuid, description: Unique event ID, used for idempotency }
+        ce_source: { type: string, description: "Producer, e.g. /{{container}}" }
+        ce_type: { type: string, description: "e.g. {{domain}}.resource.created.v1" }
+        ce_time: { type: string, format: date-time }
+        ce_correlationid: { type: string, format: uuid, description: Propagated from the originating request }
+    ResourceCreatedPayload:
+      type: object
+      required: [resourceId, createdAt]
+      properties:
+        resourceId: { type: string, format: uuid }
+        name: { type: string }
+        createdAt: { type: string, format: date-time }

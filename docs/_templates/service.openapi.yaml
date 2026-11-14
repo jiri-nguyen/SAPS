@@ -1,0 +1,227 @@
+# TEMPLATE: OpenAPI 3.1 specification (contract-first)
+# Copy to: docs/02-architecture/api/<service>.openapi.yaml   (one file per API-exposing container)
+# Rules:
+# - Rename the example resource "Resource" / "/v1/resources" to your real resource; keep the structure.
+# - Names (schemas, tags) MUST match the glossary (arc42 §12) and the data model.
+# - Paths: kebab-case, plural nouns, version prefix /v1. JSON properties: camelCase.
+# - Timestamps: ISO 8601 UTC (format: date-time). Money: decimal string + ISO 4217 currency code.
+# - operationId: camelCase verb + noun (listResources, getResource, createResource) — unique, never renamed,
+#   referenced from feature specs.
+# - Errors: RFC 9457 application/problem+json via the shared responses below.
+# - Every operation declares security, tags, operationId, and at least the success + standard error responses.
+# - Breaking changes require a new major version (/v2) and an ADR.
+# - Placeholders are {{...}} inside quoted strings; replace all before status: in-review.
+openapi: 3.1.0
+info:
+  title: "{{Service name}} API"
+  version: "0.1.0"                     # SemVer of the API contract
+  description: |
+    {{What this API is for and who calls it.}}
+
+    Owner container: {{container name}} — see arc42 §5.
+  contact:
+    name: "{{Tech Lead}}"
+servers:
+  - url: "https://{{api-dev.example.com}}"
+    description: dev
+  - url: "https://{{api-stg.example.com}}"
+    description: stg
+  - url: "https://{{api.example.com}}"
+    description: prod
+tags:
+  - name: Resources
+    description: "{{Resource description}}"
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/resources:
+    get:
+      operationId: listResources
+      summary: List resources
+      tags: [Resources]
+      parameters:
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/PageToken"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: A page of resources
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourcePage"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      operationId: createResource
+      summary: Create a resource
+      tags: [Resources]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceCreate"
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              description: URL of the created resource
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /v1/resources/{resourceId}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+    get:
+      operationId: getResource
+      summary: Get a resource
+      tags: [Resources]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: The resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "{{IdP, e.g. Amazon Cognito / Microsoft Entra ID}} access token"
+
+  parameters:
+    ResourceId:
+      name: resourceId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    PageToken:
+      name: pageToken
+      in: query
+      required: false
+      description: Opaque cursor from the previous page's nextPageToken
+      schema: { type: string }
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: Propagated to logs and downstream calls; generated if absent
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Client-generated key; repeated requests with the same key return the original result
+      schema: { type: string, maxLength: 64 }
+
+  schemas:
+    Resource:
+      type: object
+      required: [id, name, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        name: { type: string, maxLength: 200, description: "{{description}}" }
+        createdAt: { type: string, format: date-time, readOnly: true }
+        updatedAt: { type: string, format: date-time, readOnly: true }
+    ResourceCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 200 }
+    ResourcePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Resource" }
+        nextPageToken:
+          type: [string, "null"]
+          description: Null when there are no more pages
+    Problem:
+      description: RFC 9457 Problem Details
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri, description: "URI identifying the error type" }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        correlationId: { type: string, format: uuid }
+        errors:
+          type: array
+          description: Field-level validation errors
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+
+  responses:
+    BadRequest:
+      description: Malformed request
+      content:
+        application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } }
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } }
+    Forbidden:
+      description: Authenticated but not allowed
+      content:
+        application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } }
+    NotFound:
+      description: Resource does not exist
+      content:
+        application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } }
+    Conflict:
+      description: Conflicts with the current state (e.g. duplicate)
+      content:
+        application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } }
+    UnprocessableEntity:
+      description: Business validation failed
+      content:
+        application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } }
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema: { type: integer }
+      content:
+        application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } }
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } }
