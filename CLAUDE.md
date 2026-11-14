@@ -8,15 +8,19 @@ project, then fill in **Project Context**.
 <!-- Fill in at project kickoff. Claude: read these values; never guess them. -->
 | Key | Value |
 |---|---|
-| Project name | `TBD` |
-| Project code | `TBD` (Jira/Azure Boards key prefix, e.g. `APA`) |
+| Project name | `Smart-AP-Suite` |
+| Project code | `SAPS` (Linear team key) |
 | Customer | `TBD` |
-| Cloud | `AWS` / `Azure` / `Hybrid` |
+| Cloud | `TBD` (`AWS` / `Azure` / `Hybrid` — open question in MTG-20261114) |
 | Primary region(s) | `TBD` |
-| Work tracker base URL | `TBD` (e.g. `https://<org>.atlassian.net/browse/`) |
+| Work tracker | Linear |
+| Work tracker base URL | `TBD` (format `https://linear.app/<workspace>/issue/`) |
 | Environments | `dev`, `stg`, `prod` |
 | Time zone | `Asia/Ho_Chi_Minh (ICT, UTC+7)` |
 | Solution Architect | `TBD` |
+
+> **Project note:** this project tracks work in **Linear**. Wherever this standard says "Jira key" or
+> "Jira / Azure Boards", read **Linear issue key** (`SAPS-NNN`). File naming is unchanged, e.g. `SAPS-123-invoice-upload.md`.
 
 ## 2. Language & Writing Style
 - All documents are written in **English** (US spelling). The user may chat in Vietnamese; file content is always English.
