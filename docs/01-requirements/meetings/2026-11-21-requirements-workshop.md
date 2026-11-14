@@ -5,7 +5,7 @@ status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["Solution Architect (our company)"]
 last_updated: 2026-11-21
-related: [MTG-20261114]
+related: [MTG-20261114, DEC-003, DEC-004, DEC-005, DEC-006, DEC-007, DEC-008, DEC-009, DEC-010]
 ---
 
 # MTG-20261121 — Requirements workshop: PoC, matching and exceptions
@@ -118,43 +118,43 @@ All items come from [MTG-20261114](2026-11-14-kickoff.md).
 ## 6. Decisions
 | # | Decision | Decided by | Logged as |
 |---|---|---|---|
-| D1 | Deliver a PoC first: 3 months from 2026-11-21, runs locally, success = end-to-end demo including exception cases | Customer representative (Customer) | pending |
-| D2 | The PoC uses dummy data for invoice extraction and for ERP data | Customer representative (Customer) | pending |
-| D3 | Invoice type is derived from the PO number (7 digits; `0` trade, `1` non-trade, none non-PO, other prefix exception) | Customer representative (Customer) | pending |
-| D4 | Matching rules: line level; unit price tolerance 0.5 USD per line; exact quantity; USD only; non-PO invoices go to manual review | Customer representative (Customer) | pending |
-| D5 | Handling of partial deliveries, multiple goods receipts, multi-PO and mixed invoices as proposed by the SA; credit notes out of the PoC | Customer representative (Customer) | pending |
-| D6 | Duplicate detection by vendor + invoice number → exception; no tax/VAT checks | Customer representative (Customer) | pending |
-| D7 | Invoices with total amount (tax included) above 300 USD need Accounting Manager approval | Customer representative (Customer) | pending |
-| D8 | Re-run matching when a manual update changes a field used in matching | Customer representative (Customer) | pending |
+| D1 | Deliver a PoC first: 3 months from 2026-11-21, runs locally, success = end-to-end demo including exception cases | Customer representative (Customer) | [DEC-003](../decision-log.md#dec-003) |
+| D2 | The PoC uses dummy data for invoice extraction and for ERP data | Customer representative (Customer) | [DEC-004](../decision-log.md#dec-004) |
+| D3 | Invoice type is derived from the PO number (7 digits; `0` trade, `1` non-trade, none non-PO, other prefix exception) | Customer representative (Customer) | [DEC-005](../decision-log.md#dec-005) |
+| D4 | Matching rules: line level; unit price tolerance 0.5 USD per line; exact quantity; USD only; non-PO invoices go to manual review | Customer representative (Customer) | [DEC-006](../decision-log.md#dec-006) |
+| D5 | Handling of partial deliveries, multiple goods receipts, multi-PO and mixed invoices as proposed by the SA; credit notes out of the PoC | Customer representative (Customer) | [DEC-007](../decision-log.md#dec-007) |
+| D6 | Duplicate detection by vendor + invoice number → exception; no tax/VAT checks | Customer representative (Customer) | [DEC-008](../decision-log.md#dec-008) |
+| D7 | Invoices with total amount (tax included) above 300 USD need Accounting Manager approval | Customer representative (Customer) | [DEC-009](../decision-log.md#dec-009) |
+| D8 | Re-run matching when a manual update changes a field used in matching | Customer representative (Customer) | [DEC-010](../decision-log.md#dec-010) |
 
 ## 7. Requirements Captured
 | # | Information / requirement | Type | Proposed target | Status |
 |---|---|---|---|---|
-| R1 | Deliver a PoC first: 3 months from 2026-11-21; runs locally; success = end-to-end demo for different cases including exceptions | Scope | DEC-003; SCP-IN-10, SCP-IN-11; scope.md §2 BO2; arc42 §2 CON-01, CON-02 | proposed |
-| R2 | PoC focus is the automated business flow; invoice data extraction uses dummy data | Scope | DEC-004; change SCP-IN-02; SCP-OUT-01 | proposed |
-| R3 | The minimum ERP data needed by the flow (POs, goods receipts, vendors) is dummy data in the PoC | Scope | DEC-004; SCP-IN-09 | proposed |
-| R4 | Later phases get ERP data from SAP ECC or SAP S/4HANA through MuleSoft APIs or MuleSoft MCP Tools | Constraint | SCP-OUT-02; arc42 §2 CON-03; ADR need | proposed |
-| R5 | As-is: all steps manual; pain points are long processing time at high volume and human errors | Scope | scope.md §1 Background | proposed |
-| R6 | Business objectives and success measures are not defined yet | Scope | scope.md §2 BO1 stays TBD | proposed |
-| R7 | PoC roles: Accounting Member (uploads, handles exceptions, reviews result); Accounting Manager (approves) | Functional | SCP-IN-12; glossary | proposed |
-| R8 | PO number: 7 characters, digits only; prefix `0` trade PO, `1` non-trade PO; no PO number = non-PO; other prefix = exception to Accounting Member | Functional | DEC-005; SCP-IN-03 | proposed |
-| R9 | PoC: non-PO invoices go to the Accounting Member for manual review and update; automated checks come later | Functional | DEC-006; SCP-OUT-07 | proposed |
-| R10 | 2-way and 3-way matching compare line by line | Functional | DEC-006 | proposed |
-| R11 | Unit price tolerance 0.5 USD per line, for all vendors and categories; quantity must match exactly | Functional | DEC-006 | proposed |
-| R12 | The PoC handles USD only | Scope | DEC-006; SCP-OUT-06 | proposed |
-| R13 | Partial delivery: invoice quantity compared with received-not-invoiced quantity; several goods receipts summed per PO line; each invoice line references its own PO line; mixed trade and non-trade POs on one invoice = exception; 2-way compares with PO quantity not yet invoiced; credit notes out of the PoC | Functional | DEC-007; SCP-OUT-05 | proposed |
-| R14 | Duplicate invoice = same vendor + invoice number; it becomes an exception (not auto-rejected) | Functional | DEC-008; SCP-IN-07 | proposed |
-| R15 | No tax/VAT checks | Scope | DEC-008; SCP-OUT-04 | proposed |
-| R16 | PoC: the result is only displayed; no posting to the ERP, no export | Scope | change SCP-IN-05; SCP-OUT-08 | proposed |
-| R17 | Invoices with a total amount above 300 USD, tax included, need Accounting Manager approval | Functional | DEC-009; SCP-IN-06 | proposed |
-| R18 | Payment is out of the project scope | Scope | SCP-OUT-03 | proposed |
-| R19 | Exception types for the PoC: EX1 invoice unreadable; EX2 non-PO invoice (manual review); EX3 invalid PO number; EX4 PO not found; EX5 mixed trade and non-trade POs; EX6 unit price outside tolerance; EX7 quantity mismatch; EX8 missing goods receipt; EX9 duplicate invoice | Functional | change SCP-IN-04; feature spec (Linear key TBD) | proposed |
-| R20 | Notifications are shown in the application only | Functional | SCP-IN-08 | proposed |
-| R21 | If a manual update changes a field used in matching, the system re-runs matching | Functional | DEC-010; change SCP-IN-04 | proposed |
-| R22 | PoC sign-in uses simple user accounts (no SSO) | NFR | NFR-SEC-001; SCP-OUT-10 | proposed |
-| R23 | UI language is English | NFR | NFR-USAB-001 | proposed |
-| R24 | Extraction details (file formats, pages, languages, fields, accuracy, AI/OCR services) are not relevant to the PoC | Scope | MTG-20261114 Q7, Q8, Q10–Q12, Q28 deferred | proposed |
-| R25 | The PoC runs locally; cloud deployment comes later | Scope | SCP-IN-10; SCP-OUT-09 | proposed |
+| R1 | Deliver a PoC first: 3 months from 2026-11-21; runs locally; success = end-to-end demo for different cases including exceptions | Scope | [DEC-003](../decision-log.md#dec-003); [SCP-IN-10](../scope.md), [SCP-IN-11](../scope.md); scope.md §2 BO2; arc42 §2 CON-01, CON-02 | partly logged (CON-01, CON-02 pending) |
+| R2 | PoC focus is the automated business flow; invoice data extraction uses dummy data | Scope | [DEC-004](../decision-log.md#dec-004); change [SCP-IN-02](../scope.md); [SCP-OUT-01](../scope.md) | logged |
+| R3 | The minimum ERP data needed by the flow (POs, goods receipts, vendors) is dummy data in the PoC | Scope | [DEC-004](../decision-log.md#dec-004); [SCP-IN-09](../scope.md) | logged |
+| R4 | Later phases get ERP data from SAP ECC or SAP S/4HANA through MuleSoft APIs or MuleSoft MCP Tools | Constraint | [SCP-OUT-02](../scope.md); arc42 §2 CON-03; ADR need | partly logged (CON-03, ADR pending) |
+| R5 | As-is: all steps manual; pain points are long processing time at high volume and human errors | Scope | scope.md §1 Background | logged |
+| R6 | Business objectives and success measures are not defined yet | Scope | scope.md §2 BO1 stays TBD | logged |
+| R7 | PoC roles: Accounting Member (uploads, handles exceptions, reviews result); Accounting Manager (approves) | Functional | [SCP-IN-12](../scope.md); glossary | logged |
+| R8 | PO number: 7 characters, digits only; prefix `0` trade PO, `1` non-trade PO; no PO number = non-PO; other prefix = exception to Accounting Member | Functional | [DEC-005](../decision-log.md#dec-005); [SCP-IN-03](../scope.md) | logged |
+| R9 | PoC: non-PO invoices go to the Accounting Member for manual review and update; automated checks come later | Functional | [DEC-006](../decision-log.md#dec-006); [SCP-OUT-07](../scope.md) | logged |
+| R10 | 2-way and 3-way matching compare line by line | Functional | [DEC-006](../decision-log.md#dec-006) | logged |
+| R11 | Unit price tolerance 0.5 USD per line, for all vendors and categories; quantity must match exactly | Functional | [DEC-006](../decision-log.md#dec-006) | logged |
+| R12 | The PoC handles USD only | Scope | [DEC-006](../decision-log.md#dec-006); [SCP-OUT-06](../scope.md) | logged |
+| R13 | Partial delivery: invoice quantity compared with received-not-invoiced quantity; several goods receipts summed per PO line; each invoice line references its own PO line; mixed trade and non-trade POs on one invoice = exception; 2-way compares with PO quantity not yet invoiced; credit notes out of the PoC | Functional | [DEC-007](../decision-log.md#dec-007); [SCP-OUT-05](../scope.md) | logged |
+| R14 | Duplicate invoice = same vendor + invoice number; it becomes an exception (not auto-rejected) | Functional | [DEC-008](../decision-log.md#dec-008); [SCP-IN-07](../scope.md) | logged |
+| R15 | No tax/VAT checks | Scope | [DEC-008](../decision-log.md#dec-008); [SCP-OUT-04](../scope.md) | logged |
+| R16 | PoC: the result is only displayed; no posting to the ERP, no export | Scope | change [SCP-IN-05](../scope.md); [SCP-OUT-08](../scope.md) | logged |
+| R17 | Invoices with a total amount above 300 USD, tax included, need Accounting Manager approval | Functional | [DEC-009](../decision-log.md#dec-009); [SCP-IN-06](../scope.md) | logged |
+| R18 | Payment is out of the project scope | Scope | [SCP-OUT-03](../scope.md) | logged |
+| R19 | Exception types for the PoC: EX1 invoice unreadable; EX2 non-PO invoice (manual review); EX3 invalid PO number; EX4 PO not found; EX5 mixed trade and non-trade POs; EX6 unit price outside tolerance; EX7 quantity mismatch; EX8 missing goods receipt; EX9 duplicate invoice | Functional | change [SCP-IN-04](../scope.md); feature spec (Linear key TBD) | logged |
+| R20 | Notifications are shown in the application only | Functional | [SCP-IN-08](../scope.md) | logged |
+| R21 | If a manual update changes a field used in matching, the system re-runs matching | Functional | [DEC-010](../decision-log.md#dec-010); change [SCP-IN-04](../scope.md) | logged |
+| R22 | PoC sign-in uses simple user accounts (no SSO) | NFR | NFR-SEC-001; [SCP-OUT-10](../scope.md) | partly logged (NFR-SEC-001 pending) |
+| R23 | UI language is English | NFR | NFR-USAB-001 | proposed (NFR-USAB-001 pending) |
+| R24 | Extraction details (file formats, pages, languages, fields, accuracy, AI/OCR services) are not relevant to the PoC | Scope | MTG-20261114 Q7, Q8, Q10–Q12, Q28 deferred | logged |
+| R25 | The PoC runs locally; cloud deployment comes later | Scope | [SCP-IN-10](../scope.md); [SCP-OUT-09](../scope.md) | logged |
 
 > **Note on R19:** the SA proposed the list in the meeting; "no PO" and "non-PO invoice" were merged into EX2,
 > and EX3 / EX5 were added from C4 and the R13 proposal. The customer must confirm the merged list (Q8).
