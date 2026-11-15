@@ -6,7 +6,7 @@ date: 2026-11-28         # date of the latest status change
 owner: "Solution Architect (our company)"
 deciders: ["Solution Architect (our company)"]
 consulted: ["Tech Lead (TBD)"]
-last_updated: 2026-11-28
+last_updated: 2026-12-01
 supersedes: ""
 superseded_by: ""
 related: [NFR-SCAL-001, CON-01, CON-02, CON-03, DEC-010, ADR-0001, ADR-0003, ADR-0005, ADR-0006, SAPS-33, SAPS-34]
@@ -59,12 +59,13 @@ for later phases.
 ### Safeguards
 | # | Risk | Safeguard |
 |---|---|---|
-| S1 | Invoice saved in PostgreSQL but message not sent (crash between commit and send) — two systems, no shared transaction | **Sweeper**: a periodic task in the SAPS Worker re-sends messages for invoices in status Uploaded or Matching longer than a configurable time. Only one worker instance runs it (lock). A transactional outbox is a later option if needed. |
+| S1 | Invoice saved in PostgreSQL but message not sent (crash between commit and send), or a worker crashed mid-job | **Sweeper** (primary recovery path): a periodic task (APScheduler) re-sends messages for invoices in status Uploaded or Matching older than a configurable age. It selects with `FOR UPDATE SKIP LOCKED`, so invoices whose job is still running (row locked) are skipped, and takes `pg_try_advisory_xact_lock`, so only one instance sweeps per tick. A transactional outbox is a later option if needed. |
 | S2 | A message is processed twice (redelivery after a crash, sweeper re-send) | Actors are **idempotent**: each actor locks the invoice row (`SELECT … FOR UPDATE`) and does nothing if the invoice is no longer in the expected status. |
-| S3 | Redis restart loses queued messages | Redis persistence on (`appendonly yes`) in Docker Compose. Redis is never the source of truth; the sweeper (S1) recovers lost messages from PostgreSQL. |
+| S3 | Redis restart loses queued messages; broker redelivery after a worker crash is slow with default settings | Redis persistence on (`appendonly yes`). Set `heartbeat_timeout` and `maintenance_chance` explicitly (S7). Redis is never the source of truth; the sweeper (S1) recovers lost messages from PostgreSQL. |
 | S4 | A job keeps failing | Dramatiq retries with exponential back-off up to a configured limit. After the last retry, extraction failures set the invoice to Exception (EX1); other technical failures are logged and handled as defined in the feature spec. |
 | S5 | Async actors with SQLAlchemy async | Dramatiq supports `async def` actors through the optional `AsyncIO` middleware: one event-loop thread per worker process; concurrency per process stays equal to the number of worker threads (default 8) ([Dramatiq cookbook](https://dramatiq.io/cookbook.html#asyncio-actors)). The SQLAlchemy async engine is created on that event loop. Time limits and cancellation for async actors are not documented and are checked in the spike. Fallback: sync sessions on the same models (psycopg 3, [ADR-0005](0005-use-sqlalchemy-and-alembic.md)). |
-| S6 | Dramatiq has no built-in scheduler for the sweeper | Scheduler library inside the SAPS Worker (e.g. APScheduler); chosen in the spike. |
+| S6 | Dramatiq has no built-in scheduler for the sweeper | APScheduler 3.x (`AsyncIOScheduler`) in the SAPS Worker image (verified in the spike). |
+| S7 | Redis broker redelivery depends on `heartbeat_timeout` (default 60 s) and `maintenance_chance` (out of 1,000,000; default 1,000 = 0.1 % of broker calls) | Configure both explicitly (values in the Developer Guide). With the defaults, a crashed job was not redelivered within 4 min in the spike; with 1,000,000 and 5 s it was redelivered in about 6 s. |
 
 ### Consequences
 - **Good:** Upload requests stay fast even when extraction and SAP calls become slow.
@@ -85,6 +86,24 @@ for later phases.
   - an invoice left in status Uploaded without a message → the sweeper processes it.
 - Spike [SAPS-34](https://linear.app/jiringuyen/issue/SAPS-34): `AsyncIO` middleware with SQLAlchemy async sessions (engine per event loop, time limits and cancellation); sweeper scheduling and locking.
 - On acceptance, [§6.2 Runtime View](../arc42/06-runtime-view.md) is updated to the asynchronous flow.
+
+### Spike results ({L}, 2026-12-01)
+Environment: dramatiq 2.2.1 (Redis broker, `AsyncIO` middleware), SQLAlchemy 2.1.8 async, psycopg 3.3.9, APScheduler 3.11.3,
+PostgreSQL 17, Redis 7.2 (AOF on), Python 3.13, Docker Compose. All checks passed.
+
+| # | Check | Result |
+|---|---|---|
+| 1a | Async actors with SQLAlchemy async; 20 invoices, every message sent twice, 2 processes × 4 threads | PASS — 20 processed, exactly 1 per invoice (idempotent actor, S2) |
+| 1b | `time_limit` 2 s on a 5 s coroutine | PASS — `TimeLimitExceeded`, coroutine got `CancelledError`, open transaction rolled back, no "idle in transaction" connections, next job ran normally |
+| 1c | Worker killed (SIGKILL) during a 15 s job; `heartbeat_timeout` 5 s, `maintenance_chance` 1,000,000 | PASS — redelivered and processed once (about 6 s after the crash, plus the 15 s of work) |
+| 1c-default | Same with default settings (60 s, 1,000) | Not redelivered within 4 min → S7 |
+| 1d | Same crash with default broker settings plus the sweeper | PASS — sweeper skipped the invoice while its job held the row lock, re-sent it after the crash; processed once, 2.5 s after the crash |
+| 2 | Two sweeper instances; one stuck invoice (message lost), one normal invoice | PASS — stuck invoice re-sent once and processed once; normal invoice never re-sent; ticks split between instances, the other skipped |
+
+Findings:
+- One SQLAlchemy async engine per event loop (the `AsyncIO` middleware runs one loop per worker process); create it lazily inside the actor's loop.
+- On cancellation Dramatiq waits at most 1 s for the coroutine to clean up (source: `dramatiq/asyncio.py`); cleanup code must stay short.
+- The actor holds a database transaction and row lock for the whole job. This is fine in the PoC (dummy data, milliseconds). With slow OCR / SAP calls after the PoC, long transactions are undesirable: switch to a lease (status + `processing_until` timestamp) before real integrations. To be recorded as technical debt in arc42 §11.
 - Revisit when the workload profile is known (MTG-20261114 Q5, Q6), or before moving to a cloud environment.
 
 ## Pros and Cons of the Options

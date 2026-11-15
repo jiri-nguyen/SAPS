@@ -6,7 +6,7 @@ date: 2026-11-28         # date of the latest status change
 owner: "Solution Architect (our company)"
 deciders: ["Solution Architect (our company)"]
 consulted: ["Tech Lead (TBD)"]
-last_updated: 2026-11-28
+last_updated: 2026-12-01
 supersedes: ""
 superseded_by: ""
 related: [CON-01, CON-02, NFR-SCAL-001, ADR-0001, ADR-0003, ADR-0004, SAPS-34]
@@ -66,6 +66,21 @@ the code use the standard S3 API that Amazon S3 offers natively.
   Docker Compose; presigned GET URL works from the browser; data survives a container restart (volume mounted).
 - Integration tests run against SeaweedFS with Testcontainers.
 - ADR status moves to `accepted` after the spike; if the spike fails, a new ADR records the alternative.
+
+### Spike results ([SAPS-34](https://linear.app/jiringuyen/issue/SAPS-34), 2026-12-01)
+Environment: SeaweedFS 4.53 (`chrislusf/seaweedfs:latest`, `weed server -s3` with an `s3.json` identity file), boto3 1.44.3
+(Signature V4, path-style addressing), Docker Compose with a named volume. All checks passed.
+
+| # | Check | Result |
+|---|---|---|
+| 3a | put / get / delete of a 300 KB PDF | PASS — content hash equal, `Content-Type` kept, `NoSuchKey` after delete |
+| 3b | Presigned GET URL used without credentials (as a browser would) | PASS — download OK; tampered signature → 403; expired URL (2 s) → 403 |
+| 3c | Persistence | PASS — object readable after `docker compose restart` and after `down` + `up` (volume kept) |
+
+Findings:
+- Credentials are configured with an identity file (`-s3.config`); presigned URLs need these credentials.
+- Pin the image version in Docker Compose (the spike used `latest` = 4.53).
+- For browser downloads through presigned URLs, the SeaweedFS S3 port must be reachable from the browser; otherwise the SAPS API streams the file (decided in the feature spec).
 
 ## Pros and Cons of the Options
 
