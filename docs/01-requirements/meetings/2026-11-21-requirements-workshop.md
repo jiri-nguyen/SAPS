@@ -4,7 +4,7 @@ title: "MTG-20261121 — Requirements workshop: PoC, matching and exceptions"
 status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["Solution Architect (our company)"]
-last_updated: 2026-11-21
+last_updated: 2026-11-28
 related: [MTG-20261114, DEC-003, DEC-004, DEC-005, DEC-006, DEC-007, DEC-008, DEC-009, DEC-010]
 ---
 
@@ -176,24 +176,24 @@ All items come from [MTG-20261114](2026-11-14-kickoff.md).
 ## 8. Action Items
 | # | Action | Owner | Due | Status |
 |---|---|---|---|---|
-| A1 | Send attendee list, organization and key contacts (carried over from MTG-20261114 A2) | Customer representative (Customer) | 2026-11-28 | open |
+| A1 | Send attendee list, organization and key contacts (carried over from MTG-20261114 A2) | Customer representative (Customer) | 2026-11-28 | closed → [MTG-20261128](2026-11-28-poc-flow-review.md#3-follow-up-from-previous-meetings) |
 | A2 | Draft the end-to-end PoC flow (invoice states, approval, final review) as a Mermaid diagram for review | Solution Architect (our company) | 2026-11-27 | done → [§6 Runtime View](../../02-architecture/arc42/06-runtime-view.md) |
-| A3 | Send the meeting summary and proposed decisions to the customer | Solution Architect (our company) | 2026-11-21 | open |
+| A3 | Send the meeting summary and proposed decisions to the customer | Solution Architect (our company) | 2026-11-21 | done |
 | A4 | Prepare ADR-0001 and ADR-0002 drafts | Solution Architect (our company) | 2026-11-28 | done → [§9 Architecture Decisions](../../02-architecture/arc42/09-architecture-decisions.md) |
 
 ## 9. Open Questions
-All questions are asked to the Customer representative (Customer), due 2026-11-28.
+All questions are asked to the Customer representative (Customer), due 2026-11-28. Updates are tracked in [MTG-20261128](2026-11-28-poc-flow-review.md#3-follow-up-from-previous-meetings).
 
 | # | Question | Asked to | Due | Answer / status |
 |---|---|---|---|---|
-| Q1 | How does an upload work with dummy extraction? Proposal: a set of dummy invoices, each with a PDF/image and predefined extracted data; uploading one of these files loads its data. | Customer representative (Customer) | 2026-11-28 | open |
-| Q2 | Order of steps after matching? Proposal: matching passed → if total > 300 USD, Accounting Manager approval → Accounting Member final review → completed. | Customer representative (Customer) | 2026-11-28 | open |
-| Q3 | What happens when the Accounting Manager rejects an invoice, or the Accounting Member rejects it at final review? | Customer representative (Customer) | 2026-11-28 | open |
-| Q4 | Does the 300 USD approval rule apply to all invoice types, including non-PO invoices? | Customer representative (Customer) | 2026-11-28 | open |
-| Q5 | Should the 0.5 USD tolerance and the 300 USD threshold be configurable settings (proposal: yes, with these defaults)? | Customer representative (Customer) | 2026-11-28 | open |
-| Q6 | With several Accounting Members, how are exceptions assigned? Proposal: one shared queue; any Accounting Member can pick an item. | Customer representative (Customer) | 2026-11-28 | open |
-| Q7 | Exact PoC end date and demo date? 3 months from 2026-11-21 is 2027-02-21. Any interim milestones or demos? | Customer representative (Customer) | 2026-11-28 | open |
-| Q8 | Do you confirm the merged exception list EX1–EX9 (R19)? | Customer representative (Customer) | 2026-11-28 | open |
+| Q1 | How does an upload work with dummy extraction? Proposal: a set of dummy invoices, each with a PDF/image and predefined extracted data; uploading one of these files loads its data. | Customer representative (Customer) | 2026-11-28 | answered → [MTG-20261128](2026-11-28-poc-flow-review.md#3-follow-up-from-previous-meetings) |
+| Q2 | Order of steps after matching? Proposal: matching passed → if total > 300 USD, Accounting Manager approval → Accounting Member final review → completed. | Customer representative (Customer) | 2026-11-28 | answered → [MTG-20261128](2026-11-28-poc-flow-review.md#3-follow-up-from-previous-meetings) |
+| Q3 | What happens when the Accounting Manager rejects an invoice, or the Accounting Member rejects it at final review? | Customer representative (Customer) | 2026-11-28 | answered (rejection points: MTG-20261128 Q2) → [MTG-20261128](2026-11-28-poc-flow-review.md#3-follow-up-from-previous-meetings) |
+| Q4 | Does the 300 USD approval rule apply to all invoice types, including non-PO invoices? | Customer representative (Customer) | 2026-11-28 | answered → [MTG-20261128](2026-11-28-poc-flow-review.md#3-follow-up-from-previous-meetings) |
+| Q5 | Should the 0.5 USD tolerance and the 300 USD threshold be configurable settings (proposal: yes, with these defaults)? | Customer representative (Customer) | 2026-11-28 | answered → [MTG-20261128](2026-11-28-poc-flow-review.md#3-follow-up-from-previous-meetings) |
+| Q6 | With several Accounting Members, how are exceptions assigned? Proposal: one shared queue; any Accounting Member can pick an item. | Customer representative (Customer) | 2026-11-28 | answered → [MTG-20261128](2026-11-28-poc-flow-review.md#3-follow-up-from-previous-meetings) |
+| Q7 | Exact PoC end date and demo date? 3 months from 2026-11-21 is 2027-02-21. Any interim milestones or demos? | Customer representative (Customer) | 2026-11-28 | answered → [MTG-20261128](2026-11-28-poc-flow-review.md#3-follow-up-from-previous-meetings) |
+| Q8 | Do you confirm the merged exception list EX1–EX9 (R19)? | Customer representative (Customer) | 2026-11-28 | answered → [MTG-20261128](2026-11-28-poc-flow-review.md#3-follow-up-from-previous-meetings) |
 
 ## 10. Next Meeting
 - Date: 2026-11-28, time TBD

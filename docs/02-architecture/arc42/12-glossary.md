@@ -3,8 +3,8 @@ title: "§12 Glossary"
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["BA (TBD)", "Tech Lead (TBD)"]
-last_updated: 2026-11-21
-related: [MTG-20261114, MTG-20261121, ADR-0001, ADR-0002, ADR-0003]
+last_updated: 2026-11-28
+related: [MTG-20261114, MTG-20261121, MTG-20261128, ADR-0001, ADR-0002, ADR-0003]
 ---
 
 # §12 Glossary
@@ -24,9 +24,10 @@ related: [MTG-20261114, MTG-20261121, ADR-0001, ADR-0002, ADR-0003]
 | Accounts Payable | The process and ledger for amounts the company owes its vendors. | Công nợ phải trả | Payables |
 | Approval threshold | Invoice total amount, tax included, above which Accounting Manager approval is required. PoC value: 300 USD. | Ngưỡng phê duyệt | Approval limit |
 | Credit note | Vendor document that reduces an amount previously invoiced. Out of the PoC scope. | Hóa đơn điều chỉnh giảm | Credit memo |
-| Duplicate invoice | An invoice with the same vendor and invoice number as an invoice already in the system. | Hóa đơn trùng | — |
 | Dummy data | Predefined test data that replaces a real data source in the PoC (invoice extraction results, ERP data). | Dữ liệu giả lập | Mock data, fake data |
+| Duplicate invoice | An invoice with the same vendor and invoice number as an invoice already in the system. | Hóa đơn trùng | — |
 | Exception | A condition that stops automatic processing of an invoice and needs review by an Accounting Member. PoC exception types: [MTG-20261121](../../01-requirements/meetings/2026-11-21-requirements-workshop.md) R19. | Ngoại lệ | Error, issue |
+| Exception queue | Shared list of invoices in status Exception; any available Accounting Member picks one up. | Hàng đợi ngoại lệ | Inbox, task list |
 | Goods Receipt | Record that ordered goods were received, used in 3-way matching. | Phiếu nhập kho | GRN, receiving report |
 | Invoice | Vendor document requesting payment, uploaded as PDF or image. | Hóa đơn | Bill |
 | Invoice data extraction | Reading invoice fields from the uploaded file. In the PoC, the results come from dummy data. | Trích xuất dữ liệu hóa đơn | OCR, scanning |
@@ -35,6 +36,7 @@ related: [MTG-20261114, MTG-20261121, ADR-0001, ADR-0002, ADR-0003]
 | Non-trade PO invoice | Invoice whose PO number starts with `1`; processed with 2-way matching. Usually for indirect goods or services. | Hóa đơn PO phi thương mại | Indirect PO invoice |
 | PO number | Identifier of a purchase order: 7 characters, digits only. The first digit gives the PO type. | Số PO | PO ID |
 | Price tolerance | Maximum allowed difference between the invoice unit price and the PO unit price on a line. PoC value: 0.5 USD. | Sai lệch giá cho phép | Price variance |
+| Product Owner | The customer's single representative and decision maker for Smart-AP-Suite. | Chủ sản phẩm | Customer representative |
 | Proof of Concept | First project phase: a locally run demo of the end-to-end flow, using dummy data. | Bản thử nghiệm khái niệm | Prototype, pilot |
 | Purchase Order | Buyer document authorizing a purchase from a vendor. | Đơn đặt hàng | — |
 | Received-not-invoiced quantity | Quantity received on goods receipts for a PO line minus the quantity already invoiced for that line. | Số lượng đã nhận chưa xuất hóa đơn | Open GR quantity |

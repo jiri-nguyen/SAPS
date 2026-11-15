@@ -103,7 +103,7 @@ None agreed for the PoC. Later ERP integration is a constraint: [CON-03](../02-a
 | MTG-20261114 Q28 | Data residency; cloud AI/OCR services | Customer representative (Customer) | after PoC | deferred |
 | MTG-20261114 Q30 | Retention of invoice files and audit trail | Customer representative (Customer) | after PoC | open |
 | MTG-20261114 Q31 | Operating hours and availability | Customer representative (Customer) | after PoC | open |
-| Q1 | Does the PoC demo need any response-time target (e.g. from upload to matching result)? | Customer representative (Customer) | 2026-11-28 | open |
+| Q1 | Does the PoC demo need any response-time target (e.g. from upload to matching result)? | Customer representative (Customer) | 2026-11-28 | answered → [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) R11 |
 
 ## 6. Approval
 | Name | Role | Organization | Date | Reference |
