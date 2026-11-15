@@ -9,7 +9,7 @@ consulted: ["Tech Lead (TBD)"]
 last_updated: 2026-11-28
 supersedes: ""
 superseded_by: ""
-related: [CON-01, CON-02, NFR-SCAL-001, ADR-0001, ADR-0003, ADR-0004]
+related: [CON-01, CON-02, NFR-SCAL-001, ADR-0001, ADR-0003, ADR-0004, SAPS-34]
 ---
 
 # ADR-0006: Store invoice files in SeaweedFS through the S3 API
@@ -62,7 +62,7 @@ the code use the standard S3 API that Amazon S3 offers natively.
 - **Neutral:** Azure Blob is not S3-compatible; an Azure deployment needs a second adapter behind the File Storage Port.
 
 ### Confirmation
-- Spike (same Linear spike as ADR-0004): put, get and delete through the S3 client library against SeaweedFS in
+- Spike [SAPS-34](https://linear.app/jiringuyen/issue/SAPS-34) (shared with ADR-0004): put, get and delete through the S3 client library against SeaweedFS in
   Docker Compose; presigned GET URL works from the browser; data survives a container restart (volume mounted).
 - Integration tests run against SeaweedFS with Testcontainers.
 - ADR status moves to `accepted` after the spike; if the spike fails, a new ADR records the alternative.

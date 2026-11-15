@@ -9,7 +9,7 @@ consulted: ["Tech Lead (TBD)"]
 last_updated: 2026-11-28
 supersedes: ""
 superseded_by: ""
-related: [NFR-SCAL-001, CON-01, CON-02, CON-03, DEC-010, ADR-0001, ADR-0003, ADR-0005, SAPS-33]
+related: [NFR-SCAL-001, CON-01, CON-02, CON-03, DEC-010, ADR-0001, ADR-0003, ADR-0005, ADR-0006, SAPS-33, SAPS-34]
 ---
 
 # ADR-0004: Process invoices in a background worker with Dramatiq and Redis
@@ -83,7 +83,7 @@ for later phases.
 - Integration tests (Testcontainers with PostgreSQL and Redis):
   - a worker is stopped during a job → the message is redelivered and the invoice is processed once;
   - an invoice left in status Uploaded without a message → the sweeper processes it.
-- Spike (Linear issue under SAPS-30): `AsyncIO` middleware with SQLAlchemy async sessions (engine per event loop, time limits and cancellation); sweeper scheduling and locking.
+- Spike [SAPS-34](https://linear.app/jiringuyen/issue/SAPS-34): `AsyncIO` middleware with SQLAlchemy async sessions (engine per event loop, time limits and cancellation); sweeper scheduling and locking.
 - On acceptance, [§6.2 Runtime View](../arc42/06-runtime-view.md) is updated to the asynchronous flow.
 - Revisit when the workload profile is known (MTG-20261114 Q5, Q6), or before moving to a cloud environment.
 
@@ -117,6 +117,6 @@ for later phases.
 - Bad, because the dual write between PostgreSQL and Redis needs safeguards (S1, S2).
 
 ## More Information
-- Linear: [SAPS-33](https://linear.app/jiringuyen/issue/SAPS-33)
+- Linear: [SAPS-33](https://linear.app/jiringuyen/issue/SAPS-33) (decision), [SAPS-34](https://linear.app/jiringuyen/issue/SAPS-34) (spike)
 - Customer agreement: not required (internal design decision; Redis is an addition to the stack agreed in
   [DEC-019](../../01-requirements/decision-log.md#dec-019) — to be mentioned to the Product Owner at the next meeting).
