@@ -1,7 +1,7 @@
 ---
 id: ADR-0003
 title: "ADR-0003: Use PostgreSQL and Docker Compose for the PoC"
-status: proposed         # proposed | accepted | rejected | deprecated | superseded
+status: accepted         # proposed | accepted | rejected | deprecated | superseded
 date: 2026-11-21         # date of the latest status change
 owner: "Solution Architect (our company)"
 deciders: ["Solution Architect (our company)"]
