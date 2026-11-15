@@ -3,7 +3,7 @@ title: Data Model
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
-last_updated: 2026-12-01
+last_updated: 2026-12-05
 related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-018, DEC-021, SAPS-31]
 ---
 
@@ -112,6 +112,8 @@ The PoC uses only synthetic data ([DEC-004](../01-requirements/decision-log.md#d
 Conventions:
 - Every table also has the audit columns `created_at` (timestamp UTC), `created_by` (string(100)),
   `updated_at` (timestamp UTC) and `updated_by` (string(100)), all Not null, class Internal. They are not repeated below.
+- Matching fields ([DEC-024](../01-requirements/decision-log.md#dec-024)): `Invoice.vendor_code`, `Invoice.invoice_number`, `InvoiceLine.po_number`,
+  `InvoiceLine.po_line_number`, `InvoiceLine.quantity`, `InvoiceLine.unit_price`. A manual change to one of them sends `rematch_invoice`.
 - Amounts are in USD only in the PoC ([DEC-006](../01-requirements/decision-log.md#dec-006)).
 - Retention: TBD (MTG-20261114 Q30). In the PoC, demo data is reset by recreating the containers.
 - Expected volume: demo scale in the PoC (tens of invoices); production volume TBD (MTG-20261114 Q5).
@@ -319,7 +321,7 @@ Field names of SAP / MuleSoft are mapped in the adapters later.
 
 Derived values used in matching ([DEC-007](../01-requirements/decision-log.md#dec-007)):
 - **Already invoiced quantity** of a PO line = sum of `InvoiceLine.quantity` for that PO line on invoices in status
-  `PENDING_APPROVAL`, `PENDING_REVIEW` or `COMPLETED` (proposal, Q1).
+  `PENDING_APPROVAL`, `PENDING_REVIEW` or `COMPLETED` ([DEC-023](../01-requirements/decision-log.md#dec-023)); Exception and Rejected invoices do not count.
 - **Received-not-invoiced quantity** = sum of `GoodsReceiptLine.received_quantity` − already invoiced quantity.
 - **PO quantity not yet invoiced** = `PurchaseOrderLine.ordered_quantity` − already invoiced quantity.
 

@@ -1,11 +1,11 @@
 ---
 title: Scope Statement
-version: "0.3"           # 1.0 = first customer-approved version
+version: "0.4"           # 1.0 = first customer-approved version
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Solution Architect (our company)", "Product Owner (Customer)"]
-last_updated: 2026-11-28
-related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-003, DEC-004, DEC-011, DEC-012, DEC-013, DEC-014, DEC-015, DEC-016, DEC-017, DEC-018, DEC-020, DEC-021]
+last_updated: 2026-12-05
+related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-003, DEC-004, DEC-011, DEC-012, DEC-013, DEC-014, DEC-015, DEC-016, DEC-017, DEC-018, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024, DEC-025, DEC-026]
 ---
 
 # Scope Statement
@@ -25,7 +25,7 @@ Backlog items live in the Linear project
 ## 2. Business Objectives
 | # | Objective | Success measure |
 |---|---|---|
-| BO1 | Automate the AP flow | TBD (MTG-20261114 Q3) |
+| BO1 | Automate the AP flow and grow into an AP system serving many customer companies on AWS ([DEC-026](decision-log.md#dec-026)) | TBD |
 | BO2 | Prove the automated AP business flow in a PoC | All flows run successfully in the demo on 2027-02-22: every scenario in the demo scenario catalog, i.e. happy paths per invoice type and one scenario per exception type EX1–EX9 ([DEC-020](decision-log.md#dec-020), [DEC-017](decision-log.md#dec-017)) |
 
 ## 3. In Scope
@@ -78,11 +78,13 @@ Quality requirements are specified in the [Non-Functional Requirements](nfr.md).
 | SCP-OUT-08 | Posting results to the ERP or exporting them | Not in the PoC; the result is only displayed | [MTG-20261121](meetings/2026-11-21-requirements-workshop.md) R16 |
 | SCP-OUT-09 | Cloud deployment | Not in the PoC; the PoC runs locally | [DEC-003](decision-log.md#dec-003) |
 | SCP-OUT-10 | Single Sign-On | Not in the PoC; simple user accounts are used | [MTG-20261121](meetings/2026-11-21-requirements-workshop.md) R22 |
+| SCP-OUT-11 | Invoice intake from a dedicated mailbox | After the PoC; the PoC covers manual upload only | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) R7 |
+| SCP-OUT-12 | Serving several customer companies (multi-tenancy) | After the PoC; the PoC serves one company and only prepares the data model ([ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md)) | [DEC-026](decision-log.md#dec-026) |
 
 ## 5. Assumptions
 | # | Assumption | To be confirmed by | Status |
 |---|---|---|---|
-| AS1 | Manual upload is the only invoice intake channel (no email intake, no e-invoice XML intake) | Product Owner (Customer), MTG-20261114 Q9 | open |
+| AS1 | Manual upload is the only invoice intake channel in the PoC | Product Owner (Customer) | confirmed ([MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) R7); mailbox intake after the PoC (SCP-OUT-11) |
 | AS2 | All in-scope items are priority Must for the PoC | Product Owner (Customer) | confirmed ([MTG-20261128](meetings/2026-11-28-poc-flow-review.md) R18) |
 
 ## 6. Constraints
@@ -104,10 +106,10 @@ Scope-relevant questions are tracked and answered in the meeting minutes listed 
 
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| MTG-20261114 Q3 | Business objectives and success measures for the phase after the PoC | Product Owner (Customer) | after PoC | open |
-| MTG-20261114 Q9 | Intake channels other than manual upload; e-invoice XML | Product Owner (Customer) | after PoC | open |
+| MTG-20261114 Q3 | Success measures for the phase after the PoC | Product Owner (Customer) | after PoC | partly answered (direction: [DEC-026](decision-log.md#dec-026)) |
+| MTG-20261114 Q9 | Intake channels other than manual upload | Product Owner (Customer) | — | answered: mailbox after the PoC ([MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) R7) |
 | MTG-20261114 Q26 | Go-live date, phases after the PoC, budget | Product Owner (Customer) | after PoC | partly answered (PoC, demo date, sign-off owner) |
-| MTG-20261114 Q27 | Cloud provider and account ownership after the PoC | Product Owner (Customer) | after PoC | partly answered (PoC local) |
+| MTG-20261114 Q27 | Cloud provider and account ownership after the PoC | Product Owner (Customer) | — | answered: AWS, Product Owner's account ([DEC-026](decision-log.md#dec-026)) |
 
 ## 10. Approval
 | Name | Role | Organization | Date | Reference |
@@ -120,3 +122,4 @@ Scope-relevant questions are tracked and answered in the meeting minutes listed 
 | 0.1 | 2026-11-14 | Solution Architect (our company) | Initial draft from kickoff | [DEC-001](decision-log.md#dec-001) |
 | 0.2 | 2026-11-21 | Solution Architect (our company) | Scope set to the PoC phase; SCP-IN-02, -04, -05 changed; SCP-IN-06 to -12 and SCP-OUT-01 to -10 added; BO2 added | [DEC-003](decision-log.md#dec-003) to [DEC-010](decision-log.md#dec-010) |
 | 0.3 | 2026-11-28 | Solution Architect (our company) | SCP-IN-02, -04, -06, -08, -10, -11 and BO2 changed; SCP-IN-13, -14 added; AS2 confirmed; sign-off owner set; Linear epics linked | [DEC-011](decision-log.md#dec-011) to [DEC-021](decision-log.md#dec-021) |
+| 0.4 | 2026-12-05 | Solution Architect (our company) | BO1 changed; AS1 confirmed for the PoC; SCP-OUT-11, -12 added; open questions updated | [DEC-026](decision-log.md#dec-026) |

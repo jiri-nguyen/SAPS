@@ -3,8 +3,8 @@ title: Decision Log
 status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["PM (TBD)"]
-last_updated: 2026-11-28
-related: [MTG-20261114, MTG-20261121, MTG-20261128]
+last_updated: 2026-12-05
+related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205]
 ---
 
 # Decision Log
@@ -33,6 +33,12 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128]
 | [DEC-019](#dec-019) | 2026-11-28 | Customer agrees the PoC technology stack | Technical | confirmed |
 | [DEC-020](#dec-020) | 2026-11-28 | PoC success criterion: all flows run successfully | Scope | confirmed |
 | [DEC-021](#dec-021) | 2026-11-28 | Notification recipients by notification type | Business | confirmed |
+| [DEC-022](#dec-022) | 2026-12-05 | Redis and SeaweedFS added to the PoC stack | Technical | confirmed |
+| [DEC-023](#dec-023) | 2026-12-05 | Already invoiced quantity counts matched, approved and completed invoices | Business | confirmed |
+| [DEC-024](#dec-024) | 2026-12-05 | Matching fields that trigger re-matching | Business | confirmed |
+| [DEC-025](#dec-025) | 2026-12-05 | Demo scenario catalog defines "all flows" | Scope | confirmed |
+| [DEC-026](#dec-026) | 2026-12-05 | Product direction: multi-company AP system on AWS | Business | confirmed |
+| [DEC-027](#dec-027) | 2026-12-05 | Meetings only when there are questions | Process | confirmed |
 
 ## 2. Decisions
 
@@ -534,3 +540,138 @@ exception type EX1–EX9.
 **Rationale:** Stated by the Product Owner; matches the flow in §6.2.
 
 **Consequences & follow-ups:** None.
+
+### DEC-022
+**Redis and SeaweedFS added to the PoC stack**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-05 |
+| Category | Technical |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) D1 |
+| Impacts | [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md), [ADR-0006](../02-architecture/adr/0006-store-invoice-files-in-seaweedfs.md); extends [DEC-019](#dec-019) |
+| Supersedes / Superseded by | — |
+
+**Context:** ADR-0004 and ADR-0006 add Redis and SeaweedFS to the stack the customer agreed in DEC-019.
+
+**Decision:** The customer agrees to Redis (SAPS Message Broker) and SeaweedFS (SAPS File Storage) in the PoC stack.
+
+**Rationale:** Presented with the C4 L2 diagram; accepted by the Product Owner.
+
+**Consequences & follow-ups:** None.
+
+### DEC-023
+**Already invoiced quantity counts matched, approved and completed invoices**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-05 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) D2 |
+| Impacts | [data-model.md §4.2](../02-architecture/data-model.md#42-external-entities-read-through-ports-not-stored); refines [DEC-007](#dec-007) |
+| Supersedes / Superseded by | — |
+
+**Context:** Received-not-invoiced and PO-not-yet-invoiced quantities need an "already invoiced" quantity per PO line.
+In SAP it grows only when an invoice is posted and is checked again at posting; the PoC has no posting step.
+
+**Decision:** The already invoiced quantity of a PO line counts invoices in status PendingApproval, PendingReview or
+Completed (option b). Invoices in Exception or Rejected do not count; a rejected invoice releases its quantity.
+
+**Rationale:** Prevents two invoices from consuming the same quantity while both are in flight (the second one gets EX7).
+This replaces the check at posting that the PoC does not have.
+
+**Consequences & follow-ups:** An invoice in Exception does not reserve quantity; after its correction it can get EX7 if
+another invoice was matched first.
+
+### DEC-024
+**Matching fields that trigger re-matching**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-05 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) D3 |
+| Impacts | [data-model.md](../02-architecture/data-model.md); refines [DEC-010](#dec-010) |
+| Supersedes / Superseded by | — |
+
+**Context:** DEC-010 re-runs matching when a matching field changes; the field list was open.
+
+**Decision:** Matching fields are: vendor code, invoice number, PO number, PO line number, quantity, unit price.
+Changes to other fields (e.g. description, invoice date) do not trigger re-matching.
+
+**Rationale:** These fields feed duplicate detection, type derivation and line matching.
+
+**Consequences & follow-ups:** None.
+
+### DEC-025
+**Demo scenario catalog defines "all flows"**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-05 |
+| Category | Scope |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) D4 |
+| Impacts | [test-strategy.md §11](../05-testing/test-strategy.md#11-poc-demo-acceptance); refines [DEC-020](#dec-020) |
+| Supersedes / Superseded by | — |
+
+**Context:** DEC-020 sets "all flows run successfully" as the PoC success criterion.
+
+**Decision:** The demo scenario catalog DS-01 … DS-19 in the test strategy is the complete list of flows for the PoC demo.
+
+**Rationale:** Confirmed by the Product Owner.
+
+**Consequences & follow-ups:** Changes to the catalog need a new decision.
+
+### DEC-026
+**Product direction: multi-company AP system on AWS**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-05 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) D5, R5, R6, R8 |
+| Impacts | [scope.md](scope.md) BO1; [nfr.md](nfr.md) Workload Profile; [CON-06](../02-architecture/arc42/02-constraints.md); [ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md) |
+| Supersedes / Superseded by | — |
+
+**Context:** Business objectives, volume and cloud were open (MTG-20261114 Q3, Q5, Q27).
+
+**Decision:** After the PoC, Smart-AP-Suite becomes an AP system serving many customer companies, deployed on AWS in the
+Product Owner's company account (accounts given to the team when needed). Each company processes on average
+1,000–2,000 invoices per day. The PoC serves one company with at most 1,000 invoices per day; this number is design
+information only, not an acceptance criterion.
+
+**Rationale:** Stated by the Product Owner.
+
+**Consequences & follow-ups:** The multi-tenancy model needs more analysis after the PoC; the PoC only prepares the data
+model ([ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md)).
+
+### DEC-027
+**Meetings only when there are questions**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-05 |
+| Category | Process |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) D6 |
+| Impacts | Meeting cadence until the demo on 2027-02-22 |
+| Supersedes / Superseded by | — |
+
+**Context:** Requirements for the PoC are mostly settled; weekly meetings were used so far.
+
+**Decision:** There is no fixed weekly meeting. A meeting is held when there are questions for the Product Owner.
+
+**Rationale:** Stated by the Product Owner.
+
+**Consequences & follow-ups:** Our team collects open questions and requests a meeting when needed.

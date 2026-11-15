@@ -3,7 +3,7 @@ title: "§12 Glossary"
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["BA (TBD)", "Tech Lead (TBD)"]
-last_updated: 2026-12-01
+last_updated: 2026-12-05
 related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-018, ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006]
 ---
 
@@ -50,6 +50,7 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-018, A
 | Purchase Order | Buyer document authorizing a purchase from a vendor. | Đơn đặt hàng | — |
 | Received-not-invoiced quantity | Quantity received on goods receipts for a PO line minus the quantity already invoiced for that line. | Số lượng đã nhận chưa xuất hóa đơn | Open GR quantity |
 | Rejected | Final invoice state after a rejection by the Accounting Manager or an Accounting Member ([DEC-014](../../01-requirements/decision-log.md#dec-014)). | Bị từ chối | Cancelled |
+| Tenant | A customer company served by Smart-AP-Suite; its data is separated from other tenants. The PoC has one tenant ([ADR-0007](../adr/0007-prepare-data-model-for-tenants.md)). | Khách hàng thuê bao | Client, customer |
 | Trade PO invoice | Invoice whose PO number starts with `0`; processed with 3-way matching. Usually for goods for resale or production. | Hóa đơn PO thương mại | Direct PO invoice |
 | User account | Sign-in identity of an Accounting Member or Accounting Manager. Entity `UserAccount`. | Tài khoản người dùng | Login |
 | Vendor | Supplier that issues invoices; read from the ERP through the ERP Data Port. | Nhà cung cấp | Supplier |

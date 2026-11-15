@@ -3,8 +3,8 @@ title: "§2 Architecture Constraints"
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
-last_updated: 2026-11-28
-related: [DEC-002, DEC-003, DEC-017, MTG-20261121]
+last_updated: 2026-12-05
+related: [DEC-002, DEC-003, DEC-017, DEC-026, MTG-20261121]
 ---
 
 # §2 Architecture Constraints
@@ -14,6 +14,7 @@ related: [DEC-002, DEC-003, DEC-017, MTG-20261121]
 |---|---|---|---|
 | CON-01 | The PoC runs on a local machine; no cloud environment | All components must run locally; no managed cloud services in the PoC | [DEC-003](../../01-requirements/decision-log.md#dec-003) |
 | CON-03 | After the PoC, ERP data (POs, goods receipts, vendors) comes from SAP ECC or SAP S/4HANA through MuleSoft APIs or MuleSoft MCP Tools | ERP access must be replaceable without changing the matching logic ([ADR-0001](../adr/0001-isolate-extraction-and-erp-behind-ports.md)) | [MTG-20261121](../../01-requirements/meetings/2026-11-21-requirements-workshop.md) R4 |
+| CON-06 | After the PoC, the system runs on AWS in the Product Owner's company account; accounts are given to the team when needed | Target cloud is AWS: later deployment view, infrastructure diagrams and cost estimate are for AWS | [DEC-026](../../01-requirements/decision-log.md#dec-026) |
 
 ## 2.2 Organizational Constraints
 | ID | Constraint | Impact on the architecture | Source |

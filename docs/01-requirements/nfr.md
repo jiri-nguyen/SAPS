@@ -1,11 +1,11 @@
 ---
 title: Non-Functional Requirements
-version: "0.2"           # 1.0 = first customer-approved version
+version: "0.3"           # 1.0 = first customer-approved version
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)", "Product Owner (Customer)"]
-last_updated: 2026-11-28
-related: [MTG-20261121, MTG-20261128, DEC-003]
+last_updated: 2026-12-05
+related: [MTG-20261121, MTG-20261128, MTG-20261205, DEC-003, DEC-026]
 ---
 
 # Non-Functional Requirements
@@ -20,18 +20,18 @@ related: [MTG-20261121, MTG-20261128, DEC-003]
 
 ## 2. Workload Profile
 The PoC uses dummy data and runs locally ([DEC-003](decision-log.md#dec-003), [DEC-004](decision-log.md#dec-004)).
-Production workload values are not known yet.
+Volumes below are design information, not PoC acceptance criteria ([MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) R6).
 
 | Parameter | Value | Source |
 |---|---|---|
 | Total named users | TBD | MTG-20261114 Q4 (counts not given) |
 | Peak concurrent users | TBD | — |
 | Peak request rate | TBD | — |
-| Business transactions per day | TBD | MTG-20261114 Q5 |
-| Peak periods | TBD | MTG-20261114 Q6 |
+| Business transactions per day | PoC: ≤ 1,000 invoices/day (one company). After the PoC: 1,000–2,000 invoices/day per company, many companies | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) R6 |
+| Peak periods | TBD | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) Q1 |
 | Data volume at go-live | TBD | — |
 | Annual data growth | TBD | — |
-| Operating hours | TBD | MTG-20261114 Q31 |
+| Operating hours | Business hours (assumption; time zone TBD) | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) R9, Q2 |
 | User locations | TBD | MTG-20261114 Q1 |
 
 ## 3. Summary
@@ -54,13 +54,13 @@ No performance target for the PoC ([MTG-20261128](meetings/2026-11-28-poc-flow-r
 | Field | Value |
 |---|---|
 | Requirement | The PoC architecture MUST allow higher invoice volumes and more users after the PoC without a redesign of the matching and workflow logic. |
-| Metric & target | TBD — numeric targets are set after the PoC, from the workload profile (MTG-20261114 Q5, Q6) |
+| Metric & target | The design supports the Workload Profile: ≤ 1,000 invoices/day for one company in the PoC, and many companies × 1,000–2,000 invoices/day after the PoC by adding instances, without redesign. No load test in the PoC. |
 | Conditions | Design and code of the PoC |
 | Priority | Must |
 | Verification | Review (architecture review of ADRs and code structure) |
 | Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) R11 |
 | Status | agreed |
-| Related | [ADR-0001](../02-architecture/adr/0001-isolate-extraction-and-erp-behind-ports.md); processing model ADR ([SAPS-33](https://linear.app/jiringuyen/issue/SAPS-33)) |
+| Related | [ADR-0001](../02-architecture/adr/0001-isolate-extraction-and-erp-behind-ports.md), [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md), [ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md) |
 
 ### 4.3 Availability & Disaster Recovery (AVAIL)
 None agreed for the PoC.
@@ -112,11 +112,11 @@ None agreed for the PoC. Later ERP integration is a constraint: [CON-03](../02-a
 ## 5. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| MTG-20261114 Q5 | Invoices per month, per invoice type | Customer representative (Customer) | after PoC | open |
+| MTG-20261114 Q5 | Invoices per month, per invoice type | Customer representative (Customer) | — | answered: see Workload Profile ([MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) R6) |
 | MTG-20261114 Q6 | Peak periods | Customer representative (Customer) | after PoC | open |
 | MTG-20261114 Q28 | Data residency; cloud AI/OCR services | Customer representative (Customer) | after PoC | deferred |
 | MTG-20261114 Q30 | Retention of invoice files and audit trail | Customer representative (Customer) | after PoC | open |
-| MTG-20261114 Q31 | Operating hours and availability | Customer representative (Customer) | after PoC | open |
+| MTG-20261114 Q31 | Operating hours and availability | Customer representative (Customer) | after PoC | partly answered: business hours, assumption ([MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) R9); availability open |
 | Q1 | Does the PoC demo need any response-time target (e.g. from upload to matching result)? | Customer representative (Customer) | 2026-11-28 | answered → [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) R11 |
 
 ## 6. Approval
@@ -129,3 +129,4 @@ None agreed for the PoC. Later ERP integration is a constraint: [CON-03](../02-a
 |---|---|---|---|---|
 | 0.1 | 2026-11-21 | Solution Architect (our company) | Initial draft for the PoC: NFR-SEC-001, NFR-USAB-001 | [DEC-003](decision-log.md#dec-003) |
 | 0.2 | 2026-11-28 | Solution Architect (our company) | NFR-SCAL-001 added | — ([MTG-20261128](meetings/2026-11-28-poc-flow-review.md) R11) |
+| 0.3 | 2026-12-05 | Solution Architect (our company) | Workload Profile filled; NFR-SCAL-001 target set | [DEC-026](decision-log.md#dec-026) |

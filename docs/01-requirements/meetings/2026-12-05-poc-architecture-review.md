@@ -5,7 +5,7 @@ status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["Solution Architect (our company)"]
 last_updated: 2026-12-05
-related: [MTG-20261128, ADR-0004, ADR-0006, DEC-019, DEC-020]
+related: [MTG-20261128, ADR-0004, ADR-0006, ADR-0007, DEC-019, DEC-020, DEC-022, DEC-023, DEC-024, DEC-025, DEC-026, DEC-027]
 ---
 
 # MTG-20261205 — PoC architecture review and open questions
@@ -84,31 +84,31 @@ related: [MTG-20261128, ADR-0004, ADR-0006, DEC-019, DEC-020]
 ## 6. Decisions
 | # | Decision | Decided by | Logged as |
 |---|---|---|---|
-| D1 | Redis and SeaweedFS are added to the PoC stack (ADR-0004, ADR-0006) | Product Owner (Customer) | pending |
-| D2 | Already invoiced quantity of a PO line counts invoices in PendingApproval, PendingReview and Completed (option b) | Product Owner (Customer) | pending |
-| D3 | Matching fields: vendor code, invoice number, PO number, PO line number, quantity, unit price | Product Owner (Customer) | pending |
-| D4 | Demo scenario catalog DS-01 … DS-19 defines "all flows" | Product Owner (Customer) | pending |
-| D5 | Product direction: multi-company AP system on AWS (Product Owner's company account) | Product Owner (Customer) | pending |
-| D6 | Meetings only when there are questions; no fixed weekly meeting | Product Owner (Customer) | pending |
+| D1 | Redis and SeaweedFS are added to the PoC stack (ADR-0004, ADR-0006) | Product Owner (Customer) | [DEC-022](../decision-log.md#dec-022) |
+| D2 | Already invoiced quantity of a PO line counts invoices in PendingApproval, PendingReview and Completed (option b) | Product Owner (Customer) | [DEC-023](../decision-log.md#dec-023) |
+| D3 | Matching fields: vendor code, invoice number, PO number, PO line number, quantity, unit price | Product Owner (Customer) | [DEC-024](../decision-log.md#dec-024) |
+| D4 | Demo scenario catalog DS-01 … DS-19 defines "all flows" | Product Owner (Customer) | [DEC-025](../decision-log.md#dec-025) |
+| D5 | Product direction: multi-company AP system on AWS (Product Owner's company account) | Product Owner (Customer) | [DEC-026](../decision-log.md#dec-026) |
+| D6 | Meetings only when there are questions; no fixed weekly meeting | Product Owner (Customer) | [DEC-027](../decision-log.md#dec-027) |
 
 ## 7. Requirements Captured
 | # | Information / requirement | Type | Proposed target | Status |
 |---|---|---|---|---|
-| R1 | Redis and SeaweedFS are added to the PoC stack | Constraint | DEC-022 | proposed |
-| R2 | Already invoiced = invoices in PendingApproval, PendingReview, Completed; Exception and Rejected do not count | Functional | DEC-023; data-model.md §4.2 | proposed |
-| R3 | Matching fields: vendor_code, invoice_number, po_number, po_line_number, quantity, unit_price; other fields do not trigger re-matching | Functional | DEC-024; data-model.md | proposed |
-| R4 | DS-01 … DS-19 are complete | Scope | DEC-025; test-strategy.md §11 | proposed |
-| R5 | Business objective: grow into an AP system serving many customer companies | Scope | DEC-026; scope.md BO1 | proposed |
-| R6 | Future volume: 1,000–2,000 invoices per day per company, many companies. PoC: one company, ≤ 1,000 invoices per day (design information only) | NFR | nfr.md Workload Profile; NFR-SCAL-001 conditions | proposed |
-| R7 | Future intake: dedicated mailbox + manual upload; PoC: manual upload only | Scope | scope.md AS1 → confirmed for the PoC; SCP-OUT-11 (mailbox intake) | proposed |
-| R8 | After the PoC the system runs on AWS in the Product Owner's company account; accounts are given when needed | Constraint | DEC-026; arc42 §2 CON-06 | proposed |
-| R9 | Operation during business hours (assumption) | NFR | nfr.md Workload Profile (operating hours) | proposed |
-| R10 | Meetings only when there are questions | Constraint | DEC-027 | proposed |
+| R1 | Redis and SeaweedFS are added to the PoC stack | Constraint | DEC-022 | logged |
+| R2 | Already invoiced = invoices in PendingApproval, PendingReview, Completed; Exception and Rejected do not count | Functional | DEC-023; data-model.md §4.2 | logged |
+| R3 | Matching fields: vendor_code, invoice_number, po_number, po_line_number, quantity, unit_price; other fields do not trigger re-matching | Functional | DEC-024; data-model.md | logged |
+| R4 | DS-01 … DS-19 are complete | Scope | DEC-025; test-strategy.md §11 | logged |
+| R5 | Business objective: grow into an AP system serving many customer companies | Scope | DEC-026; scope.md BO1 | logged |
+| R6 | Future volume: 1,000–2,000 invoices per day per company, many companies. PoC: one company, ≤ 1,000 invoices per day (design information only) | NFR | nfr.md Workload Profile; NFR-SCAL-001 conditions | logged |
+| R7 | Future intake: dedicated mailbox + manual upload; PoC: manual upload only | Scope | scope.md AS1 → confirmed for the PoC; SCP-OUT-11 (mailbox intake) | logged |
+| R8 | After the PoC the system runs on AWS in the Product Owner's company account; accounts are given when needed | Constraint | DEC-026; arc42 §2 CON-06 | logged |
+| R9 | Operation during business hours (assumption) | NFR | nfr.md Workload Profile (operating hours) | logged |
+| R10 | Meetings only when there are questions | Constraint | DEC-027 | logged |
 
 ### 7.1 Conflicts with existing items
 | # | Existing item | Conflict | Proposed resolution |
 |---|---|---|---|
-| K1 | [Data model](../../02-architecture/data-model.md) and ADRs assume one customer (single tenant) | Future multi-company system (R5) needs tenant isolation | ADR need ADR-N1; decide whether the PoC data model carries a tenant key now |
+| K1 | [Data model](../../02-architecture/data-model.md) and ADRs assume one customer (single tenant) | Future multi-company system (R5) needs tenant isolation | [ADR-0007](../../02-architecture/adr/0007-prepare-data-model-for-tenants.md) (proposed): tenant-ready data model in the PoC; isolation model decided after the PoC |
 | K2 | [NFR-SCAL-001](../nfr.md#nfr-scal-001): targets TBD | Workload is now known (R6) | Fill in the Workload Profile; NFR-SCAL-001 stays verified by review (design information only) |
 | K3 | [scope.md AS1](../scope.md#5-assumptions): manual upload is the only intake channel | Future mailbox intake (R7) | AS1 confirmed for the PoC; mailbox intake added as SCP-OUT-11 |
 | K4 | [DEC-019](../decision-log.md#dec-019): stack agreed without Redis and SeaweedFS | Stack extended (R1) | DEC-022 extends DEC-019 |
@@ -116,13 +116,13 @@ related: [MTG-20261128, ADR-0004, ADR-0006, DEC-019, DEC-020]
 ### 7.2 ADR needs
 | # | Need | Driver |
 |---|---|---|
-| ADR-N1 | Multi-tenancy model (shared database with tenant key, schema per tenant, or database per tenant), and whether the PoC already carries a tenant key | R5, R6, NFR-SCAL-001 |
+| [ADR-0007](../../02-architecture/adr/0007-prepare-data-model-for-tenants.md) | Multi-tenancy model (shared database with tenant key, schema per tenant, or database per tenant), and whether the PoC already carries a tenant key | R5, R6, NFR-SCAL-001 |
 
 ## 8. Action Items
 | # | Action | Owner | Due | Status |
 |---|---|---|---|---|
-| A1 | Draft ADR-N1 (multi-tenancy model); create a Linear issue under SAPS-30 for it | Solution Architect (our company) | 2026-12-12 | open |
-| A2 | Update data model, NFR workload profile, scope and constraints after the decisions are logged | Solution Architect (our company) | 2026-12-08 | open |
+| A1 | Draft the multi-tenancy ADR ([SAPS-35](https://linear.app/jiringuyen/issue/SAPS-35)) | Solution Architect (our company) | 2026-12-12 | done → [ADR-0007](../../02-architecture/adr/0007-prepare-data-model-for-tenants.md) (proposed) |
+| A2 | Update data model, NFR workload profile, scope and constraints after the decisions are logged | Solution Architect (our company) | 2026-12-08 | done (scope v0.4, nfr v0.3, CON-06, data model) |
 
 ## 9. Open Questions
 | # | Question | Asked to | Due | Answer / status |
