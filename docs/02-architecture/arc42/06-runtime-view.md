@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)", "Customer representative (Customer)"]
 last_updated: 2026-11-28
-related: [DEC-003, DEC-004, DEC-005, DEC-006, DEC-007, DEC-008, DEC-009, DEC-010, DEC-012, DEC-013, DEC-014, DEC-016, DEC-021, ADR-0001, ADR-0002, ADR-0003]
+related: [DEC-003, DEC-004, DEC-005, DEC-006, DEC-007, DEC-008, DEC-009, DEC-010, DEC-012, DEC-013, DEC-014, DEC-016, DEC-021, ADR-0001, ADR-0002, ADR-0003, ADR-0004]
 ---
 
 # §6 Runtime View
@@ -86,7 +86,7 @@ sequenceDiagram
 
 **Notes:**
 - The matching result is only displayed; nothing is posted to an ERP ([SCP-OUT-08](../../01-requirements/scope.md)).
-- Processing runs inside the SAPS API request in this draft; the processing model is decided in an ADR ([SAPS-33](https://linear.app/jiringuyen/issue/SAPS-33), driven by [NFR-SCAL-001](../../01-requirements/nfr.md#nfr-scal-001)).
+- Processing runs inside the SAPS API request in this diagram. [ADR-0004](../adr/0004-process-invoices-in-background-worker.md) (proposed) moves it to a SAPS Worker; this scenario is updated when ADR-0004 is accepted.
 - During exception handling an Accounting Member can also reject the invoice (DEC-014); see the lifecycle below.
 - How in-app notifications reach the SAPS Web App (polling or push) is decided in the feature spec.
 
@@ -95,34 +95,4 @@ sequenceDiagram
 [ADR-0002](../adr/0002-use-python-fastapi-and-react.md), [ADR-0003](../adr/0003-use-postgresql-and-docker-compose.md).
 
 ### 6.2.1 Invoice lifecycle
-This diagram moves to `data-model.md` §5 when the data model is created ([SAPS-31](https://linear.app/jiringuyen/issue/SAPS-31)).
-
-```mermaid
-stateDiagram-v2
-    [*] --> Uploaded: Accounting Member uploads file
-    Uploaded --> Exception: EX1 extraction failed or unknown file
-    Uploaded --> Matching: data extracted
-    Matching --> Exception: EX2–EX9
-    Matching --> PendingApproval: matched, total above threshold
-    Matching --> PendingReview: matched, total at or below threshold
-    Exception --> Matching: matching field updated (DEC-010)
-    Exception --> PendingApproval: resolved, total above threshold
-    Exception --> PendingReview: resolved, total at or below threshold
-    Exception --> Rejected: rejected by Accounting Member (DEC-014)
-    PendingApproval --> PendingReview: approved by Accounting Manager
-    PendingApproval --> Rejected: rejected by Accounting Manager (DEC-014)
-    PendingReview --> Completed: confirmed by Accounting Member
-    PendingReview --> Rejected: rejected at final review (DEC-014)
-    Completed --> [*]
-    Rejected --> [*]
-```
-
-| State | Meaning | Waiting for |
-|---|---|---|
-| Uploaded | File received; extraction in progress | System |
-| Matching | Duplicate check, type derivation and matching in progress | System |
-| Exception | Automatic processing stopped (EX1–EX9) | Accounting Member |
-| PendingApproval | Total amount above the approval threshold | Accounting Manager |
-| PendingReview | Ready for the final check | Accounting Member |
-| Completed | Final result confirmed | — |
-| Rejected | Invoice rejected; final state (DEC-014) | — |
+The invoice state diagram lives in [data-model.md §5](../data-model.md#invoice-lifecycle).

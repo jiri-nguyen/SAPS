@@ -97,7 +97,7 @@ Constraints are listed in [arc42 §2 Constraints](../02-architecture/arc42/02-co
 ## 8. Acceptance Approach
 - PoC acceptance: all flows run successfully in the demo on 2027-02-22 (BO2, [DEC-020](decision-log.md#dec-020)).
 - Sign-off by: Product Owner (Customer) ([DEC-011](decision-log.md#dec-011)).
-- Test approach: will be defined in the Test Strategy (`../05-testing/test-strategy.md`, not yet created; [SAPS-32](https://linear.app/jiringuyen/issue/SAPS-32)).
+- Test approach and demo scenario catalog: [Test Strategy](../05-testing/test-strategy.md).
 
 ## 9. Open Questions
 Scope-relevant questions are tracked and answered in the meeting minutes listed in the first column.

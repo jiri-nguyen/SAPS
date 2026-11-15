@@ -146,10 +146,10 @@ The Product Owner answered Q1–Q5 in writing on 2026-11-28:
 ## 8. Action Items
 | # | Action | Owner | Due | Status |
 |---|---|---|---|---|
-| A1 | Draft the data model (entities, ERD, invoice lifecycle) in `data-model.md` ([SAPS-31](https://linear.app/jiringuyen/issue/SAPS-31)) | Solution Architect (our company) | 2026-12-05 | open |
-| A2 | Draft the test strategy with a demo scenario catalog: happy paths per invoice type and one scenario per exception type EX1–EX9 ([SAPS-32](https://linear.app/jiringuyen/issue/SAPS-32)) | Solution Architect (our company) | 2026-12-05 | open |
+| A1 | Draft the data model (entities, ERD, invoice lifecycle) in `data-model.md` ([SAPS-31](https://linear.app/jiringuyen/issue/SAPS-31)) | Solution Architect (our company) | 2026-12-05 | done (draft) → [data-model.md](../../02-architecture/data-model.md) |
+| A2 | Draft the test strategy with a demo scenario catalog: happy paths per invoice type and one scenario per exception type EX1–EX9 ([SAPS-32](https://linear.app/jiringuyen/issue/SAPS-32)) | Solution Architect (our company) | 2026-12-05 | done (draft) → [test-strategy.md](../../05-testing/test-strategy.md) |
 | A3 | List the Linear epics and milestone (SA); create them in Linear manually (Product Owner / SA); add issue keys to scope.md | Solution Architect (our company) | 2026-12-05 | done: epics [SAPS-17](https://linear.app/jiringuyen/issue/SAPS-17) to [SAPS-30](https://linear.app/jiringuyen/issue/SAPS-30), tasks [SAPS-31](https://linear.app/jiringuyen/issue/SAPS-31) to [SAPS-33](https://linear.app/jiringuyen/issue/SAPS-33); keys added to scope.md v0.3 |
-| A4 | Draft the processing model ADR ([SAPS-33](https://linear.app/jiringuyen/issue/SAPS-33)) | Solution Architect (our company) | 2026-12-05 | open |
+| A4 | Draft the processing model ADR ([SAPS-33](https://linear.app/jiringuyen/issue/SAPS-33)) | Solution Architect (our company) | 2026-12-05 | done (proposed) → [ADR-0004](../../02-architecture/adr/0004-process-invoices-in-background-worker.md) |
 
 ## 9. Open Questions
 | # | Question | Asked to | Due | Answer / status |
