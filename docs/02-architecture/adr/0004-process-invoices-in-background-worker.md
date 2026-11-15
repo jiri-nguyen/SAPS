@@ -48,7 +48,7 @@ for later phases.
 ### How it works
 - New containers: **SAPS Worker** (Dramatiq workers, same Python codebase as the SAPS API) and
   **SAPS Message Broker** (Redis).
-- The SAPS API saves the uploaded file and the invoice (status Uploaded), **commits**, then sends a message, and
+- The SAPS API saves the uploaded file (SAPS File Storage, [ADR-0006](0006-store-invoice-files-in-seaweedfs.md)) and the invoice (status Uploaded), **commits**, then sends a message, and
   returns `202 Accepted`.
 - Actors: `process_invoice(invoice_id)` and `rematch_invoice(invoice_id)` ([DEC-010](../../01-requirements/decision-log.md#dec-010)).
 - Messages are sent through a **Job Queue Port**, so another broker (e.g. Amazon SQS, Azure Service Bus) can replace
@@ -79,7 +79,7 @@ for later phases.
   ([data model](../data-model.md)).
 
 ### Confirmation
-- Docker Compose starts SAPS Web App, SAPS API, SAPS Worker, SAPS Message Broker and SAPS Database.
+- Docker Compose starts SAPS Web App, SAPS API, SAPS Worker, SAPS Message Broker, SAPS File Storage ([ADR-0006](0006-store-invoice-files-in-seaweedfs.md)) and SAPS Database.
 - Integration tests (Testcontainers with PostgreSQL and Redis):
   - a worker is stopped during a job → the message is redelivered and the invoice is processed once;
   - an invoice left in status Uploaded without a message → the sweeper processes it.

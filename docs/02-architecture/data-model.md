@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
 last_updated: 2026-11-28
-related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-018, DEC-021, SAPS-31]
+related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-018, DEC-021, SAPS-31]
 ---
 
 # Data Model
@@ -19,7 +19,7 @@ Scope: Proof of Concept ([DEC-003](../01-requirements/decision-log.md#dec-003)).
 |---|---|---|---|---|
 | SAPS Database | PostgreSQL (version in the Developer Guide) | SAPS API (the SAPS Worker shares the codebase and schema) | UserAccount, Invoice, InvoiceLine, InvoiceException, Approval, InvoiceEvent, Notification, MatchingSettings | [ADR-0003](adr/0003-use-postgresql-and-docker-compose.md), [ADR-0004](adr/0004-process-invoices-in-background-worker.md) |
 | SAPS Message Broker | Redis, persistence on (AOF) | SAPS API (sends), SAPS Worker (consumes) | Transient processing messages only (invoice ID + job type); no business data; never the source of truth | [ADR-0004](adr/0004-process-invoices-in-background-worker.md) |
-| Invoice file store | Docker volume (proposal, Q3) | SAPS API | Uploaded invoice files, referenced by `Invoice.file_storage_key` | — |
+| SAPS File Storage | SeaweedFS (S3 API) | SAPS API (writes), SAPS Worker (reads) | Uploaded invoice files, key `invoices/{invoice_id}/{file_sha256}` in `Invoice.file_storage_key` | [ADR-0006](adr/0006-store-invoice-files-in-seaweedfs.md) |
 | Dummy sample set | JSON fixture files | Dummy Extraction Adapter | ExtractedInvoice (§4.2) | [ADR-0001](adr/0001-isolate-extraction-and-erp-behind-ports.md), [DEC-012](../01-requirements/decision-log.md#dec-012) |
 | Dummy ERP data | JSON fixture files | Dummy ERP Adapter | Vendor, PurchaseOrder, PurchaseOrderLine, GoodsReceipt, GoodsReceiptLine (§4.2) | [ADR-0001](adr/0001-isolate-extraction-and-erp-behind-ports.md) |
 
@@ -170,7 +170,7 @@ An uploaded vendor invoice and its processing state.
 | file_content_type | string(100) | No | — | Internal | MIME type: PDF or image |
 | file_size_bytes | bigint | No | — | Internal | File size |
 | file_sha256 | string(64) | No | — | Internal | Content hash; identifies the dummy sample (Q4) |
-| file_storage_key | string(500) | No | — | Internal | Location of the file in the invoice file store |
+| file_storage_key | string(500) | No | — | Internal | Object key in SAPS File Storage |
 | rejected_reason | string(1000) | Yes | — | Internal | Reason entered at rejection ([DEC-014](../01-requirements/decision-log.md#dec-014)) |
 
 Index (not unique): (`vendor_code`, `invoice_number`) for duplicate detection. It is not a unique key because a
@@ -376,6 +376,6 @@ stateDiagram-v2
 |---|---|---|---|---|
 | Q1 | Which invoices count as "already invoiced" for a PO line? Proposal: invoices in status PendingApproval, PendingReview or Completed | Product Owner (Customer) | 2026-12-05 | open |
 | Q2 | Retention periods for invoices, files, notifications (MTG-20261114 Q30) | Product Owner (Customer) | after PoC | open |
-| Q3 | Invoice file store in the PoC: a Docker volume shared by SAPS API and SAPS Worker (proposal); object storage later | Solution Architect (our company) | 2026-12-05 | open |
+| Q3 | Invoice file store in the PoC: a Docker volume shared by SAPS API and SAPS Worker (proposal); object storage later | Solution Architect (our company) | 2026-12-05 | answered: SeaweedFS object storage ([ADR-0006](adr/0006-store-invoice-files-in-seaweedfs.md)) |
 | Q4 | Identify dummy sample files by SHA-256 hash of the file content, not by file name (proposal) | Solution Architect (our company) | 2026-12-05 | answered: adopted (Solution Architect) |
 | Q5 | Which fields are "matching fields" that trigger re-matching (DEC-010)? Proposal: vendor_code, invoice_number, po_number, po_line_number, quantity, unit_price | Product Owner (Customer) | 2026-12-05 | open |

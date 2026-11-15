@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)", "Product Owner (Customer)"]
 last_updated: 2026-11-28
-related: [ADR-0004, DEC-003, DEC-011, DEC-017, DEC-018, DEC-020, NFR-SCAL-001, NFR-SEC-001, NFR-USAB-001, SAPS-32]
+related: [ADR-0004, ADR-0006, DEC-003, DEC-011, DEC-017, DEC-018, DEC-020, NFR-SCAL-001, NFR-SEC-001, NFR-USAB-001, SAPS-32]
 ---
 
 # Test Strategy
@@ -15,7 +15,7 @@ Scope: Proof of Concept ([DEC-003](../01-requirements/decision-log.md#dec-003)).
 - **Goal:** prove that all flows run successfully in the demo on 2027-02-22
   ([DEC-020](../01-requirements/decision-log.md#dec-020), [DEC-017](../01-requirements/decision-log.md#dec-017)).
   The [demo scenario catalog](#11-poc-demo-acceptance) defines "all flows".
-- **In scope:** SAPS Web App, SAPS API, SAPS Worker and SAPS Message Broker (if [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) is accepted), SAPS Database; Dummy Extraction Adapter and Dummy ERP Adapter; NFRs in [nfr.md](../01-requirements/nfr.md) v0.2.
+- **In scope:** SAPS Web App, SAPS API, SAPS Worker and SAPS Message Broker ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md)), SAPS File Storage ([ADR-0006](../02-architecture/adr/0006-store-invoice-files-in-seaweedfs.md)), SAPS Database; Dummy Extraction Adapter and Dummy ERP Adapter; NFRs in [nfr.md](../01-requirements/nfr.md) v0.2.
 - **Out of scope:** real OCR/AI extraction and SAP / MuleSoft integration ([SCP-OUT-01, SCP-OUT-02](../01-requirements/scope.md#4-out-of-scope)); performance and load testing; cloud environments.
 - **Test case management:** in code only (pytest, Playwright). Demo scenarios are listed in §11; each has one automated end-to-end test.
 - **References:** [Scope](../01-requirements/scope.md) · [NFRs](../01-requirements/nfr.md) · [Data Model](../02-architecture/data-model.md) · [§6 Runtime View](../02-architecture/arc42/06-runtime-view.md)
@@ -24,7 +24,7 @@ Scope: Proof of Concept ([DEC-003](../01-requirements/decision-log.md#dec-003)).
 | Level / type | Purpose | Scope | Responsible | Tools | Automated | When / environment |
 |---|---|---|---|---|---|---|
 | Unit | Matching rules, type derivation, tolerance, approval and state transitions | SAPS API / SAPS Worker domain logic; SAPS Web App components | Dev | pytest; Vitest + React Testing Library (proposal) | Yes | CI on every PR |
-| Integration | SAPS API and SAPS Worker with real PostgreSQL and Redis; redelivery after a worker stop; sweeper recovers invoices without a message; idempotent actors | SAPS API, SAPS Worker | Dev | pytest + Testcontainers (PostgreSQL, Redis) (proposal) | Yes | CI on every PR |
+| Integration | SAPS API and SAPS Worker with real PostgreSQL, Redis and SeaweedFS; redelivery after a worker stop; sweeper recovers invoices without a message; idempotent actors | SAPS API, SAPS Worker | Dev | pytest + Testcontainers (PostgreSQL, Redis, SeaweedFS) (proposal) | Yes | CI on every PR |
 | Contract | SAPS API matches its OpenAPI specification | SAPS API | Dev | Schemathesis (proposal) | Yes | CI on every PR, once `saps-api.openapi.yaml` exists |
 | End-to-end | Demo scenarios DS-01 … DS-19 (§11) | UC-01 … UC-08 | SA | Playwright (proposal) | Yes | local, clean Docker Compose stack, before each demo rehearsal |
 | Regression | Previously passing demo scenarios still pass | E2E suite | SA | Playwright | Yes | local, before merging to main |
