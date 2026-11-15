@@ -82,6 +82,15 @@ related: [MTG-20261121, ADR-0001, ADR-0002, ADR-0003]
 - The Product Owner agrees the PoC technology stack (ADR-0002, ADR-0003).
 - No business objectives yet. At this point, the PoC is successful when all flows run successfully.
 
+### 5.5 Written answers after the meeting
+The Product Owner answered Q1–Q5 in writing on 2026-11-28:
+- The Product Owner is also the sign-off owner for the PoC acceptance.
+- The three rejection points are confirmed.
+- The Accounting Manager changes the tolerance and threshold settings.
+- Notification recipients depend on the notification type; the flow in §6.2 is correct.
+  Normal exceptions go to Accounting Members; invoices above 300 USD go to the Accounting Manager.
+- All in-scope items are priority Must for the PoC.
+
 ## 6. Decisions
 | # | Decision | Decided by | Logged as |
 |---|---|---|---|
@@ -95,6 +104,7 @@ related: [MTG-20261121, ADR-0001, ADR-0002, ADR-0003]
 | D8 | Exception types EX1–EX9 are confirmed for the PoC | Product Owner (Customer) | pending |
 | D9 | The customer agrees the PoC technology stack in ADR-0002 and ADR-0003 | Product Owner (Customer) | pending |
 | D10 | PoC success = all flows run successfully in the demo | Product Owner (Customer) | pending |
+| D11 | Notification recipients by type: exceptions and final reviews → Accounting Members; approvals above 300 USD → Accounting Manager (written answer Q4) | Product Owner (Customer) | pending |
 
 ## 7. Requirements Captured
 | # | Information / requirement | Type | Proposed target | Status |
@@ -112,6 +122,11 @@ related: [MTG-20261121, ADR-0001, ADR-0002, ADR-0003]
 | R11 | No performance target for the PoC, but the design must perform well and be able to scale in the future | NFR | arc42 §1.2 quality goal; NFR-SCAL-001 (target TBD); ADR need | proposed |
 | R12 | The customer agrees the PoC technology stack (ADR-0002, ADR-0003) | Constraint | DEC-019 | proposed |
 | R13 | No business objectives yet; PoC success = all flows run successfully | Scope | DEC-020; change BO2 success measure | proposed |
+| R14 | The Product Owner is the sign-off owner for the PoC acceptance (Q1) | Scope | DEC-011; scope.md §8, §10 | proposed |
+| R15 | Rejection points: Accounting Manager at approval; Accounting Member during exception handling and at final review (Q2) | Functional | DEC-014; SCP-IN-14 | proposed |
+| R16 | Only the Accounting Manager changes the tolerance and threshold settings (Q3) | Functional | DEC-015; SCP-IN-13 | proposed |
+| R17 | Notifications: exceptions and final reviews → Accounting Members; approvals above 300 USD → Accounting Manager (Q4) | Functional | DEC-021; change SCP-IN-08 | proposed |
+| R18 | All in-scope items are priority Must for the PoC (Q5) | Scope | scope.md AS2 → confirmed | proposed |
 
 ### 7.1 Conflicts with existing items
 | # | Existing item | Conflict | Proposed resolution |
@@ -121,6 +136,7 @@ related: [MTG-20261121, ADR-0001, ADR-0002, ADR-0003]
 | K3 | Earlier documents name the customer attendee "Customer representative" | Same person, now called Product Owner | Keep past records unchanged; new and updated documents use "Product Owner (Customer)" |
 | K4 | [ADR-0002](../../02-architecture/adr/0002-use-python-fastapi-and-react.md), [ADR-0003](../../02-architecture/adr/0003-use-postgresql-and-docker-compose.md): "Customer agreement: TBD" | Accepted ADRs are immutable, so the text cannot be updated | Record the agreement in DEC-019, which links both ADRs |
 | K5 | [§6.2 Runtime View](../../02-architecture/arc42/06-runtime-view.md) runtime note: processing runs inside the API request | Future scalability (R11) may need asynchronous processing | ADR need ADR-N1 below; PoC keeps synchronous processing unless the ADR decides otherwise |
+| K6 | Q4 answer says "exception > 300 USD" | In the agreed flow an invoice above 300 USD is an approval, not an exception | Recorded as approval notification to the Accounting Manager, as in §6.2; the Product Owner confirmed the flow is correct |
 
 ### 7.2 ADR needs
 | # | Need | Driver |
@@ -132,17 +148,17 @@ related: [MTG-20261121, ADR-0001, ADR-0002, ADR-0003]
 |---|---|---|---|---|
 | A1 | Draft the data model (entities, ERD, invoice lifecycle) in `data-model.md` | Solution Architect (our company) | 2026-12-05 | open |
 | A2 | Draft the test strategy with a demo scenario catalog: happy paths per invoice type and one scenario per exception type EX1–EX9 | Solution Architect (our company) | 2026-12-05 | open |
-| A3 | Create Linear epics for the in-scope items and add the Linear base URL to the Project Context | Solution Architect (our company) | 2026-12-05 | open |
+| A3 | List the Linear epics and milestone (SA); create them in Linear manually (Product Owner / SA); add issue keys to scope.md | Solution Architect (our company) | 2026-12-05 | in progress: list sent 2026-11-28; Linear base URL added to Project Context |
 | A4 | Draft ADR-N1 (processing model) | Solution Architect (our company) | 2026-12-05 | open |
 
 ## 9. Open Questions
 | # | Question | Asked to | Due | Answer / status |
 |---|---|---|---|---|
-| Q1 | Is the Product Owner also the sign-off owner for the PoC acceptance (MTG-20261114 Q26)? | Product Owner (Customer) | 2026-12-05 | open |
-| Q2 | Confirm the rejection points: Accounting Manager at approval; Accounting Member during exception handling (e.g. a real duplicate); Accounting Member at final review | Product Owner (Customer) | 2026-12-05 | open |
-| Q3 | Which role may change the tolerance and threshold settings? Proposal: Accounting Manager | Product Owner (Customer) | 2026-12-05 | open |
-| Q4 | Who receives in-app notifications? Proposal: every Accounting Member for exceptions and final reviews; every Accounting Manager for approvals | Product Owner (Customer) | 2026-12-05 | open |
-| Q5 | Are all in-scope items priority Must for the PoC (scope.md AS2)? | Product Owner (Customer) | 2026-12-05 | open |
+| Q1 | Is the Product Owner also the sign-off owner for the PoC acceptance (MTG-20261114 Q26)? | Product Owner (Customer) | 2026-12-05 | answered 2026-11-28 (written) → R14 |
+| Q2 | Confirm the rejection points: Accounting Manager at approval; Accounting Member during exception handling (e.g. a real duplicate); Accounting Member at final review | Product Owner (Customer) | 2026-12-05 | answered 2026-11-28 (written) → R15 |
+| Q3 | Which role may change the tolerance and threshold settings? Proposal: Accounting Manager | Product Owner (Customer) | 2026-12-05 | answered 2026-11-28 (written) → R16 |
+| Q4 | Who receives in-app notifications? Proposal: every Accounting Member for exceptions and final reviews; every Accounting Manager for approvals | Product Owner (Customer) | 2026-12-05 | answered 2026-11-28 (written) → R17 |
+| Q5 | Are all in-scope items priority Must for the PoC (scope.md AS2)? | Product Owner (Customer) | 2026-12-05 | answered 2026-11-28 (written) → R18 |
 
 ## 10. Next Meeting
 - Date: 2026-12-05, time TBD

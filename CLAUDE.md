@@ -14,7 +14,7 @@ project, then fill in **Project Context**.
 | Cloud | `TBD` (`AWS` / `Azure` / `Hybrid` — open question in MTG-20261114) |
 | Primary region(s) | `TBD` |
 | Work tracker | Linear |
-| Work tracker base URL | `TBD` (format `https://linear.app/<workspace>/issue/`) |
+| Work tracker base URL | `https://linear.app/jiringuyen/issue/` (project: `https://linear.app/jiringuyen/project/smart-ap-suite-766faab061af/overview`) |
 | Environments | `dev`, `stg`, `prod` |
 | Time zone | `Asia/Ho_Chi_Minh (ICT, UTC+7)` |
 | Solution Architect | `TBD` |
