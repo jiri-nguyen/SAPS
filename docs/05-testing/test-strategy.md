@@ -2,7 +2,7 @@
 title: Test Strategy
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
-reviewers: ["Tech Lead (TBD)", "QA (TBD)", "Product Owner (Customer)"]
+reviewers: ["Tech Lead (TBD)", "Product Owner (Customer)"]
 last_updated: 2026-11-28
 related: [ADR-0004, DEC-003, DEC-011, DEC-017, DEC-018, DEC-020, NFR-SCAL-001, NFR-SEC-001, NFR-USAB-001, SAPS-32]
 ---
@@ -26,10 +26,10 @@ Scope: Proof of Concept ([DEC-003](../01-requirements/decision-log.md#dec-003)).
 | Unit | Matching rules, type derivation, tolerance, approval and state transitions | SAPS API / SAPS Worker domain logic; SAPS Web App components | Dev | pytest; Vitest + React Testing Library (proposal) | Yes | CI on every PR |
 | Integration | SAPS API and SAPS Worker with real PostgreSQL and Redis; redelivery after a worker stop; sweeper recovers invoices without a message; idempotent actors | SAPS API, SAPS Worker | Dev | pytest + Testcontainers (PostgreSQL, Redis) (proposal) | Yes | CI on every PR |
 | Contract | SAPS API matches its OpenAPI specification | SAPS API | Dev | Schemathesis (proposal) | Yes | CI on every PR, once `saps-api.openapi.yaml` exists |
-| End-to-end | Demo scenarios DS-01 … DS-19 (§11) | UC-01 … UC-08 | QA | Playwright (proposal) | Yes | local, clean Docker Compose stack, before each demo rehearsal |
-| Regression | Previously passing demo scenarios still pass | E2E suite | QA | Playwright | Yes | local, before merging to main |
+| End-to-end | Demo scenarios DS-01 … DS-19 (§11) | UC-01 … UC-08 | SA | Playwright (proposal) | Yes | local, clean Docker Compose stack, before each demo rehearsal |
+| Regression | Previously passing demo scenarios still pass | E2E suite | SA | Playwright | Yes | local, before merging to main |
 | Security | Vulnerable dependencies, insecure code patterns | all code | Dev | pip-audit, npm audit, Bandit (proposal) | Yes | CI on every PR |
-| Demo acceptance | Product Owner accepts the PoC | all demo scenarios | Product Owner (QA supports) | live demo | No | demo on 2027-02-22 |
+| Demo acceptance | Product Owner accepts the PoC | all demo scenarios | Product Owner (SA supports) | live demo | No | demo on 2027-02-22 |
 
 Not applicable in the PoC: performance (no target, [MTG-20261128](../01-requirements/meetings/2026-11-28-poc-flow-review.md) R11), DR / resilience (local only, [CON-01](../02-architecture/arc42/02-constraints.md)).
 
@@ -47,12 +47,12 @@ There are no dev / stg / prod environments in the PoC ([CON-01](../02-architectu
   One fixture set per demo scenario, so scenarios do not interfere.
 - Masking rules: not needed — all data is synthetic; no real invoices, vendors or people.
 - Volume: demo scale; no volume testing.
-- Ownership: QA owns the fixtures; any change to a fixture is reviewed together with the scenario it serves.
+- Ownership: the Solution Architect owns the fixtures; any change to a fixture is reviewed together with the scenario it serves.
 
 ## 5. Quality Gates
 | Gate | Criteria | Enforced at |
 |---|---|---|
-| Pull request | Build green; unit + integration tests pass; coverage ≥ TBD % on changed code (Q1); no high findings from dependency scan or Bandit; review approved | PR checks |
+| Pull request | Build green; unit + integration tests pass; coverage ≥ 90 % on changed code; no high findings from dependency scan or Bandit; review approved | PR checks |
 | Merge to main | Pull request gate + E2E regression suite passes | PR checks |
 | Demo readiness | All demo scenarios DS-01 … DS-19 pass on a freshly created demo stack; no open Critical or High defects | Demo rehearsal checklist |
 
@@ -129,16 +129,16 @@ Every exception type EX1–EX9 ([DEC-018](../01-requirements/decision-log.md#dec
 In each scenario the test also checks the notifications: exceptions and final reviews to Accounting Members, approvals to the Accounting Manager ([DEC-021](../01-requirements/decision-log.md#dec-021)).
 
 ## 12. Roles & Responsibilities
-| Activity | Dev | QA | SA | Product Owner |
-|---|---|---|---|---|
-| Unit / integration tests | R | C | — | — |
-| Demo scenarios & E2E tests | C | R | A | I |
-| Fixtures (sample set, ERP data) | C | R | C | I |
-| Security scans | R | C | A | — |
-| NFR-SCAL-001 review | C | — | R | I |
-| Demo acceptance | C | C | C | R |
+| Activity | Dev | SA (incl. QA role) | Product Owner |
+|---|---|---|---|
+| Unit / integration tests | R | C | — |
+| Demo scenarios & E2E tests | C | R, A | I |
+| Fixtures (sample set, ERP data) | C | R, A | I |
+| Security scans | R | A | — |
+| NFR-SCAL-001 review | C | R, A | I |
+| Demo acceptance | C | C | R |
 
-R = responsible, A = accountable, C = consulted, I = informed. QA staffing is TBD (Q2).
+R = responsible, A = accountable, C = consulted, I = informed. There is no dedicated QA in the team; the Solution Architect performs the QA role (Q2).
 
 ## 13. Risks & Assumptions
 | # | Risk / assumption | Mitigation |
@@ -151,6 +151,6 @@ R = responsible, A = accountable, C = consulted, I = informed. QA staffing is TB
 ## 14. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | Minimum code coverage on changed code for the PR gate | Solution Architect (our company) | 2026-12-05 | open |
-| Q2 | Who performs the QA role in the team? | Solution Architect (our company) | 2026-12-05 | open |
+| Q1 | Minimum code coverage on changed code for the PR gate | Solution Architect (our company) | 2026-12-05 | answered: 90 % (§5) |
+| Q2 | Who performs the QA role in the team? | Solution Architect (our company) | 2026-12-05 | answered: no dedicated QA; the Solution Architect tests (§12) |
 | Q3 | Is the demo scenario catalog DS-01 … DS-19 complete for "all flows" (DEC-020)? | Product Owner (Customer) | 2026-12-05 | open |

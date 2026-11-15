@@ -377,5 +377,5 @@ stateDiagram-v2
 | Q1 | Which invoices count as "already invoiced" for a PO line? Proposal: invoices in status PendingApproval, PendingReview or Completed | Product Owner (Customer) | 2026-12-05 | open |
 | Q2 | Retention periods for invoices, files, notifications (MTG-20261114 Q30) | Product Owner (Customer) | after PoC | open |
 | Q3 | Invoice file store in the PoC: a Docker volume shared by SAPS API and SAPS Worker (proposal); object storage later | Solution Architect (our company) | 2026-12-05 | open |
-| Q4 | Identify dummy sample files by SHA-256 hash of the file content, not by file name (proposal) | Solution Architect (our company) | 2026-12-05 | open |
+| Q4 | Identify dummy sample files by SHA-256 hash of the file content, not by file name (proposal) | Solution Architect (our company) | 2026-12-05 | answered: adopted (Solution Architect) |
 | Q5 | Which fields are "matching fields" that trigger re-matching (DEC-010)? Proposal: vendor_code, invoice_number, po_number, po_line_number, quantity, unit_price | Product Owner (Customer) | 2026-12-05 | open |

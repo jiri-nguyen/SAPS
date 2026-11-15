@@ -63,7 +63,7 @@ for later phases.
 | S2 | A message is processed twice (redelivery after a crash, sweeper re-send) | Actors are **idempotent**: each actor locks the invoice row (`SELECT … FOR UPDATE`) and does nothing if the invoice is no longer in the expected status. |
 | S3 | Redis restart loses queued messages | Redis persistence on (`appendonly yes`) in Docker Compose. Redis is never the source of truth; the sweeper (S1) recovers lost messages from PostgreSQL. |
 | S4 | A job keeps failing | Dramatiq retries with exponential back-off up to a configured limit. After the last retry, extraction failures set the invoice to Exception (EX1); other technical failures are logged and handled as defined in the feature spec. |
-| S5 | Async support of Dramatiq actors is not confirmed | Verified in a spike. Fallback: actors use sync SQLAlchemy sessions on the same models (psycopg 3 supports both, [ADR-0005](0005-use-sqlalchemy-and-alembic.md)). |
+| S5 | Async actors with SQLAlchemy async | Dramatiq supports `async def` actors through the optional `AsyncIO` middleware: one event-loop thread per worker process; concurrency per process stays equal to the number of worker threads (default 8) ([Dramatiq cookbook](https://dramatiq.io/cookbook.html#asyncio-actors)). The SQLAlchemy async engine is created on that event loop. Time limits and cancellation for async actors are not documented and are checked in the spike. Fallback: sync sessions on the same models (psycopg 3, [ADR-0005](0005-use-sqlalchemy-and-alembic.md)). |
 | S6 | Dramatiq has no built-in scheduler for the sweeper | Scheduler library inside the SAPS Worker (e.g. APScheduler); chosen in the spike. |
 
 ### Consequences
@@ -83,7 +83,7 @@ for later phases.
 - Integration tests (Testcontainers with PostgreSQL and Redis):
   - a worker is stopped during a job → the message is redelivered and the invoice is processed once;
   - an invoice left in status Uploaded without a message → the sweeper processes it.
-- Spike (Linear issue under SAPS-30): Dramatiq async actors with SQLAlchemy async; sweeper scheduling and locking.
+- Spike (Linear issue under SAPS-30): `AsyncIO` middleware with SQLAlchemy async sessions (engine per event loop, time limits and cancellation); sweeper scheduling and locking.
 - On acceptance, [§6.2 Runtime View](../arc42/06-runtime-view.md) is updated to the asynchronous flow.
 - Revisit when the workload profile is known (MTG-20261114 Q5, Q6), or before moving to a cloud environment.
 
