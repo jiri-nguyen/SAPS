@@ -153,4 +153,4 @@ R = responsible, A = accountable, C = consulted, I = informed. There is no dedic
 |---|---|---|---|---|
 | Q1 | Minimum code coverage on changed code for the PR gate | Solution Architect (our company) | 2026-12-05 | answered: 90 % (§5) |
 | Q2 | Who performs the QA role in the team? | Solution Architect (our company) | 2026-12-05 | answered: no dedicated QA; the Solution Architect tests (§12) |
-| Q3 | Is the demo scenario catalog DS-01 … DS-19 complete for "all flows" (DEC-020)? | Product Owner (Customer) | 2026-12-05 | open |
+| Q3 | Is the demo scenario catalog DS-01 … DS-19 complete for "all flows" (DEC-020)? | Product Owner (Customer) | 2026-12-05 | answered: complete → [MTG-20261205](../01-requirements/meetings/2026-12-05-poc-architecture-review.md) R4 |
