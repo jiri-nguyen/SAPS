@@ -19,7 +19,7 @@ The first phase is a locally run Proof of Concept with dummy extraction and ERP 
 Scope: see [Scope Statement](../../01-requirements/scope.md).
 
 ### Use Cases
-Use case diagram: `../diagrams/usecase/uc-invoice-processing.drawio.svg` (to be drawn by the Solution Architect).
+![Use cases – invoice processing](../diagrams/usecase/uc-invoice-processing.drawio.svg)
 
 | ID | Use case | Primary actor | Scope item | Backlog |
 |---|---|---|---|---|

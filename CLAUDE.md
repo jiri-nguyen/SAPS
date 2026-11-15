@@ -284,8 +284,11 @@ Never omit Breaking Changes or Known Issues; write "None." when empty.
 - Approved customer-facing documents change only via a new `version` + Change History entry; scope changes
   are recorded as a `DEC-*` tagged `[CR]`.
 - Do not duplicate content across documents — link to the source of truth.
-- Do not edit `.drawio.svg` files. When a diagram must change, give the SA a checklist of elements/relationships
-  to add/change/remove, or a Mermaid draft to redraw from.
+- Claude MAY create a **new** `.drawio.svg` diagram: write the drawio XML, export it with the drawio CLI
+  (`draw.io -x -f svg -e -b 10 -o <name>.drawio.svg <name>.drawio`), render a PNG and check it before handing over.
+  The SA reviews every new diagram.
+- Claude MUST NOT edit an **existing** `.drawio.svg` file (the SA may have changed it by hand). When a diagram
+  must change, give the SA a checklist of elements/relationships to add/change/remove, or a Mermaid draft to redraw from.
 - Cost estimates always state region, pricing date, currency (USD), pricing model (on-demand / reserved / savings plan),
   assumptions, and the AWS/Azure Pricing Calculator share link.
 - After creating or renaming a document, update every link to it.
