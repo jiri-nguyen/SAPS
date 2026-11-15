@@ -64,6 +64,7 @@ docs/
     ├── monitoring-alerting.md
     ├── runbook.md
     └── rca/                         # YYYY-MM-DD-<BUG-KEY>-<title>.md
+spikes/                              # throwaway spike code: <issue-key>/ with README.md; results go to the ADR
 ```
 Non-diagram images (screenshots, calculator exports) go in an `assets/` folder next to the document
 that uses them, named `<doc-slug>-<description>.png`.

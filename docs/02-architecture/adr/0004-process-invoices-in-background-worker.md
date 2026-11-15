@@ -1,8 +1,8 @@
 ---
 id: ADR-0004
 title: "ADR-0004: Process invoices in a background worker with Dramatiq and Redis"
-status: proposed         # proposed | accepted | rejected | deprecated | superseded
-date: 2026-11-28         # date of the latest status change
+status: accepted         # proposed | accepted | rejected | deprecated | superseded
+date: 2026-12-01         # date of the latest status change
 owner: "Solution Architect (our company)"
 deciders: ["Solution Architect (our company)"]
 consulted: ["Tech Lead (TBD)"]
@@ -89,7 +89,7 @@ for later phases.
 
 ### Spike results ([SAPS-34](https://linear.app/jiringuyen/issue/SAPS-34), 2026-12-01)
 Environment: dramatiq 2.2.1 (Redis broker, `AsyncIO` middleware), SQLAlchemy 2.1.8 async, psycopg 3.3.9, APScheduler 3.11.3,
-PostgreSQL 17, Redis 7.2 (AOF on), Python 3.13, Docker Compose. All checks passed.
+PostgreSQL 17, Redis 7.2 (AOF on), Python 3.13, Docker Compose. All checks passed. Spike code (repeatable): [spikes/saps-34](../../../spikes/saps-34/README.md).
 
 | # | Check | Result |
 |---|---|---|

@@ -1,0 +1,7 @@
+# Versions used in the SAPS-34 spike run (2026-12-01)
+dramatiq[redis]==2.2.1
+redis==8.1.0
+SQLAlchemy[asyncio]==2.1.8
+psycopg[binary]==3.3.9
+boto3==1.44.3
+APScheduler==3.11.3

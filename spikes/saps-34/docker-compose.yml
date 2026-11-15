@@ -1,0 +1,19 @@
+name: saps34
+services:
+  db:
+    image: postgres:17-alpine
+    environment: {POSTGRES_USER: saps, POSTGRES_PASSWORD: saps, POSTGRES_DB: saps}
+    ports: ["55432:5432"]
+  redis:
+    image: redis:7.2-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["56379:6379"]
+    volumes: ["redis-data:/data"]
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.53   # version tested in the spike
+    command: ["server", "-dir=/data", "-s3", "-s3.config=/etc/seaweedfs/s3.json", "-ip.bind=0.0.0.0"]
+    ports: ["58333:8333"]
+    volumes: ["seaweed-data:/data", "./s3.json:/etc/seaweedfs/s3.json:ro"]
+volumes:
+  redis-data: {}
+  seaweed-data: {}

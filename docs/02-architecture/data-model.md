@@ -3,7 +3,7 @@ title: Data Model
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
-last_updated: 2026-11-28
+last_updated: 2026-12-01
 related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-018, DEC-021, SAPS-31]
 ---
 
@@ -11,8 +11,7 @@ related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, DEC-005, DEC-006, DE
 
 Scope: Proof of Concept ([DEC-003](../01-requirements/decision-log.md#dec-003)). Linear: [SAPS-31](https://linear.app/jiringuyen/issue/SAPS-31).
 
-> **Assumption:** the SAPS Worker and the SAPS Message Broker come from [ADR-0004](adr/0004-process-invoices-in-background-worker.md),
-> which is still `proposed`. The entities below do not depend on it.
+Containers and stores: [ADR-0003](adr/0003-use-postgresql-and-docker-compose.md), [ADR-0004](adr/0004-process-invoices-in-background-worker.md), [ADR-0006](adr/0006-store-invoice-files-in-seaweedfs.md).
 
 ## 1. Overview
 | Data store | Technology | Owning container | Entities | ADR |

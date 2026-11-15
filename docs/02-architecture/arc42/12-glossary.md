@@ -63,14 +63,14 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-018, A
 | Dummy Extraction Adapter | Component | PoC implementation of the Extraction Port; reads fixture files ([ADR-0001](../adr/0001-isolate-extraction-and-erp-behind-ports.md)). | L3 |
 | ERP Data Port | Component | Interface in the SAPS API that provides purchase orders, goods receipts and vendors. | L3 |
 | Extraction Port | Component | Interface in the SAPS API that provides extracted invoice data for an uploaded file. | L3 |
-| File Storage Port | Component | Interface for storing and reading invoice files (S3 API) ([ADR-0006](../adr/0006-store-invoice-files-in-seaweedfs.md), proposed). | L3 |
-| Job Queue Port | Component | Interface for sending and receiving processing jobs; Dramatiq on Redis in the PoC ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md), proposed). | L3 |
+| File Storage Port | Component | Interface for storing and reading invoice files (S3 API) ([ADR-0006](../adr/0006-store-invoice-files-in-seaweedfs.md)). | L3 |
+| Job Queue Port | Component | Interface for sending and receiving processing jobs; Dramatiq on Redis in the PoC ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)). | L3 |
 | SAPS API | Container | Python/FastAPI backend: upload, extraction, matching, workflow, notifications ([ADR-0002](../adr/0002-use-python-fastapi-and-react.md)). | L2, L3 |
 | SAPS Database | Container | PostgreSQL database: invoices, matching results and workflow state ([ADR-0003](../adr/0003-use-postgresql-and-docker-compose.md)). | L2 |
-| SAPS File Storage | Container | SeaweedFS object storage with S3 API for uploaded invoice files ([ADR-0006](../adr/0006-store-invoice-files-in-seaweedfs.md), proposed). | L2 |
-| SAPS Message Broker | Container | Redis: queues processing messages for the SAPS Worker ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md), proposed). | L2 |
+| SAPS File Storage | Container | SeaweedFS object storage with S3 API for uploaded invoice files ([ADR-0006](../adr/0006-store-invoice-files-in-seaweedfs.md)). | L2 |
+| SAPS Message Broker | Container | Redis: queues processing messages for the SAPS Worker ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)). | L2 |
 | SAPS Web App | Container | React single-page application for Accounting Members and Accounting Managers ([ADR-0002](../adr/0002-use-python-fastapi-and-react.md)). | L2 |
-| SAPS Worker | Container | Python / Dramatiq background worker: extraction, duplicate check, matching, sweeper ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md), proposed). | L2 |
+| SAPS Worker | Container | Python / Dramatiq background worker: extraction, duplicate check, matching, sweeper ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)). | L2 |
 | Smart-AP-Suite | Software System | Automates the Accounts Payable flow: invoice upload, extraction, matching, exception review, approval. | L1 |
 
 ## 12.3 Abbreviations

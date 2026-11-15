@@ -1,8 +1,8 @@
 ---
 id: ADR-0006
 title: "ADR-0006: Store invoice files in SeaweedFS through the S3 API"
-status: proposed         # proposed | accepted | rejected | deprecated | superseded
-date: 2026-11-28         # date of the latest status change
+status: accepted         # proposed | accepted | rejected | deprecated | superseded
+date: 2026-12-01         # date of the latest status change
 owner: "Solution Architect (our company)"
 deciders: ["Solution Architect (our company)"]
 consulted: ["Tech Lead (TBD)"]
@@ -69,7 +69,7 @@ the code use the standard S3 API that Amazon S3 offers natively.
 
 ### Spike results ([SAPS-34](https://linear.app/jiringuyen/issue/SAPS-34), 2026-12-01)
 Environment: SeaweedFS 4.53 (`chrislusf/seaweedfs:latest`, `weed server -s3` with an `s3.json` identity file), boto3 1.44.3
-(Signature V4, path-style addressing), Docker Compose with a named volume. All checks passed.
+(Signature V4, path-style addressing), Docker Compose with a named volume. All checks passed. Spike code (repeatable): [spikes/saps-34](../../../spikes/saps-34/README.md).
 
 | # | Check | Result |
 |---|---|---|
@@ -79,7 +79,7 @@ Environment: SeaweedFS 4.53 (`chrislusf/seaweedfs:latest`, `weed server -s3` wit
 
 Findings:
 - Credentials are configured with an identity file (`-s3.config`); presigned URLs need these credentials.
-- Pin the image version in Docker Compose (the spike used `latest` = 4.53).
+- Pin the image version in Docker Compose (the spike ran 4.53; the tag `chrislusf/seaweedfs:4.53` exists).
 - For browser downloads through presigned URLs, the SeaweedFS S3 port must be reachable from the browser; otherwise the SAPS API streams the file (decided in the feature spec).
 
 ## Pros and Cons of the Options
