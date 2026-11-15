@@ -3,7 +3,7 @@ title: "§12 Glossary"
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["BA (TBD)", "Tech Lead (TBD)"]
-last_updated: 2026-11-28
+last_updated: 2026-12-01
 related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-018, ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006]
 ---
 
@@ -61,17 +61,20 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-018, A
 | Accounting Member | Person | Uploads invoices, handles exceptions, checks the final result. | L1, L2 |
 | Dummy ERP Adapter | Component | PoC implementation of the ERP Data Port; reads fixture files ([ADR-0001](../adr/0001-isolate-extraction-and-erp-behind-ports.md)). | L3 |
 | Dummy Extraction Adapter | Component | PoC implementation of the Extraction Port; reads fixture files ([ADR-0001](../adr/0001-isolate-extraction-and-erp-behind-ports.md)). | L3 |
-| ERP Data Port | Component | Interface in the SAPS API that provides purchase orders, goods receipts and vendors. | L3 |
-| Extraction Port | Component | Interface in the SAPS API that provides extracted invoice data for an uploaded file. | L3 |
+| ERP Data Port | Component | Interface in the SAPS API / SAPS Worker codebase that provides purchase orders, goods receipts and vendors. | L3 |
+| Extraction Port | Component | Interface in the SAPS API / SAPS Worker codebase that provides extracted invoice data for an uploaded file. | L3 |
 | File Storage Port | Component | Interface for storing and reading invoice files (S3 API) ([ADR-0006](../adr/0006-store-invoice-files-in-seaweedfs.md)). | L3 |
+| Invoice Extraction Service | External System | OCR / AI service that extracts invoice data after the PoC; product TBD. Replaced by the Dummy Extraction Adapter in the PoC. | L1, L2 |
 | Job Queue Port | Component | Interface for sending and receiving processing jobs; Dramatiq on Redis in the PoC ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)). | L3 |
-| SAPS API | Container | Python/FastAPI backend: upload, extraction, matching, workflow, notifications ([ADR-0002](../adr/0002-use-python-fastapi-and-react.md)). | L2, L3 |
+| MuleSoft APIs | External System | Customer integration layer exposing SAP purchasing data (APIs or MCP Tools) after the PoC ([CON-03](02-constraints.md)). | L1, L2 |
+| SAP ERP | External System | SAP ECC or SAP S/4HANA holding purchase orders, goods receipts and vendors; reached through MuleSoft APIs. | L1, L2 |
+| SAPS API | Container | Python/FastAPI backend: upload, invoice workflow, approvals, settings, notifications ([ADR-0002](../adr/0002-use-python-fastapi-and-react.md)). | L2, L3 |
 | SAPS Database | Container | PostgreSQL database: invoices, matching results and workflow state ([ADR-0003](../adr/0003-use-postgresql-and-docker-compose.md)). | L2 |
 | SAPS File Storage | Container | SeaweedFS object storage with S3 API for uploaded invoice files ([ADR-0006](../adr/0006-store-invoice-files-in-seaweedfs.md)). | L2 |
 | SAPS Message Broker | Container | Redis: queues processing messages for the SAPS Worker ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)). | L2 |
 | SAPS Web App | Container | React single-page application for Accounting Members and Accounting Managers ([ADR-0002](../adr/0002-use-python-fastapi-and-react.md)). | L2 |
 | SAPS Worker | Container | Python / Dramatiq background worker: extraction, duplicate check, matching, sweeper ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)). | L2 |
-| Smart-AP-Suite | Software System | Automates the Accounts Payable flow: invoice upload, extraction, matching, exception review, approval. | L1 |
+| Smart-AP-Suite | Software System | Automates the Accounts Payable flow: invoice upload, extraction, matching, exception review, approval. | L1, L2 |
 
 ## 12.3 Abbreviations
 | Abbreviation | Meaning |
