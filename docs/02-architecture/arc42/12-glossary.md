@@ -82,6 +82,7 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-018, A
 | ERP | Enterprise Resource Planning |
 | GR | Goods Receipt |
 | MCP | Model Context Protocol |
+| ORM | Object-Relational Mapping |
 | PO | Purchase Order |
 | PoC | Proof of Concept |
 | S/4HANA | SAP S/4HANA, SAP's current ERP suite |

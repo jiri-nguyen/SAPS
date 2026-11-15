@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
 last_updated: 2026-11-28
-related: [ADR-0001, ADR-0003, ADR-0004, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-018, DEC-021, SAPS-31]
+related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-018, DEC-021, SAPS-31]
 ---
 
 # Data Model
@@ -396,7 +396,7 @@ stateDiagram-v2
 | Processing jobs | Succeeded jobs: TBD days | none | Purge job | — |
 
 ## 7. Schema Migration Approach
-- Tool: Alembic with SQLAlchemy (proposal; confirmed in the Developer Guide).
+- Tool: Alembic with SQLAlchemy 2.0 ([ADR-0005](adr/0005-use-sqlalchemy-and-alembic.md)).
 - Location: in the SAPS API codebase, folder `migrations/`.
 - Rules: migrations are forward-only and run automatically when the SAPS API container starts in the PoC.
 
