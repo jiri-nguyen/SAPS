@@ -1,7 +1,7 @@
 ---
 id: ADR-0002
 title: "ADR-0002: Use Python/FastAPI and React for the PoC"
-status: proposed         # proposed | accepted | rejected | deprecated | superseded
+status: accepted         # proposed | accepted | rejected | deprecated | superseded
 date: 2026-11-21         # date of the latest status change
 owner: "Solution Architect (our company)"
 deciders: ["Solution Architect (our company)"]
@@ -9,7 +9,7 @@ consulted: ["Tech Lead (TBD)"]
 last_updated: 2026-11-21
 supersedes: ""
 superseded_by: ""
-related: [DEC-003, CON-01, CON-02, NFR-USAB-001, ADR-0001]
+related: [DEC-003, CON-01, CON-02, NFR-USAB-001, ADR-0001, ADR-0003]
 ---
 
 # ADR-0002: Use Python/FastAPI and React for the PoC
@@ -39,17 +39,17 @@ extraction (OCR/AI) and SAP integration through MuleSoft.
 widest ecosystem for document AI, OCR and LLM integration, which later phases need, and FastAPI works natively with
 OpenAPI schemas.
 
-Container names: **AP API** (Python/FastAPI) and **AP Web App** (React single-page application).
+Container names: **SAPS API** (Python/FastAPI) and **SAPS Web App** (React single-page application).
 
 ### Consequences
-- **Good:** Real extraction can be added later in the same language as the AP API.
+- **Good:** Real extraction can be added later in the same language as the SAPS API.
 - **Good:** FastAPI request/response models map directly to the OpenAPI contract.
 - **Bad:** Python is dynamically typed; type hints and a type checker are needed to keep the code safe.
-- **Neutral:** Database and local runtime (e.g. container setup) are not part of this decision; they need a follow-up ADR.
+- **Neutral:** Database and local runtime are decided in [ADR-0003](0003-use-postgresql-and-docker-compose.md).
 - **Neutral:** Exact versions are fixed in the Developer Guide when the project is set up.
 
 ### Confirmation
-- The repository skeleton uses FastAPI for the AP API and React for the AP Web App.
+- The repository skeleton uses FastAPI for the SAPS API and React for the SAPS Web App.
 - Revisit before the phase after the PoC, when production hosting (MTG-20261114 Q27) is known.
 
 ## Pros and Cons of the Options
@@ -71,4 +71,4 @@ Container names: **AP API** (Python/FastAPI) and **AP Web App** (React single-pa
 
 ## More Information
 - Customer agreement: TBD — confirm at the next meeting whether the customer must agree the PoC stack.
-- Follow-up ADR needed: database and local runtime for the PoC.
+- Database and local runtime: [ADR-0003](0003-use-postgresql-and-docker-compose.md).

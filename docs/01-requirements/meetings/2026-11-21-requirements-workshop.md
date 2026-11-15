@@ -171,7 +171,7 @@ All items come from [MTG-20261114](2026-11-14-kickoff.md).
 | # | Need | Driver |
 |---|---|---|
 | [ADR-0001](../../02-architecture/adr/0001-isolate-extraction-and-erp-behind-ports.md) | Put invoice extraction and ERP data access behind replaceable interfaces, so dummy data can later be swapped for a real extraction service and MuleSoft APIs / MCP Tools | R2, R3, R4 |
-| [ADR-0002](../../02-architecture/adr/0002-use-python-fastapi-and-react.md) | PoC technology stack (database and local runtime: follow-up ADR) | R1, R25 |
+| [ADR-0002](../../02-architecture/adr/0002-use-python-fastapi-and-react.md) | PoC technology stack; database and local runtime in [ADR-0003](../../02-architecture/adr/0003-use-postgresql-and-docker-compose.md) | R1, R25 |
 
 ## 8. Action Items
 | # | Action | Owner | Due | Status |
