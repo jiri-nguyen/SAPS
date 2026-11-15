@@ -1,0 +1,277 @@
+---
+title: Developer Guide
+status: draft            # draft | in-review | approved | deprecated
+owner: "Solution Architect (our company)"
+reviewers: ["Tech Lead (TBD)", "Developers (TBD)"]
+last_updated: 2026-12-05
+related: [ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, SAPS-26]
+---
+
+# Developer Guide
+
+> **Status of this guide:** the PoC code does not exist yet. Structure, tooling and commands below are the **target**
+> that the repository skeleton ([SAPS-26](https://linear.app/jiringuyen/issue/SAPS-26), Local PoC environment) must
+> implement. Items marked *(proposal)* are open for the Tech Lead / Solution Architect (see §12). Commands are verified
+> and this note is removed when SAPS-26 is done.
+
+## 1. Overview
+Smart-AP-Suite automates the Accounts Payable flow: upload, (dummy) extraction, matching, exception handling, approval
+and final review. The PoC runs locally with Docker Compose: SAPS Web App (React), SAPS API (FastAPI), SAPS Worker
+(Dramatiq), SAPS Message Broker (Redis), SAPS File Storage (SeaweedFS) and SAPS Database (PostgreSQL).
+All code lives in **one repository** (mono-repo) *(proposal)*; SAPS API and SAPS Worker share one Python package.
+
+- Containers and responsibilities: [arc42 §5 Building Block View](../02-architecture/arc42/05-building-block-view.md)
+- Key decisions: [arc42 §9 Architecture Decisions](../02-architecture/arc42/09-architecture-decisions.md) (arc42 §4 Solution Strategy is not written yet)
+- Runtime flows: [arc42 §6 Runtime View](../02-architecture/arc42/06-runtime-view.md)
+- Data model: [data-model.md](../02-architecture/data-model.md)
+- Domain terms and element names: [Glossary](../02-architecture/arc42/12-glossary.md)
+- Scope and demo scenarios: [Scope](../01-requirements/scope.md), [Test Strategy §11](../05-testing/test-strategy.md#11-poc-demo-acceptance)
+
+## 2. Getting Started
+
+### 2.1 Prerequisites
+OS: macOS (Apple silicon or Intel) or Linux; Windows via WSL 2.
+
+| Tool | Version | Install | Notes |
+|---|---|---|---|
+| Git | ≥ 2.40 | https://git-scm.com | |
+| Docker engine with Compose v2 | Docker 27+ / Compose 2.30+ | Docker Desktop or OrbStack (macOS) | Runs all 6 containers |
+| Python | 3.13 | via `uv` | Pinned in `backend/.python-version` |
+| uv | ≥ 0.9 | https://docs.astral.sh/uv/ | Python packages and virtual env |
+| Node.js | 24 LTS *(proposal)* | via a version manager (fnm / nvm) | Pinned in `frontend/.nvmrc` |
+| npm | bundled with Node.js | — | *(proposal; pnpm also possible)* |
+| IDE | VS Code or PyCharm | — | Recommended extensions in `.vscode/extensions.json` |
+
+Library versions are locked in `backend/uv.lock` and `frontend/package-lock.json`. Versions verified in the spike:
+dramatiq 2.2.1, SQLAlchemy 2.1.8, psycopg 3.3.9, APScheduler 3.11.3, Redis 7.2, SeaweedFS 4.53, PostgreSQL 17
+([spikes/saps-34](../../spikes/saps-34/README.md)).
+
+### 2.2 Access
+| Access | Request from | How |
+|---|---|---|
+| Source repository | Solution Architect | Hosting TBD (Q1) |
+| Linear project [Smart-AP-Suite](https://linear.app/jiringuyen/project/smart-ap-suite-766faab061af/overview) | Solution Architect | Invitation to workspace `jiringuyen`, team `SAPS` |
+| Cloud accounts | — | Not needed in the PoC (local only, [CON-01](../02-architecture/arc42/02-constraints.md)) |
+| Secrets | — | None in the PoC; all local values are test values in `.env.example` |
+
+### 2.3 Set Up and Run Locally
+```bash
+# 1. Clone (URL: Q1)
+git clone <repository-url> smart-ap-suite
+cd smart-ap-suite
+
+# 2. Configuration (local test values only)
+cp .env.example .env
+
+# 3. Build and start all containers; the SAPS API runs Alembic migrations and seeds the PoC tenant,
+#    users and dummy fixtures on start
+docker compose up -d --build
+
+# 4. Follow logs until SAPS API and SAPS Worker report "ready"
+docker compose logs -f api worker
+```
+
+For development with hot reload, run only the dependencies in Docker and the apps locally:
+```bash
+docker compose up -d db redis seaweedfs
+cd backend && uv sync && uv run alembic upgrade head && uv run python -m saps.seed
+uv run fastapi dev src/saps/api/main.py                      # SAPS API on :8000
+uv run dramatiq saps.worker.actors --processes 1 --threads 4   # SAPS Worker (second terminal)
+cd ../frontend && npm ci && npm run dev                        # SAPS Web App on :5173 (third terminal)
+```
+
+### 2.4 Verify the Setup
+- Open `http://localhost:5173`, sign in as `member1` (Accounting Member) or `manager1` (Accounting Manager); the
+  password is `SEED_USER_PASSWORD` from your `.env`.
+- Upload a file from `backend/fixtures/sample-invoices/` — the invoice reaches status PendingReview within seconds (DS-01).
+- `cd backend && uv run pytest tests/unit` — all tests pass.
+
+## 3. Project Structure
+*(proposal)*
+```
+smart-ap-suite/
+├── backend/                      # Python package "saps" — SAPS API and SAPS Worker
+│   ├── src/saps/
+│   │   ├── domain/               # entities, invoice lifecycle, matching rules (no framework imports)
+│   │   ├── application/          # use cases: upload, resolve exception, approve, review, settings
+│   │   ├── ports/                # Extraction, ERP Data, Job Queue, File Storage ports (typing.Protocol)
+│   │   ├── adapters/             # dummy extraction, dummy ERP, Dramatiq queue, S3 storage, SQLAlchemy repositories
+│   │   ├── api/                  # FastAPI routers and Pydantic schemas
+│   │   ├── worker/               # Dramatiq actors, sweeper (APScheduler)
+│   │   └── config.py             # settings from environment (§6)
+│   ├── migrations/               # Alembic
+│   ├── fixtures/                 # dummy sample set and dummy ERP data, one folder per demo scenario
+│   └── tests/{unit,integration,architecture}/
+├── frontend/                     # React + TypeScript (Vite) — SAPS Web App
+│   ├── src/
+│   └── e2e/                      # Playwright tests DS-01 … DS-19
+├── docs/                         # this documentation kit
+├── spikes/                       # throwaway spike code
+├── compose.yaml                  # 6 containers (local PoC)
+└── .env.example
+```
+
+| Folder | Purpose | Rules |
+|---|---|---|
+| `domain/` | Business rules: type derivation, matching, tolerance, lifecycle | No imports from `adapters/`, `api/`, `worker/`, FastAPI, SQLAlchemy or Dramatiq ([ADR-0001](../02-architecture/adr/0001-isolate-extraction-and-erp-behind-ports.md)); enforced by `tests/architecture` |
+| `application/` | Use cases that combine domain and ports | Depends on `domain/` and `ports/` only |
+| `ports/` | Interfaces to the outside world | No implementation code |
+| `adapters/` | Implementations of ports | Selected by configuration at startup |
+| `api/` | HTTP layer | Thin: validate, call a use case, map the result |
+| `worker/` | Background jobs | Actors are idempotent: lock the invoice row, check status first ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S2) |
+| `fixtures/` | Dummy data for the demo | One folder per demo scenario; files identified by SHA-256 |
+
+## 4. Development Workflow
+
+### 4.1 Branching
+- Model: trunk-based development with short-lived branches *(proposal)*.
+- Main branch: `main` — always runs with `docker compose up`.
+- Branch names: `feature|fix|chore/SAPS-<n>-<short-description>`, e.g. `feature/SAPS-19-line-matching`
+  (the Linear key links the branch to the issue).
+- Tags: `vX.Y.Z` for the demo build (release notes in `docs/06-release/release-notes/`).
+
+### 4.2 Commits
+- Format: Conventional Commits with the Linear key: `type(scope): summary [SAPS-<n>]`,
+  e.g. `feat(matching): add price tolerance check [SAPS-19]`.
+- Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`.
+
+### 4.3 Pull Requests
+- Size: aim for < 400 changed lines; split larger work.
+- Description: link the Linear issue and, if any, the feature spec in `docs/03-features/`.
+- Reviewers: at least 1 developer; the Solution Architect also reviews changes to APIs, the data model, ports or `compose.yaml`.
+- Required checks: [Test Strategy §5 Quality Gates](../05-testing/test-strategy.md#5-quality-gates) (coverage ≥ 90 % on changed code).
+- Merge: squash merge; delete the branch after merge.
+
+### 4.4 Code Review Checklist
+- [ ] Meets the acceptance criteria of the Linear issue and the feature spec
+- [ ] Tests added at the right level; affected demo scenario E2E tests still pass
+- [ ] Domain code has no framework or adapter imports
+- [ ] Async code does not use lazy loading; relationships are loaded explicitly ([ADR-0005](../02-architecture/adr/0005-use-sqlalchemy-and-alembic.md))
+- [ ] Queries are scoped by the signed-in user's `tenant_id` ([ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md))
+- [ ] Worker actors are idempotent and short in cleanup (≤ 1 s after cancellation, ADR-0004 spike findings)
+- [ ] No secrets, no personal data in logs
+- [ ] API spec, data model and docs updated (§8)
+- [ ] Migrations are forward-only
+
+### 4.5 Definition of Ready / Definition of Done
+| Definition of Ready (before work starts) | Definition of Done (before the issue is closed) |
+|---|---|
+| Acceptance criteria written in the Linear issue | Merged to `main`; all quality gates green |
+| Feature spec written for non-trivial features (CLAUDE.md §10 C) | Runs in the full Docker Compose stack |
+| Open questions resolved with the Product Owner (meeting on demand, [DEC-027](../01-requirements/decision-log.md#dec-027)) | Affected demo scenarios pass (E2E) |
+| Fixtures for the affected demo scenarios defined | Docs updated (§8) |
+
+## 5. Coding Conventions
+
+### 5.1 Style & Tooling
+*(proposal)*
+
+| Language / area | Formatter | Linter / type check | Config |
+|---|---|---|---|
+| Python | Ruff format | Ruff, mypy (strict for `domain/` and `application/`), import-linter | `backend/pyproject.toml` |
+| TypeScript / React | Prettier | ESLint, `tsc --noEmit` | `frontend/package.json`, `frontend/eslint.config.js` |
+| All | — | pre-commit hooks incl. gitleaks (secret scan) | `.pre-commit-config.yaml` |
+
+### 5.2 Naming
+- Classes, tables, API resources and UI labels use glossary terms ([§12](../02-architecture/arc42/12-glossary.md)):
+  `Invoice`, `InvoiceLine`, `InvoiceException`, `Approval`, `MatchingSettings`, … No abbreviations except those in glossary §12.3.
+- Exception codes are `EX1` … `EX9` ([DEC-018](../01-requirements/decision-log.md#dec-018)); statuses are the enum values in the data model.
+
+### 5.3 Cross-cutting Rules
+arc42 §8 Cross-cutting Concepts is not written yet. Until then:
+- Errors: API errors use `application/problem+json` (RFC 9457) *(proposal)*.
+- Logging: structured JSON logs to stdout; include `invoice_id` and `tenant_id`; never log passwords or file contents.
+- Security: simple user accounts ([NFR-SEC-001](../01-requirements/nfr.md#nfr-sec-001)); passwords stored as salted hashes.
+- Configuration: environment variables only (§6).
+
+### 5.4 APIs & Events
+- Contract first: change `docs/02-architecture/api/saps-api.openapi.yaml` before or with the implementation (file not created yet).
+- The SAPS Web App uses a TypeScript client generated from that file *(proposal)*.
+- Messages to the SAPS Worker carry only the `invoice_id` (`process_invoice`, `rematch_invoice`).
+
+### 5.5 Database Changes
+- See [Data Model §7](../02-architecture/data-model.md#7-schema-migration-approach) and [ADR-0005](../02-architecture/adr/0005-use-sqlalchemy-and-alembic.md).
+- One migration per PR, created with `uv run alembic revision --autogenerate -m "<description>"` and reviewed by hand;
+  never edit a merged migration.
+- Every new tenant-owned table gets a non-null `tenant_id` ([ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md)).
+
+### 5.6 Dependencies
+- New libraries need *(proposal)*: an OSI-approved license (no AGPL / SSPL in shipped code), active maintenance, a clean
+  `pip-audit` / `npm audit` result, and Solution Architect approval for anything that affects architecture.
+- Updates: weekly automated update PRs (Renovate or Dependabot, depending on hosting, Q1).
+
+## 6. Configuration & Secrets (Local)
+All settings are environment variables, read in `backend/src/saps/config.py`. `.env.example` holds local test values.
+
+| Setting | Purpose | Local value source |
+|---|---|---|
+| `DATABASE_URL` | SAPS Database connection (psycopg async) | `.env.example` |
+| `REDIS_URL` | SAPS Message Broker | `.env.example` |
+| `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | SAPS File Storage (S3 API) | `.env.example` (local test credentials) |
+| `DRAMATIQ_HEARTBEAT_TIMEOUT_MS` | Broker heartbeat timeout — default 30000 *(proposal)* | `.env.example` |
+| `DRAMATIQ_MAINTENANCE_CHANCE` | Broker maintenance frequency out of 1,000,000 — default 100000 = 10 % *(proposal)* ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S7) | `.env.example` |
+| `ACTOR_TIME_LIMIT_MS` | Time limit per job — default 60000 | `.env.example` |
+| `SWEEPER_INTERVAL_SECONDS`, `SWEEPER_STUCK_AFTER_SECONDS` | Sweeper tick and stuck age — defaults 10 and 60 *(proposal)* | `.env.example` |
+| `EXTRACTION_ADAPTER`, `ERP_ADAPTER` | Port adapters — `dummy` in the PoC | `.env.example` |
+| `FIXTURES_DIR` | Dummy sample set and ERP data | `.env.example` |
+| `SESSION_SECRET` | Signs session cookies | generate locally (`openssl rand -hex 32`) |
+| `SEED_USER_PASSWORD` | Password of the seeded demo users | set locally |
+
+- Never commit `.env`; gitleaks runs as a pre-commit hook.
+
+## 7. Testing Locally
+Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
+
+| Level | Command | Notes |
+|---|---|---|
+| Unit (backend) | `cd backend && uv run pytest tests/unit` | No containers needed |
+| Architecture rules | `cd backend && uv run lint-imports` | Domain must not import adapters |
+| Integration | `cd backend && uv run pytest tests/integration` | Starts PostgreSQL, Redis, SeaweedFS with Testcontainers |
+| Coverage | `cd backend && uv run pytest --cov=saps --cov-report=term-missing` | Gate: ≥ 90 % on changed code |
+| Unit (frontend) | `cd frontend && npm test` | Vitest |
+| End-to-end | `docker compose up -d --build && cd frontend && npx playwright test` | Demo scenarios DS-01 … DS-19 |
+
+- Test names: `test_<behavior>_when_<condition>` (Python), `it('<behavior> when <condition>')` (TypeScript).
+- Test data: fixtures in `backend/fixtures/<scenario>/`; builders in `backend/tests/builders.py`.
+
+## 8. Documentation Duties
+| When you… | Update |
+|---|---|
+| Build a non-trivial feature | Feature spec in `docs/03-features/` (template `docs/_templates/feature-spec.md`) |
+| Change an API | `docs/02-architecture/api/saps-api.openapi.yaml` |
+| Change the schema | [data-model.md](../02-architecture/data-model.md) |
+| Introduce a new domain term or component | [Glossary](../02-architecture/arc42/12-glossary.md) |
+| Make an architecturally significant decision | New ADR in `docs/02-architecture/adr/` |
+| Change a demo flow | [Test Strategy §11](../05-testing/test-strategy.md#11-poc-demo-acceptance) and the E2E test |
+
+## 9. Troubleshooting
+| Symptom | Cause | Fix |
+|---|---|---|
+| Port 5432, 6379, 8333 or 8000 already in use | Another local service | Stop it, or change the host port in `compose.yaml` |
+| Invoice stays in Uploaded | SAPS Worker not running, or message lost | `docker compose logs worker`; the sweeper re-sends after `SWEEPER_STUCK_AFTER_SECONDS` |
+| `MissingGreenlet` / lazy-load error | Lazy loading in async SQLAlchemy code | Load relationships explicitly (`selectinload`) |
+| Presigned URL returns 403 | Wrong S3 credentials or clock skew | Check `S3_*` settings; restart the stack |
+
+## 10. Command Cheat Sheet
+| Task | Command |
+|---|---|
+| Start / stop the stack | `docker compose up -d --build` / `docker compose down` |
+| Reset all demo data | `docker compose down -v && docker compose up -d --build` |
+| Run all backend tests | `cd backend && uv run pytest` |
+| Create a migration | `cd backend && uv run alembic revision --autogenerate -m "<description>"` |
+| Lint and format | `cd backend && uv run ruff format && uv run ruff check --fix && uv run mypy src` / `cd frontend && npm run lint` |
+| Regenerate API client | `cd frontend && npm run gen:api` |
+
+## 11. Onboarding Checklist
+- [ ] Access granted (§2.2)
+- [ ] Local stack running and verified (§2.3–2.4)
+- [ ] Read: scope, arc42 §1, §3, §5, §6, data model, glossary, this guide
+- [ ] Walkthrough of the architecture with the Solution Architect
+- [ ] First small issue merged (Linear label `good-first-issue`)
+
+## 12. Open Questions
+| # | Question | Asked to | Due | Status |
+|---|---|---|---|---|
+| Q1 | Where is the code hosted (GitHub / GitLab / other), and does the code live in this documentation repository or a separate one? | Solution Architect | TBD | open |
+| Q2 | Who is the Tech Lead, and who are the developers? | Solution Architect | TBD | open |
+| Q3 | Confirm the *(proposal)* items: mono-repo structure, Node.js 24 + npm, tooling (§5.1), API error format, broker and sweeper defaults (§6) | Solution Architect / Tech Lead | TBD | open |
