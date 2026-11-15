@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
 last_updated: 2026-12-05
-related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-018, DEC-021, SAPS-31]
+related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-018, DEC-021, SAPS-31]
 ---
 
 # Data Model
@@ -16,7 +16,7 @@ Containers and stores: [ADR-0003](adr/0003-use-postgresql-and-docker-compose.md)
 ## 1. Overview
 | Data store | Technology | Owning container | Entities | ADR |
 |---|---|---|---|---|
-| SAPS Database | PostgreSQL (version in the Developer Guide) | SAPS API (the SAPS Worker shares the codebase and schema) | UserAccount, Invoice, InvoiceLine, InvoiceException, Approval, InvoiceEvent, Notification, MatchingSettings | [ADR-0003](adr/0003-use-postgresql-and-docker-compose.md), [ADR-0004](adr/0004-process-invoices-in-background-worker.md) |
+| SAPS Database | PostgreSQL (version in the Developer Guide) | SAPS API (the SAPS Worker shares the codebase and schema) | Tenant, UserAccount, Invoice, InvoiceLine, InvoiceException, Approval, InvoiceEvent, Notification, MatchingSettings | [ADR-0003](adr/0003-use-postgresql-and-docker-compose.md), [ADR-0004](adr/0004-process-invoices-in-background-worker.md) |
 | SAPS Message Broker | Redis, persistence on (AOF) | SAPS API (sends), SAPS Worker (consumes) | Transient processing messages only (invoice ID + job type); no business data; never the source of truth | [ADR-0004](adr/0004-process-invoices-in-background-worker.md) |
 | SAPS File Storage | SeaweedFS (S3 API) | SAPS API (writes), SAPS Worker (reads) | Uploaded invoice files, key `invoices/{invoice_id}/{file_sha256}` in `Invoice.file_storage_key` | [ADR-0006](adr/0006-store-invoice-files-in-seaweedfs.md) |
 | Dummy sample set | JSON fixture files | Dummy Extraction Adapter | ExtractedInvoice (§4.2) | [ADR-0001](adr/0001-isolate-extraction-and-erp-behind-ports.md), [DEC-012](../01-requirements/decision-log.md#dec-012) |
@@ -26,8 +26,13 @@ ERP data and extraction results are **not** stored in the SAPS Database: they ar
 the Extraction Port, so the real sources can replace the fixtures later ([CON-03](arc42/02-constraints.md)).
 
 ## 2. Entity Relationship Diagram
+All tenant-owned tables carry `tenant_id` ([ADR-0007](adr/0007-prepare-data-model-for-tenants.md)); the diagram shows it only on UserAccount, Invoice and MatchingSettings.
+
 ```mermaid
 erDiagram
+    Tenant ||--o{ UserAccount : "has"
+    Tenant ||--o{ Invoice : "owns"
+    Tenant ||--|| MatchingSettings : "configures"
     UserAccount ||--o{ Invoice : "uploads"
     UserAccount ||--o{ Approval : "decides"
     UserAccount ||--o{ Notification : "receives"
@@ -38,13 +43,19 @@ erDiagram
     Invoice ||--o{ InvoiceEvent : "records"
     Invoice ||--o{ Notification : "triggers"
 
+    Tenant {
+        uuid id PK
+        string name
+    }
     UserAccount {
         uuid id PK
+        uuid tenant_id FK
         string username UK
         enum role
     }
     Invoice {
         uuid id PK
+        uuid tenant_id FK
         string vendor_code
         string invoice_number
         enum invoice_type
@@ -90,7 +101,7 @@ erDiagram
         enum type
     }
     MatchingSettings {
-        int id PK
+        uuid tenant_id PK
         decimal price_tolerance_usd
         decimal approval_threshold_usd
     }
@@ -110,6 +121,8 @@ The PoC uses only synthetic data ([DEC-004](../01-requirements/decision-log.md#d
 
 ### 4.1 Entities in the SAPS Database
 Conventions:
+- Every tenant-owned table (all tables below except Tenant) has `tenant_id` (uuid, Not null, FK → Tenant, class Internal)
+  ([ADR-0007](adr/0007-prepare-data-model-for-tenants.md)). The PoC has one tenant; `tenant_id` is not an isolation boundary yet. It is not repeated below.
 - Every table also has the audit columns `created_at` (timestamp UTC), `created_by` (string(100)),
   `updated_at` (timestamp UTC) and `updated_by` (string(100)), all Not null, class Internal. They are not repeated below.
 - Matching fields ([DEC-024](../01-requirements/decision-log.md#dec-024)): `Invoice.vendor_code`, `Invoice.invoice_number`, `InvoiceLine.po_number`,
@@ -117,6 +130,23 @@ Conventions:
 - Amounts are in USD only in the PoC ([DEC-006](../01-requirements/decision-log.md#dec-006)).
 - Retention: TBD (MTG-20261114 Q30). In the PoC, demo data is reset by recreating the containers.
 - Expected volume: demo scale in the PoC (tens of invoices); production volume TBD (MTG-20261114 Q5).
+
+### Tenant
+A customer company served by Smart-AP-Suite ([ADR-0007](adr/0007-prepare-data-model-for-tenants.md)). The PoC has exactly one tenant, created by the first migration.
+
+| Property | Value |
+|---|---|
+| Data store / table | SAPS Database / `tenant` |
+| Owning container | SAPS API |
+| Lifecycle | simple CRUD (seeded in the PoC) |
+| Retention | TBD (Q2) |
+| Expected volume | 1 in the PoC; many after the PoC ([DEC-026](../01-requirements/decision-log.md#dec-026)) |
+
+| Attribute | Type | Null | Key | Class. | Description |
+|---|---|---|---|---|---|
+| id | uuid | No | PK | Internal | Surrogate key |
+| name | string(200) | No | UK | Confidential | Customer company name |
+| is_active | boolean | No | — | Internal | Inactive tenants cannot sign in |
 
 ### UserAccount
 A person who signs in: an Accounting Member or an Accounting Manager ([NFR-SEC-001](../01-requirements/nfr.md#nfr-sec-001)).
@@ -132,7 +162,7 @@ A person who signs in: an Accounting Member or an Accounting Manager ([NFR-SEC-0
 | Attribute | Type | Null | Key | Class. | Description |
 |---|---|---|---|---|---|
 | id | uuid | No | PK | Internal | Surrogate key |
-| username | string(100) | No | UK | Internal | Sign-in name |
+| username | string(100) | No | UK | Internal | Sign-in name; unique across tenants, so sign-in identifies the tenant |
 | display_name | string(200) | No | — | Restricted | Name shown in the UI |
 | password_hash | string(255) | No | — | Restricted | Salted password hash; never logged |
 | role | enum | No | — | Internal | `ACCOUNTING_MEMBER`, `ACCOUNTING_MANAGER` |
@@ -174,7 +204,7 @@ An uploaded vendor invoice and its processing state.
 | file_storage_key | string(500) | No | — | Internal | Object key in SAPS File Storage |
 | rejected_reason | string(1000) | Yes | — | Internal | Reason entered at rejection ([DEC-014](../01-requirements/decision-log.md#dec-014)) |
 
-Index (not unique): (`vendor_code`, `invoice_number`) for duplicate detection. It is not a unique key because a
+Index (not unique): (`tenant_id`, `vendor_code`, `invoice_number`) for duplicate detection. It is not a unique key because a
 duplicate is stored and raised as EX9.
 
 ### InvoiceLine
@@ -289,19 +319,19 @@ so read state is per user.
 | read_at | timestamp UTC | Yes | — | Internal | Null while unread |
 
 ### MatchingSettings
-Single-row table with the configurable matching settings ([DEC-015](../01-requirements/decision-log.md#dec-015)).
+One row per tenant with the configurable matching settings ([DEC-015](../01-requirements/decision-log.md#dec-015), [ADR-0007](adr/0007-prepare-data-model-for-tenants.md)).
 
 | Property | Value |
 |---|---|
 | Data store / table | SAPS Database / `matching_settings` |
 | Owning container | SAPS API |
-| Lifecycle | one row (id = 1), updated by the Accounting Manager |
+| Lifecycle | one row per tenant, created with the tenant, updated by the Accounting Manager |
 | Retention | current values only; changes are visible in `updated_at` / `updated_by` |
-| Expected volume | 1 row |
+| Expected volume | 1 row per tenant |
 
 | Attribute | Type | Null | Key | Class. | Description |
 |---|---|---|---|---|---|
-| id | int | No | PK | Internal | Always 1 |
+| tenant_id | uuid | No | PK, FK → Tenant | Internal | Tenant the settings belong to |
 | price_tolerance_usd | decimal(18,4) | No | — | Internal | Default 0.5 |
 | approval_threshold_usd | decimal(18,2) | No | — | Internal | Default 300 |
 

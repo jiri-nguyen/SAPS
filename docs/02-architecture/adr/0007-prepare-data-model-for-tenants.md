@@ -1,7 +1,7 @@
 ---
 id: ADR-0007
 title: "ADR-0007: Prepare the PoC data model for tenants; defer the multi-tenancy model"
-status: proposed         # proposed | accepted | rejected | deprecated | superseded
+status: accepted         # proposed | accepted | rejected | deprecated | superseded
 date: 2026-12-05         # date of the latest status change
 owner: "Solution Architect (our company)"
 deciders: ["Solution Architect (our company)"]
