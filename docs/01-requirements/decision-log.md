@@ -111,7 +111,7 @@ It succeeds when the end-to-end flow is demonstrated for different cases, includ
 **Rationale:** The PoC focuses on the automated business flow, not on extraction.
 
 **Consequences & follow-ups:** Later phases get ERP data from SAP ECC or SAP S/4HANA through MuleSoft APIs or
-MuleSoft MCP Tools. The design should let dummy sources be replaced (ADR need ADR-N1). How an upload maps to dummy
+MuleSoft MCP Tools. The design lets dummy sources be replaced ([ADR-0001](../02-architecture/adr/0001-isolate-extraction-and-erp-behind-ports.md)). How an upload maps to dummy
 extraction data is open ([MTG-20261121](meetings/2026-11-21-requirements-workshop.md) Q1).
 
 ### DEC-005

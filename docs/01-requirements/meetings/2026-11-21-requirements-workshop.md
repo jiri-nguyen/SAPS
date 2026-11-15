@@ -130,10 +130,10 @@ All items come from [MTG-20261114](2026-11-14-kickoff.md).
 ## 7. Requirements Captured
 | # | Information / requirement | Type | Proposed target | Status |
 |---|---|---|---|---|
-| R1 | Deliver a PoC first: 3 months from 2026-11-21; runs locally; success = end-to-end demo for different cases including exceptions | Scope | [DEC-003](../decision-log.md#dec-003); [SCP-IN-10](../scope.md), [SCP-IN-11](../scope.md); scope.md §2 BO2; arc42 §2 CON-01, CON-02 | partly logged (CON-01, CON-02 pending) |
+| R1 | Deliver a PoC first: 3 months from 2026-11-21; runs locally; success = end-to-end demo for different cases including exceptions | Scope | [DEC-003](../decision-log.md#dec-003); [SCP-IN-10](../scope.md), [SCP-IN-11](../scope.md); scope.md §2 BO2; arc42 §2 [CON-01](../../02-architecture/arc42/02-constraints.md), [CON-02](../../02-architecture/arc42/02-constraints.md) | logged |
 | R2 | PoC focus is the automated business flow; invoice data extraction uses dummy data | Scope | [DEC-004](../decision-log.md#dec-004); change [SCP-IN-02](../scope.md); [SCP-OUT-01](../scope.md) | logged |
 | R3 | The minimum ERP data needed by the flow (POs, goods receipts, vendors) is dummy data in the PoC | Scope | [DEC-004](../decision-log.md#dec-004); [SCP-IN-09](../scope.md) | logged |
-| R4 | Later phases get ERP data from SAP ECC or SAP S/4HANA through MuleSoft APIs or MuleSoft MCP Tools | Constraint | [SCP-OUT-02](../scope.md); arc42 §2 CON-03; ADR need | partly logged (CON-03, ADR pending) |
+| R4 | Later phases get ERP data from SAP ECC or SAP S/4HANA through MuleSoft APIs or MuleSoft MCP Tools | Constraint | [SCP-OUT-02](../scope.md); arc42 §2 [CON-03](../../02-architecture/arc42/02-constraints.md); [ADR-0001](../../02-architecture/adr/0001-isolate-extraction-and-erp-behind-ports.md) | logged |
 | R5 | As-is: all steps manual; pain points are long processing time at high volume and human errors | Scope | scope.md §1 Background | logged |
 | R6 | Business objectives and success measures are not defined yet | Scope | scope.md §2 BO1 stays TBD | logged |
 | R7 | PoC roles: Accounting Member (uploads, handles exceptions, reviews result); Accounting Manager (approves) | Functional | [SCP-IN-12](../scope.md); glossary | logged |
@@ -151,8 +151,8 @@ All items come from [MTG-20261114](2026-11-14-kickoff.md).
 | R19 | Exception types for the PoC: EX1 invoice unreadable; EX2 non-PO invoice (manual review); EX3 invalid PO number; EX4 PO not found; EX5 mixed trade and non-trade POs; EX6 unit price outside tolerance; EX7 quantity mismatch; EX8 missing goods receipt; EX9 duplicate invoice | Functional | change [SCP-IN-04](../scope.md); feature spec (Linear key TBD) | logged |
 | R20 | Notifications are shown in the application only | Functional | [SCP-IN-08](../scope.md) | logged |
 | R21 | If a manual update changes a field used in matching, the system re-runs matching | Functional | [DEC-010](../decision-log.md#dec-010); change [SCP-IN-04](../scope.md) | logged |
-| R22 | PoC sign-in uses simple user accounts (no SSO) | NFR | NFR-SEC-001; [SCP-OUT-10](../scope.md) | partly logged (NFR-SEC-001 pending) |
-| R23 | UI language is English | NFR | NFR-USAB-001 | proposed (NFR-USAB-001 pending) |
+| R22 | PoC sign-in uses simple user accounts (no SSO) | NFR | [NFR-SEC-001](../nfr.md#nfr-sec-001); [SCP-OUT-10](../scope.md) | logged |
+| R23 | UI language is English | NFR | [NFR-USAB-001](../nfr.md#nfr-usab-001) | logged |
 | R24 | Extraction details (file formats, pages, languages, fields, accuracy, AI/OCR services) are not relevant to the PoC | Scope | MTG-20261114 Q7, Q8, Q10–Q12, Q28 deferred | logged |
 | R25 | The PoC runs locally; cloud deployment comes later | Scope | [SCP-IN-10](../scope.md); [SCP-OUT-09](../scope.md) | logged |
 
@@ -170,16 +170,16 @@ All items come from [MTG-20261114](2026-11-14-kickoff.md).
 ### 7.2 ADR needs
 | # | Need | Driver |
 |---|---|---|
-| ADR-N1 | Put invoice extraction and ERP data access behind replaceable interfaces, so dummy data can later be swapped for a real extraction service and MuleSoft APIs / MCP Tools | R2, R3, R4 |
-| ADR-N2 | PoC technology stack and local runtime | R1, R25 |
+| [ADR-0001](../../02-architecture/adr/0001-isolate-extraction-and-erp-behind-ports.md) | Put invoice extraction and ERP data access behind replaceable interfaces, so dummy data can later be swapped for a real extraction service and MuleSoft APIs / MCP Tools | R2, R3, R4 |
+| [ADR-0002](../../02-architecture/adr/0002-use-python-fastapi-and-react.md) | PoC technology stack (database and local runtime: follow-up ADR) | R1, R25 |
 
 ## 8. Action Items
 | # | Action | Owner | Due | Status |
 |---|---|---|---|---|
 | A1 | Send attendee list, organization and key contacts (carried over from MTG-20261114 A2) | Customer representative (Customer) | 2026-11-28 | open |
-| A2 | Draft the end-to-end PoC flow (invoice states, approval, final review) as a Mermaid diagram for review | Solution Architect (our company) | 2026-11-27 | open |
+| A2 | Draft the end-to-end PoC flow (invoice states, approval, final review) as a Mermaid diagram for review | Solution Architect (our company) | 2026-11-27 | done → [§6 Runtime View](../../02-architecture/arc42/06-runtime-view.md) |
 | A3 | Send the meeting summary and proposed decisions to the customer | Solution Architect (our company) | 2026-11-21 | open |
-| A4 | Prepare ADR-N1 and ADR-N2 drafts | Solution Architect (our company) | 2026-11-28 | open |
+| A4 | Prepare ADR-0001 and ADR-0002 drafts | Solution Architect (our company) | 2026-11-28 | done → [§9 Architecture Decisions](../../02-architecture/arc42/09-architecture-decisions.md) |
 
 ## 9. Open Questions
 All questions are asked to the Customer representative (Customer), due 2026-11-28.

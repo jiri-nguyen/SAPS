@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["BA (TBD)", "Tech Lead (TBD)"]
 last_updated: 2026-11-21
-related: [MTG-20261114, MTG-20261121]
+related: [MTG-20261114, MTG-20261121, ADR-0001, ADR-0002]
 ---
 
 # §12 Glossary
@@ -43,12 +43,23 @@ related: [MTG-20261114, MTG-20261121]
 ## 12.2 Architecture Element Names
 | Name | C4 type | Description | Appears in |
 |---|---|---|---|
+| Accounting Manager | Person | Approves invoices above the approval threshold. | L1, L2 |
+| Accounting Member | Person | Uploads invoices, handles exceptions, checks the final result. | L1, L2 |
+| AP API | Container | Python/FastAPI backend: upload, extraction, matching, workflow, notifications ([ADR-0002](../adr/0002-use-python-fastapi-and-react.md)). | L2, L3 |
+| AP Database | Container | Stores invoices, matching results and workflow state. Technology TBD (follow-up ADR). | L2 |
+| AP Web App | Container | React single-page application for Accounting Members and Accounting Managers ([ADR-0002](../adr/0002-use-python-fastapi-and-react.md)). | L2 |
+| Dummy ERP Adapter | Component | PoC implementation of the ERP Data Port; reads fixture files ([ADR-0001](../adr/0001-isolate-extraction-and-erp-behind-ports.md)). | L3 |
+| Dummy Extraction Adapter | Component | PoC implementation of the Extraction Port; reads fixture files ([ADR-0001](../adr/0001-isolate-extraction-and-erp-behind-ports.md)). | L3 |
+| ERP Data Port | Component | Interface in the AP API that provides purchase orders, goods receipts and vendors. | L3 |
+| Extraction Port | Component | Interface in the AP API that provides extracted invoice data for an uploaded file. | L3 |
 | Smart-AP-Suite | Software System | Automates the Accounts Payable flow: invoice upload, extraction, matching, exception review, approval. | L1 |
 
 ## 12.3 Abbreviations
 | Abbreviation | Meaning |
 |---|---|
+| ADR | Architecture Decision Record |
 | AP | Accounts Payable |
+| API | Application Programming Interface |
 | ECC | SAP ERP Central Component |
 | ERP | Enterprise Resource Planning |
 | GR | Goods Receipt |

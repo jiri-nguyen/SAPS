@@ -59,7 +59,7 @@ Scope after the PoC is decided later. Terms are defined in the [§12 Glossary](.
 | SCP-IN-11 | PoC end-to-end demo | Demo of the end-to-end flow for different cases, including exception cases, within 3 months from 2026-11-21 | Must | n/a | [DEC-003](decision-log.md#dec-003) |
 
 ### 3.5 Non-Functional Scope
-Quality requirements will be specified in the Non-Functional Requirements (`nfr.md`, not yet created).
+Quality requirements are specified in the [Non-Functional Requirements](nfr.md).
 
 ## 4. Out of Scope
 | ID | Item | Reason / note | Source |
@@ -82,7 +82,7 @@ Quality requirements will be specified in the Non-Functional Requirements (`nfr.
 | AS2 | All in-scope items are priority Must for the PoC | Customer representative (Customer), MTG-20261114 Q26 | open |
 
 ## 6. Constraints
-Constraints will be listed in arc42 §2 Constraints (`../02-architecture/arc42/02-constraints.md`, not yet created).
+Constraints are listed in [arc42 §2 Constraints](../02-architecture/arc42/02-constraints.md).
 
 ## 7. Dependencies
 | # | Dependency | Owner | Needed by | Status |
