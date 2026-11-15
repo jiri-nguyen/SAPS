@@ -87,7 +87,7 @@ for later phases.
 - Spike [SAPS-34](https://linear.app/jiringuyen/issue/SAPS-34): `AsyncIO` middleware with SQLAlchemy async sessions (engine per event loop, time limits and cancellation); sweeper scheduling and locking.
 - On acceptance, [§6.2 Runtime View](../arc42/06-runtime-view.md) is updated to the asynchronous flow.
 
-### Spike results ({L}, 2026-12-01)
+### Spike results ([SAPS-34](https://linear.app/jiringuyen/issue/SAPS-34), 2026-12-01)
 Environment: dramatiq 2.2.1 (Redis broker, `AsyncIO` middleware), SQLAlchemy 2.1.8 async, psycopg 3.3.9, APScheduler 3.11.3,
 PostgreSQL 17, Redis 7.2 (AOF on), Python 3.13, Docker Compose. All checks passed.
 
