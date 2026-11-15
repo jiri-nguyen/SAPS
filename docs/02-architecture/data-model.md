@@ -11,13 +11,14 @@ related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, DEC-005, DEC-006, DEC-007, DEC
 
 Scope: Proof of Concept ([DEC-003](../01-requirements/decision-log.md#dec-003)). Linear: [SAPS-31](https://linear.app/jiringuyen/issue/SAPS-31).
 
-> **Assumption:** the SAPS Worker and the job queue come from [ADR-0004](adr/0004-process-invoices-in-background-worker.md),
-> which is still `proposed`. If it is rejected, `ProcessingJob` is removed and nothing else changes.
+> **Assumption:** the SAPS Worker and the SAPS Message Broker come from [ADR-0004](adr/0004-process-invoices-in-background-worker.md),
+> which is still `proposed`. The entities below do not depend on it.
 
 ## 1. Overview
 | Data store | Technology | Owning container | Entities | ADR |
 |---|---|---|---|---|
-| SAPS Database | PostgreSQL (version in the Developer Guide) | SAPS API (the SAPS Worker shares the codebase and schema) | UserAccount, Invoice, InvoiceLine, InvoiceException, Approval, InvoiceEvent, Notification, MatchingSettings, ProcessingJob | [ADR-0003](adr/0003-use-postgresql-and-docker-compose.md), [ADR-0004](adr/0004-process-invoices-in-background-worker.md) |
+| SAPS Database | PostgreSQL (version in the Developer Guide) | SAPS API (the SAPS Worker shares the codebase and schema) | UserAccount, Invoice, InvoiceLine, InvoiceException, Approval, InvoiceEvent, Notification, MatchingSettings | [ADR-0003](adr/0003-use-postgresql-and-docker-compose.md), [ADR-0004](adr/0004-process-invoices-in-background-worker.md) |
+| SAPS Message Broker | Redis, persistence on (AOF) | SAPS API (sends), SAPS Worker (consumes) | Transient processing messages only (invoice ID + job type); no business data; never the source of truth | [ADR-0004](adr/0004-process-invoices-in-background-worker.md) |
 | Invoice file store | Docker volume (proposal, Q3) | SAPS API | Uploaded invoice files, referenced by `Invoice.file_storage_key` | — |
 | Dummy sample set | JSON fixture files | Dummy Extraction Adapter | ExtractedInvoice (§4.2) | [ADR-0001](adr/0001-isolate-extraction-and-erp-behind-ports.md), [DEC-012](../01-requirements/decision-log.md#dec-012) |
 | Dummy ERP data | JSON fixture files | Dummy ERP Adapter | Vendor, PurchaseOrder, PurchaseOrderLine, GoodsReceipt, GoodsReceiptLine (§4.2) | [ADR-0001](adr/0001-isolate-extraction-and-erp-behind-ports.md) |
@@ -37,7 +38,6 @@ erDiagram
     Invoice ||--o{ Approval : "requires"
     Invoice ||--o{ InvoiceEvent : "records"
     Invoice ||--o{ Notification : "triggers"
-    Invoice ||--o{ ProcessingJob : "is processed by"
 
     UserAccount {
         uuid id PK
@@ -89,12 +89,6 @@ erDiagram
         uuid recipient_id FK
         uuid invoice_id FK
         enum type
-    }
-    ProcessingJob {
-        uuid id PK
-        uuid invoice_id FK
-        enum job_type
-        enum status
     }
     MatchingSettings {
         int id PK
@@ -310,28 +304,6 @@ Single-row table with the configurable matching settings ([DEC-015](../01-requir
 | price_tolerance_usd | decimal(18,4) | No | — | Internal | Default 0.5 |
 | approval_threshold_usd | decimal(18,2) | No | — | Internal | Default 300 |
 
-### ProcessingJob
-A unit of background work for the SAPS Worker ([ADR-0004](adr/0004-process-invoices-in-background-worker.md), proposed).
-
-| Property | Value |
-|---|---|
-| Data store / table | SAPS Database / `processing_job` |
-| Owning container | SAPS API (written), SAPS Worker (processed) |
-| Lifecycle | `QUEUED` → `RUNNING` → `SUCCEEDED` / `FAILED`; retried while `attempts` < max |
-| Retention | delete succeeded jobs after TBD days |
-| Expected volume | 1–n per invoice |
-
-| Attribute | Type | Null | Key | Class. | Description |
-|---|---|---|---|---|---|
-| id | uuid | No | PK | Internal | Surrogate key |
-| invoice_id | uuid | No | FK → Invoice | Internal | Invoice to process |
-| job_type | enum | No | — | Internal | `PROCESS_INVOICE`, `REMATCH_INVOICE` ([DEC-010](../01-requirements/decision-log.md#dec-010)) |
-| status | enum | No | — | Internal | `QUEUED`, `RUNNING`, `SUCCEEDED`, `FAILED` |
-| attempts | int | No | — | Internal | Number of runs so far |
-| run_after | timestamp UTC | No | — | Internal | Earliest start (back-off between retries) |
-| locked_by | string(100) | Yes | — | Internal | Worker instance holding the job |
-| last_error | string(2000) | Yes | — | Internal | Last error message; no personal data |
-
 ### 4.2 External entities (read through ports, not stored)
 Logical structure of the data the SAPS API and SAPS Worker read. In the PoC it comes from JSON fixture files;
 later from the real services ([ADR-0001](adr/0001-isolate-extraction-and-erp-behind-ports.md)).
@@ -380,7 +352,7 @@ stateDiagram-v2
 
 | State | Meaning | Waiting for |
 |---|---|---|
-| Uploaded | File received; processing job queued | SAPS Worker |
+| Uploaded | File received; processing message sent | SAPS Worker |
 | Matching | Extraction, duplicate check, type derivation and matching in progress | SAPS Worker |
 | Exception | Automatic processing stopped (EX1–EX9); in the shared exception queue | Accounting Member |
 | PendingApproval | Total amount above the approval threshold | Accounting Manager |
@@ -393,7 +365,6 @@ stateDiagram-v2
 |---|---|---|---|---|
 | Invoices, lines, exceptions, approvals, events, files | PoC: until the demo environment is reset; later TBD | TBD | TBD | TBD (MTG-20261114 Q30) |
 | Notifications | TBD | none | TBD | — |
-| Processing jobs | Succeeded jobs: TBD days | none | Purge job | — |
 
 ## 7. Schema Migration Approach
 - Tool: Alembic with SQLAlchemy 2.0 ([ADR-0005](adr/0005-use-sqlalchemy-and-alembic.md)).

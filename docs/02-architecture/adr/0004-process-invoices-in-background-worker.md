@@ -1,6 +1,6 @@
 ---
 id: ADR-0004
-title: "ADR-0004: Process invoices in a background worker with a PostgreSQL job queue"
+title: "ADR-0004: Process invoices in a background worker with Dramatiq and Redis"
 status: proposed         # proposed | accepted | rejected | deprecated | superseded
 date: 2026-11-28         # date of the latest status change
 owner: "Solution Architect (our company)"
@@ -9,10 +9,10 @@ consulted: ["Tech Lead (TBD)"]
 last_updated: 2026-11-28
 supersedes: ""
 superseded_by: ""
-related: [NFR-SCAL-001, CON-01, CON-02, CON-03, DEC-010, ADR-0001, ADR-0003, SAPS-33]
+related: [NFR-SCAL-001, CON-01, CON-02, CON-03, DEC-010, ADR-0001, ADR-0003, ADR-0005, SAPS-33]
 ---
 
-# ADR-0004: Process invoices in a background worker with a PostgreSQL job queue
+# ADR-0004: Process invoices in a background worker with Dramatiq and Redis
 
 ## Context and Problem Statement
 After an upload, the system extracts the invoice data, checks for duplicates, derives the invoice type and matches
@@ -27,45 +27,65 @@ The design must scale beyond the PoC without a redesign ([NFR-SCAL-001](../../01
 ## Decision Drivers
 - Scale beyond the PoC without redesign — [NFR-SCAL-001](../../01-requirements/nfr.md#nfr-scal-001)
 - Later steps call slow, unreliable external services — [CON-03](../arc42/02-constraints.md), [SCP-OUT-01](../../01-requirements/scope.md)
-- Runs locally with Docker Compose; no managed cloud services — [CON-01](../arc42/02-constraints.md), [ADR-0003](0003-use-postgresql-and-docker-compose.md)
+- Runs locally with Docker Compose — [CON-01](../arc42/02-constraints.md), [ADR-0003](0003-use-postgresql-and-docker-compose.md)
 - 3-month PoC; few moving parts — [CON-02](../arc42/02-constraints.md)
 - Work must not be lost when a container restarts
+- Preference of the Solution Architect (2026-11-28) for Redis as the message broker
 
 ## Considered Options
 1. Synchronous processing inside the upload request (SAPS API)
 2. FastAPI background tasks in the SAPS API process
-3. Separate worker container with a job queue table in PostgreSQL
-4. Separate worker container with a message broker (e.g. Redis or RabbitMQ)
+3. Worker with a job queue in PostgreSQL (own table or the Procrastinate library)
+4. Worker with Celery on Redis
+5. Worker with Dramatiq on Redis
 
 ## Decision Outcome
-**Chosen option:** "Separate worker container with a job queue table in PostgreSQL", because it decouples slow
-processing from user requests and scales by adding workers (NFR-SCAL-001), keeps jobs durable across restarts, and
-needs no infrastructure beyond the PostgreSQL already chosen in ADR-0003 (CON-01, CON-02).
+**Chosen option:** "Worker with Dramatiq on Redis", because a dedicated broker scales by adding workers without
+loading the database (NFR-SCAL-001), Dramatiq's defaults are safe for this workload (messages are acknowledged after
+the job finishes; retries with back-off are built in), and Redis is available as a managed service on AWS and Azure
+for later phases.
 
-How it works:
-- The SAPS API stores the uploaded file and the invoice (status Uploaded), adds a job, and returns `202 Accepted`.
-- A new container, **SAPS Worker** (same Python codebase as the SAPS API), takes jobs from the job table with
-  `SELECT … FOR UPDATE SKIP LOCKED`, so several workers can run in parallel without taking the same job.
-- Job types: process a new invoice; re-match an invoice after a manual update (DEC-010).
-- Failed jobs are retried a limited number of times; then the invoice goes to status Exception.
-- The SAPS Worker writes in-app notifications; the SAPS Web App reads invoice status and notifications from the SAPS API.
-- Jobs are taken through a **Job Queue Port**, so a cloud queue (e.g. Amazon SQS, Azure Service Bus) can replace
-  the table later without changing processing logic (same pattern as [ADR-0001](0001-isolate-extraction-and-erp-behind-ports.md)).
+### How it works
+- New containers: **SAPS Worker** (Dramatiq workers, same Python codebase as the SAPS API) and
+  **SAPS Message Broker** (Redis).
+- The SAPS API saves the uploaded file and the invoice (status Uploaded), **commits**, then sends a message, and
+  returns `202 Accepted`.
+- Actors: `process_invoice(invoice_id)` and `rematch_invoice(invoice_id)` ([DEC-010](../../01-requirements/decision-log.md#dec-010)).
+- Messages are sent through a **Job Queue Port**, so another broker (e.g. Amazon SQS, Azure Service Bus) can replace
+  Redis later without changing processing logic (same pattern as [ADR-0001](0001-isolate-extraction-and-erp-behind-ports.md)).
+- The SAPS Worker writes results and in-app notifications to the SAPS Database. The SAPS Web App reads status and
+  notifications from the SAPS API (polling or push, decided in the feature spec).
+
+### Safeguards
+| # | Risk | Safeguard |
+|---|---|---|
+| S1 | Invoice saved in PostgreSQL but message not sent (crash between commit and send) — two systems, no shared transaction | **Sweeper**: a periodic task in the SAPS Worker re-sends messages for invoices in status Uploaded or Matching longer than a configurable time. Only one worker instance runs it (lock). A transactional outbox is a later option if needed. |
+| S2 | A message is processed twice (redelivery after a crash, sweeper re-send) | Actors are **idempotent**: each actor locks the invoice row (`SELECT … FOR UPDATE`) and does nothing if the invoice is no longer in the expected status. |
+| S3 | Redis restart loses queued messages | Redis persistence on (`appendonly yes`) in Docker Compose. Redis is never the source of truth; the sweeper (S1) recovers lost messages from PostgreSQL. |
+| S4 | A job keeps failing | Dramatiq retries with exponential back-off up to a configured limit. After the last retry, extraction failures set the invoice to Exception (EX1); other technical failures are logged and handled as defined in the feature spec. |
+| S5 | Async support of Dramatiq actors is not confirmed | Verified in a spike. Fallback: actors use sync SQLAlchemy sessions on the same models (psycopg 3 supports both, [ADR-0005](0005-use-sqlalchemy-and-alembic.md)). |
+| S6 | Dramatiq has no built-in scheduler for the sweeper | Scheduler library inside the SAPS Worker (e.g. APScheduler); chosen in the spike. |
 
 ### Consequences
 - **Good:** Upload requests stay fast even when extraction and SAP calls become slow.
-- **Good:** Throughput grows by running more SAPS Worker instances.
-- **Good:** Jobs survive container restarts; retries are possible.
-- **Bad:** Users see results asynchronously; the SAPS Web App must refresh status (polling or push, decided in the feature spec).
-- **Bad:** Polling the job table adds database load; acceptable at PoC volume, revisit with the workload profile (MTG-20261114 Q5, Q6).
-- **Neutral:** One more container in Docker Compose, the C4 L2 diagram and the glossary.
-- **Neutral:** Job handlers must be idempotent (a job may run twice after a crash).
+- **Good:** Throughput grows by running more SAPS Worker instances; PostgreSQL is not used as a queue.
+- **Good:** Retries and acknowledgement after completion come built in.
+- **Bad:** One more container (Redis) to run and configure.
+- **Bad:** PostgreSQL and Redis are written separately; consistency relies on the sweeper and idempotent actors (S1, S2).
+- **Bad:** Users see results asynchronously; the SAPS Web App must refresh status.
+- **Neutral:** Redis licensing changed from version 7.4 (RSAL / SSPL; Redis 8 adds AGPL as an option). This does not affect
+  local use in the PoC. For a cloud phase, choose a managed Redis OSS or Valkey (BSD-licensed, protocol-compatible) service.
+- **Neutral:** The `ProcessingJob` table is not needed; status lives in `Invoice.status` and history in `InvoiceEvent`
+  ([data model](../data-model.md)).
 
 ### Confirmation
-- Docker Compose starts SAPS Web App, SAPS API, SAPS Worker and SAPS Database.
-- An integration test runs two workers against one queue and checks that each job runs exactly once.
+- Docker Compose starts SAPS Web App, SAPS API, SAPS Worker, SAPS Message Broker and SAPS Database.
+- Integration tests (Testcontainers with PostgreSQL and Redis):
+  - a worker is stopped during a job → the message is redelivered and the invoice is processed once;
+  - an invoice left in status Uploaded without a message → the sweeper processes it.
+- Spike (Linear issue under SAPS-30): Dramatiq async actors with SQLAlchemy async; sweeper scheduling and locking.
 - On acceptance, [§6.2 Runtime View](../arc42/06-runtime-view.md) is updated to the asynchronous flow.
-- Revisit when the workload profile is known, or before moving to a cloud environment.
+- Revisit when the workload profile is known (MTG-20261114 Q5, Q6), or before moving to a cloud environment.
 
 ## Pros and Cons of the Options
 
@@ -79,16 +99,24 @@ How it works:
 - Bad, because tasks live in memory and are lost when the SAPS API restarts.
 - Bad, because processing cannot scale separately from the API.
 
-### Worker with a PostgreSQL job table
-- Good, because jobs are durable and transactional with the invoice data.
+### Worker with a job queue in PostgreSQL
+- Good, because jobs can be added in the same transaction as the invoice (no dual write).
 - Good, because no new infrastructure is needed.
-- Bad, because a database queue has lower throughput than a dedicated broker.
+- Bad, because polling or notifications add load to the database, and throughput is lower than a dedicated broker.
+- Bad, because the main library option (Procrastinate) has a small maintainer base.
 
-### Worker with a message broker
-- Good, because brokers handle high throughput, routing and retries.
-- Bad, because it adds a container and a technology to learn and run in a 3-month local PoC.
-- Bad, because job state and invoice state live in two systems, which complicates consistency.
+### Worker with Celery on Redis
+- Good, because Celery has the largest ecosystem (monitoring with Flower, scheduling with celery beat).
+- Bad, because its defaults acknowledge messages early; reliable delivery needs extra configuration.
+- Bad, because it is heavier than needed for two job types.
+
+### Worker with Dramatiq on Redis
+- Good, because acknowledgement after completion and retries are the defaults.
+- Good, because it is small and simple to configure.
+- Bad, because there is no built-in scheduler and a smaller ecosystem than Celery.
+- Bad, because the dual write between PostgreSQL and Redis needs safeguards (S1, S2).
 
 ## More Information
 - Linear: [SAPS-33](https://linear.app/jiringuyen/issue/SAPS-33)
-- Customer agreement: not required (internal design decision).
+- Customer agreement: not required (internal design decision; Redis is an addition to the stack agreed in
+  [DEC-019](../../01-requirements/decision-log.md#dec-019) — to be mentioned to the Product Owner at the next meeting).

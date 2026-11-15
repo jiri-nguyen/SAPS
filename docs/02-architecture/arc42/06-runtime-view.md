@@ -86,7 +86,7 @@ sequenceDiagram
 
 **Notes:**
 - The matching result is only displayed; nothing is posted to an ERP ([SCP-OUT-08](../../01-requirements/scope.md)).
-- Processing runs inside the SAPS API request in this diagram. [ADR-0004](../adr/0004-process-invoices-in-background-worker.md) (proposed) moves it to a SAPS Worker; this scenario is updated when ADR-0004 is accepted.
+- Processing runs inside the SAPS API request in this diagram. [ADR-0004](../adr/0004-process-invoices-in-background-worker.md) (proposed) moves it to a SAPS Worker (Dramatiq) fed by the SAPS Message Broker (Redis); this scenario is updated when ADR-0004 is accepted.
 - During exception handling an Accounting Member can also reject the invoice (DEC-014); see the lifecycle below.
 - How in-app notifications reach the SAPS Web App (polling or push) is decided in the feature spec.
 
