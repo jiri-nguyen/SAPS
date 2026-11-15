@@ -3,8 +3,8 @@ title: "§2 Architecture Constraints"
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
-last_updated: 2026-11-21
-related: [DEC-002, DEC-003, MTG-20261121]
+last_updated: 2026-11-28
+related: [DEC-002, DEC-003, DEC-017, MTG-20261121]
 ---
 
 # §2 Architecture Constraints
@@ -18,7 +18,7 @@ related: [DEC-002, DEC-003, MTG-20261121]
 ## 2.2 Organizational Constraints
 | ID | Constraint | Impact on the architecture | Source |
 |---|---|---|---|
-| CON-02 | The PoC lasts 3 months from 2026-11-21 | Favors simple, well-known technology and a single deployable stack | [DEC-003](../../01-requirements/decision-log.md#dec-003) |
+| CON-02 | The PoC lasts 3 months from 2026-11-21; the demo is on 2027-02-22 | Favors simple, well-known technology and a single deployable stack | [DEC-003](../../01-requirements/decision-log.md#dec-003), [DEC-017](../../01-requirements/decision-log.md#dec-017) |
 
 ## 2.3 Regulatory & Legal Constraints
 None identified yet. Data residency and retention are open (MTG-20261114 Q28, Q30).

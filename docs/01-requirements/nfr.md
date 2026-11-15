@@ -1,11 +1,11 @@
 ---
 title: Non-Functional Requirements
-version: "0.1"           # 1.0 = first customer-approved version
+version: "0.2"           # 1.0 = first customer-approved version
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
-reviewers: ["Tech Lead (TBD)", "Customer representative (Customer)"]
-last_updated: 2026-11-21
-related: [MTG-20261121, DEC-003]
+reviewers: ["Tech Lead (TBD)", "Product Owner (Customer)"]
+last_updated: 2026-11-28
+related: [MTG-20261121, MTG-20261128, DEC-003]
 ---
 
 # Non-Functional Requirements
@@ -37,16 +37,30 @@ Production workload values are not known yet.
 ## 3. Summary
 | ID | Title | Priority | Status |
 |---|---|---|---|
+| [NFR-SCAL-001](#nfr-scal-001) | Scalable design beyond the PoC | Must | agreed |
 | [NFR-SEC-001](#nfr-sec-001) | Sign-in with simple user accounts | Must | agreed |
 | [NFR-USAB-001](#nfr-usab-001) | English user interface | Must | agreed |
 
 ## 4. Requirements
 
 ### 4.1 Performance (PERF)
-None agreed for the PoC.
+No performance target for the PoC ([MTG-20261128](meetings/2026-11-28-poc-flow-review.md) R11). See NFR-SCAL-001.
 
 ### 4.2 Scalability (SCAL)
-None agreed for the PoC.
+
+#### NFR-SCAL-001
+**Scalable design beyond the PoC**
+
+| Field | Value |
+|---|---|
+| Requirement | The PoC architecture MUST allow higher invoice volumes and more users after the PoC without a redesign of the matching and workflow logic. |
+| Metric & target | TBD — numeric targets are set after the PoC, from the workload profile (MTG-20261114 Q5, Q6) |
+| Conditions | Design and code of the PoC |
+| Priority | Must |
+| Verification | Review (architecture review of ADRs and code structure) |
+| Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) R11 |
+| Status | agreed |
+| Related | [ADR-0001](../02-architecture/adr/0001-isolate-extraction-and-erp-behind-ports.md); processing model ADR ([SAPS-33](https://linear.app/jiringuyen/issue/SAPS-33)) |
 
 ### 4.3 Availability & Disaster Recovery (AVAIL)
 None agreed for the PoC.
@@ -108,9 +122,10 @@ None agreed for the PoC. Later ERP integration is a constraint: [CON-03](../02-a
 ## 6. Approval
 | Name | Role | Organization | Date | Reference |
 |---|---|---|---|---|
-| TBD | Sign-off owner (MTG-20261114 Q26) | Customer | — | pending |
+| TBD | Product Owner (sign-off owner) | Customer | — | pending |
 
 ## 7. Change History
 | Version | Date | Author | Change | Decision |
 |---|---|---|---|---|
 | 0.1 | 2026-11-21 | Solution Architect (our company) | Initial draft for the PoC: NFR-SEC-001, NFR-USAB-001 | [DEC-003](decision-log.md#dec-003) |
+| 0.2 | 2026-11-28 | Solution Architect (our company) | NFR-SCAL-001 added | — ([MTG-20261128](meetings/2026-11-28-poc-flow-review.md) R11) |

@@ -5,7 +5,7 @@ status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["Solution Architect (our company)"]
 last_updated: 2026-11-28
-related: [MTG-20261121, ADR-0001, ADR-0002, ADR-0003]
+related: [MTG-20261121, ADR-0001, ADR-0002, ADR-0003, DEC-011, DEC-012, DEC-013, DEC-014, DEC-015, DEC-016, DEC-017, DEC-018, DEC-019, DEC-020, DEC-021]
 ---
 
 # MTG-20261128 — PoC flow review and open questions
@@ -94,39 +94,39 @@ The Product Owner answered Q1–Q5 in writing on 2026-11-28:
 ## 6. Decisions
 | # | Decision | Decided by | Logged as |
 |---|---|---|---|
-| D1 | The Product Owner is the customer's single representative and decision maker | Product Owner (Customer) | pending |
-| D2 | Uploading a file from the dummy sample set loads its predefined data; any other file raises EX1 | Product Owner (Customer) | pending |
-| D3 | Approval comes before the final review; the 300 USD approval rule applies to all invoice types | Product Owner (Customer) | pending |
-| D4 | Rejected is a final state | Product Owner (Customer) | pending |
-| D5 | Price tolerance and approval threshold are configurable; defaults 0.5 USD and 300 USD | Product Owner (Customer) | pending |
-| D6 | Exceptions go to a shared queue; any Accounting Member picks them up | Product Owner (Customer) | pending |
-| D7 | PoC demo on 2027-02-22; no interim demo | Product Owner (Customer) | pending |
-| D8 | Exception types EX1–EX9 are confirmed for the PoC | Product Owner (Customer) | pending |
-| D9 | The customer agrees the PoC technology stack in ADR-0002 and ADR-0003 | Product Owner (Customer) | pending |
-| D10 | PoC success = all flows run successfully in the demo | Product Owner (Customer) | pending |
-| D11 | Notification recipients by type: exceptions and final reviews → Accounting Members; approvals above 300 USD → Accounting Manager (written answer Q4) | Product Owner (Customer) | pending |
+| D1 | The Product Owner is the customer's single representative and decision maker | Product Owner (Customer) | [DEC-011](../decision-log.md#dec-011) |
+| D2 | Uploading a file from the dummy sample set loads its predefined data; any other file raises EX1 | Product Owner (Customer) | [DEC-012](../decision-log.md#dec-012) |
+| D3 | Approval comes before the final review; the 300 USD approval rule applies to all invoice types | Product Owner (Customer) | [DEC-013](../decision-log.md#dec-013) |
+| D4 | Rejected is a final state | Product Owner (Customer) | [DEC-014](../decision-log.md#dec-014) |
+| D5 | Price tolerance and approval threshold are configurable; defaults 0.5 USD and 300 USD | Product Owner (Customer) | [DEC-015](../decision-log.md#dec-015) |
+| D6 | Exceptions go to a shared queue; any Accounting Member picks them up | Product Owner (Customer) | [DEC-016](../decision-log.md#dec-016) |
+| D7 | PoC demo on 2027-02-22; no interim demo | Product Owner (Customer) | [DEC-017](../decision-log.md#dec-017) |
+| D8 | Exception types EX1–EX9 are confirmed for the PoC | Product Owner (Customer) | [DEC-018](../decision-log.md#dec-018) |
+| D9 | The customer agrees the PoC technology stack in ADR-0002 and ADR-0003 | Product Owner (Customer) | [DEC-019](../decision-log.md#dec-019) |
+| D10 | PoC success = all flows run successfully in the demo | Product Owner (Customer) | [DEC-020](../decision-log.md#dec-020) |
+| D11 | Notification recipients by type: exceptions and final reviews → Accounting Members; approvals above 300 USD → Accounting Manager (written answer Q4) | Product Owner (Customer) | [DEC-021](../decision-log.md#dec-021) |
 
 ## 7. Requirements Captured
 | # | Information / requirement | Type | Proposed target | Status |
 |---|---|---|---|---|
-| R1 | The Product Owner is the only customer attendee, now and in future meetings, and the decision maker | Constraint | DEC-011; arc42 §1.3 stakeholders; glossary | proposed |
-| R2 | The end-to-end flow in arc42 §6.2 is approved | Functional | Remove "(proposal)" marks in §6.2 and §6.2.1 | proposed |
-| R3 | Uploading a file from the dummy sample set loads its predefined extraction data; a file not in the set raises an exception (EX1) | Functional | DEC-012; change SCP-IN-02 | proposed |
-| R4 | Approval (when required) comes before the final review | Functional | DEC-013; change SCP-IN-06 | proposed |
-| R5 | The 300 USD approval rule applies to all invoice types, including non-PO | Functional | DEC-013; change SCP-IN-06 | proposed |
-| R6 | Rejected is a final state | Functional | DEC-014; SCP-IN-14 (new) | proposed |
-| R7 | Price tolerance and approval threshold are adjustable; defaults 0.5 USD and 300 USD | Functional | DEC-015; SCP-IN-13 (new) | proposed |
-| R8 | Exceptions go to a shared queue; any available Accounting Member picks one up | Functional | DEC-016; change SCP-IN-04 | proposed |
-| R9 | PoC demo on 2027-02-22; no interim demo | Scope | DEC-017; change SCP-IN-11; change CON-02 | proposed |
-| R10 | Exception types EX1–EX9 are confirmed for the PoC | Functional | DEC-018; change SCP-IN-04 | proposed |
-| R11 | No performance target for the PoC, but the design must perform well and be able to scale in the future | NFR | arc42 §1.2 quality goal; NFR-SCAL-001 (target TBD); ADR need | proposed |
-| R12 | The customer agrees the PoC technology stack (ADR-0002, ADR-0003) | Constraint | DEC-019 | proposed |
-| R13 | No business objectives yet; PoC success = all flows run successfully | Scope | DEC-020; change BO2 success measure | proposed |
-| R14 | The Product Owner is the sign-off owner for the PoC acceptance (Q1) | Scope | DEC-011; scope.md §8, §10 | proposed |
-| R15 | Rejection points: Accounting Manager at approval; Accounting Member during exception handling and at final review (Q2) | Functional | DEC-014; SCP-IN-14 | proposed |
-| R16 | Only the Accounting Manager changes the tolerance and threshold settings (Q3) | Functional | DEC-015; SCP-IN-13 | proposed |
-| R17 | Notifications: exceptions and final reviews → Accounting Members; approvals above 300 USD → Accounting Manager (Q4) | Functional | DEC-021; change SCP-IN-08 | proposed |
-| R18 | All in-scope items are priority Must for the PoC (Q5) | Scope | scope.md AS2 → confirmed | proposed |
+| R1 | The Product Owner is the only customer attendee, now and in future meetings, and the decision maker | Constraint | DEC-011; arc42 §1.3 stakeholders; glossary | logged |
+| R2 | The end-to-end flow in arc42 §6.2 is approved | Functional | Remove "(proposal)" marks in §6.2 and §6.2.1 | logged |
+| R3 | Uploading a file from the dummy sample set loads its predefined extraction data; a file not in the set raises an exception (EX1) | Functional | DEC-012; change SCP-IN-02 | logged |
+| R4 | Approval (when required) comes before the final review | Functional | DEC-013; change SCP-IN-06 | logged |
+| R5 | The 300 USD approval rule applies to all invoice types, including non-PO | Functional | DEC-013; change SCP-IN-06 | logged |
+| R6 | Rejected is a final state | Functional | DEC-014; SCP-IN-14 (new) | logged |
+| R7 | Price tolerance and approval threshold are adjustable; defaults 0.5 USD and 300 USD | Functional | DEC-015; SCP-IN-13 (new) | logged |
+| R8 | Exceptions go to a shared queue; any available Accounting Member picks one up | Functional | DEC-016; change SCP-IN-04 | logged |
+| R9 | PoC demo on 2027-02-22; no interim demo | Scope | DEC-017; change SCP-IN-11; change CON-02 | logged |
+| R10 | Exception types EX1–EX9 are confirmed for the PoC | Functional | DEC-018; change SCP-IN-04 | logged |
+| R11 | No performance target for the PoC, but the design must perform well and be able to scale in the future | NFR | arc42 §1.2 quality goal; NFR-SCAL-001 (target TBD); ADR need | logged |
+| R12 | The customer agrees the PoC technology stack (ADR-0002, ADR-0003) | Constraint | DEC-019 | logged |
+| R13 | No business objectives yet; PoC success = all flows run successfully | Scope | DEC-020; change BO2 success measure | logged |
+| R14 | The Product Owner is the sign-off owner for the PoC acceptance (Q1) | Scope | DEC-011; scope.md §8, §10 | logged |
+| R15 | Rejection points: Accounting Manager at approval; Accounting Member during exception handling and at final review (Q2) | Functional | DEC-014; SCP-IN-14 | logged |
+| R16 | Only the Accounting Manager changes the tolerance and threshold settings (Q3) | Functional | DEC-015; SCP-IN-13 | logged |
+| R17 | Notifications: exceptions and final reviews → Accounting Members; approvals above 300 USD → Accounting Manager (Q4) | Functional | DEC-021; change SCP-IN-08 | logged |
+| R18 | All in-scope items are priority Must for the PoC (Q5) | Scope | scope.md AS2 → confirmed | logged |
 
 ### 7.1 Conflicts with existing items
 | # | Existing item | Conflict | Proposed resolution |
@@ -135,21 +135,21 @@ The Product Owner answered Q1–Q5 in writing on 2026-11-28:
 | K2 | [scope.md BO2](../scope.md#2-business-objectives): "demo for different cases, including exception cases" | Now "all flows run successfully" | DEC-020; BO2 success measure: every flow in the demo scenario catalog runs successfully |
 | K3 | Earlier documents name the customer attendee "Customer representative" | Same person, now called Product Owner | Keep past records unchanged; new and updated documents use "Product Owner (Customer)" |
 | K4 | [ADR-0002](../../02-architecture/adr/0002-use-python-fastapi-and-react.md), [ADR-0003](../../02-architecture/adr/0003-use-postgresql-and-docker-compose.md): "Customer agreement: TBD" | Accepted ADRs are immutable, so the text cannot be updated | Record the agreement in DEC-019, which links both ADRs |
-| K5 | [§6.2 Runtime View](../../02-architecture/arc42/06-runtime-view.md) runtime note: processing runs inside the API request | Future scalability (R11) may need asynchronous processing | ADR need ADR-N1 below; PoC keeps synchronous processing unless the ADR decides otherwise |
+| K5 | [§6.2 Runtime View](../../02-architecture/arc42/06-runtime-view.md) runtime note: processing runs inside the API request | Future scalability (R11) may need asynchronous processing | processing model ADR ([SAPS-33](https://linear.app/jiringuyen/issue/SAPS-33)); PoC keeps synchronous processing unless the ADR decides otherwise |
 | K6 | Q4 answer says "exception > 300 USD" | In the agreed flow an invoice above 300 USD is an approval, not an exception | Recorded as approval notification to the Accounting Manager, as in §6.2; the Product Owner confirmed the flow is correct |
 
 ### 7.2 ADR needs
 | # | Need | Driver |
 |---|---|---|
-| ADR-N1 | Processing model for upload, extraction and matching: synchronous in the request, or a background worker / job queue, so the design can scale later | R11 |
+| [SAPS-33](https://linear.app/jiringuyen/issue/SAPS-33) | Processing model for upload, extraction and matching: synchronous in the request, or a background worker / job queue, so the design can scale later | R11 |
 
 ## 8. Action Items
 | # | Action | Owner | Due | Status |
 |---|---|---|---|---|
-| A1 | Draft the data model (entities, ERD, invoice lifecycle) in `data-model.md` | Solution Architect (our company) | 2026-12-05 | open |
-| A2 | Draft the test strategy with a demo scenario catalog: happy paths per invoice type and one scenario per exception type EX1–EX9 | Solution Architect (our company) | 2026-12-05 | open |
-| A3 | List the Linear epics and milestone (SA); create them in Linear manually (Product Owner / SA); add issue keys to scope.md | Solution Architect (our company) | 2026-12-05 | in progress: list sent 2026-11-28; Linear base URL added to Project Context |
-| A4 | Draft ADR-N1 (processing model) | Solution Architect (our company) | 2026-12-05 | open |
+| A1 | Draft the data model (entities, ERD, invoice lifecycle) in `data-model.md` ([SAPS-31](https://linear.app/jiringuyen/issue/SAPS-31)) | Solution Architect (our company) | 2026-12-05 | open |
+| A2 | Draft the test strategy with a demo scenario catalog: happy paths per invoice type and one scenario per exception type EX1–EX9 ([SAPS-32](https://linear.app/jiringuyen/issue/SAPS-32)) | Solution Architect (our company) | 2026-12-05 | open |
+| A3 | List the Linear epics and milestone (SA); create them in Linear manually (Product Owner / SA); add issue keys to scope.md | Solution Architect (our company) | 2026-12-05 | done: epics [SAPS-17](https://linear.app/jiringuyen/issue/SAPS-17) to [SAPS-30](https://linear.app/jiringuyen/issue/SAPS-30), tasks [SAPS-31](https://linear.app/jiringuyen/issue/SAPS-31) to [SAPS-33](https://linear.app/jiringuyen/issue/SAPS-33); keys added to scope.md v0.3 |
+| A4 | Draft the processing model ADR ([SAPS-33](https://linear.app/jiringuyen/issue/SAPS-33)) | Solution Architect (our company) | 2026-12-05 | open |
 
 ## 9. Open Questions
 | # | Question | Asked to | Due | Answer / status |

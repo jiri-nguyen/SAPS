@@ -3,8 +3,8 @@ title: Decision Log
 status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["PM (TBD)"]
-last_updated: 2026-11-21
-related: [MTG-20261114, MTG-20261121]
+last_updated: 2026-11-28
+related: [MTG-20261114, MTG-20261121, MTG-20261128]
 ---
 
 # Decision Log
@@ -22,6 +22,17 @@ related: [MTG-20261114, MTG-20261121]
 | [DEC-008](#dec-008) | 2026-11-21 | Duplicate invoice detection; no tax/VAT checks | Business | confirmed |
 | [DEC-009](#dec-009) | 2026-11-21 | Accounting Manager approval above 300 USD | Business | confirmed |
 | [DEC-010](#dec-010) | 2026-11-21 | Re-run matching after a manual update of matching fields | Business | confirmed |
+| [DEC-011](#dec-011) | 2026-11-28 | Product Owner is the customer's decision maker and PoC sign-off owner | Project | confirmed |
+| [DEC-012](#dec-012) | 2026-11-28 | Upload from a dummy sample set; unknown files raise EX1 | Scope | confirmed |
+| [DEC-013](#dec-013) | 2026-11-28 | Approval before final review, for all invoice types | Business | confirmed |
+| [DEC-014](#dec-014) | 2026-11-28 | Rejected is a final state; three rejection points | Business | confirmed |
+| [DEC-015](#dec-015) | 2026-11-28 | Configurable tolerance and approval threshold | Business | confirmed |
+| [DEC-016](#dec-016) | 2026-11-28 | Shared exception queue | Business | confirmed |
+| [DEC-017](#dec-017) | 2026-11-28 | PoC demo on 2027-02-22 | Project | confirmed |
+| [DEC-018](#dec-018) | 2026-11-28 | Exception types EX1–EX9 for the PoC | Business | confirmed |
+| [DEC-019](#dec-019) | 2026-11-28 | Customer agrees the PoC technology stack | Technical | confirmed |
+| [DEC-020](#dec-020) | 2026-11-28 | PoC success criterion: all flows run successfully | Scope | confirmed |
+| [DEC-021](#dec-021) | 2026-11-28 | Notification recipients by notification type | Business | confirmed |
 
 ## 2. Decisions
 
@@ -264,3 +275,262 @@ non-PO invoices, and whether the threshold is configurable ([MTG-20261121](meeti
 **Rationale:** Stated by the customer.
 
 **Consequences & follow-ups:** The feature spec lists which fields are matching fields.
+
+### DEC-011
+**Product Owner is the customer's decision maker and PoC sign-off owner**
+
+| Field | Value |
+|---|---|
+| Date | 2026-11-28 |
+| Category | Project |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D1, R14 |
+| Impacts | [scope.md](scope.md) §8, §10; [arc42 §1.3](../02-architecture/arc42/01-introduction-and-goals.md) |
+| Supersedes / Superseded by | — |
+
+**Context:** The customer attendee list and the PoC sign-off owner were open (MTG-20261114 Q26, MTG-20261121 A1).
+
+**Decision:** The Product Owner is the customer's single representative in all meetings, its decision maker,
+and the sign-off owner for the PoC acceptance.
+
+**Rationale:** Stated by the customer.
+
+**Consequences & follow-ups:** Earlier documents name the same person "Customer representative"; they stay unchanged.
+New and updated documents use "Product Owner (Customer)".
+
+### DEC-012
+**Upload from a dummy sample set; unknown files raise EX1**
+
+| Field | Value |
+|---|---|
+| Date | 2026-11-28 |
+| Category | Scope |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D2 |
+| Impacts | [scope.md](scope.md) SCP-IN-02; [ADR-0001](../02-architecture/adr/0001-isolate-extraction-and-erp-behind-ports.md) Dummy Extraction Adapter |
+| Supersedes / Superseded by | — |
+
+**Context:** How an upload maps to dummy extraction data was open (MTG-20261121 Q1).
+
+**Decision:** Our team prepares a dummy sample set: each sample is an invoice file (PDF or image) with predefined
+extraction data. Uploading a file from the set loads its data. Uploading any other file raises exception EX1.
+
+**Rationale:** Proposed by the SA; the Product Owner added the rule for unknown files.
+
+**Consequences & follow-ups:** The sample set is part of the demo scenario catalog (SAPS-32).
+
+### DEC-013
+**Approval before final review, for all invoice types**
+
+| Field | Value |
+|---|---|
+| Date | 2026-11-28 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D3 |
+| Impacts | [scope.md](scope.md) SCP-IN-06; [§6.2 Runtime View](../02-architecture/arc42/06-runtime-view.md) |
+| Supersedes / Superseded by | — |
+
+**Context:** The order of approval and final review, and the scope of the approval rule, were open (MTG-20261121 Q2, Q4).
+
+**Decision:** When approval is required ([DEC-009](#dec-009)), it comes before the Accounting Member's final review.
+The approval rule applies to all invoice types, including non-PO invoices.
+
+**Rationale:** Proposed by the SA; accepted by the Product Owner.
+
+**Consequences & follow-ups:** None.
+
+### DEC-014
+**Rejected is a final state; three rejection points**
+
+| Field | Value |
+|---|---|
+| Date | 2026-11-28 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D4, R15 |
+| Impacts | [scope.md](scope.md) SCP-IN-14 |
+| Supersedes / Superseded by | — |
+
+**Context:** Handling of rejected invoices was open (MTG-20261121 Q3).
+
+**Decision:** Rejected is a final state; a rejected invoice is not processed further. An invoice can be rejected:
+- by the Accounting Manager at approval;
+- by an Accounting Member during exception handling (e.g. a real duplicate);
+- by an Accounting Member at the final review.
+
+**Rationale:** Stated by the Product Owner; rejection points proposed by the SA and confirmed.
+
+**Consequences & follow-ups:** None.
+
+### DEC-015
+**Configurable tolerance and approval threshold**
+
+| Field | Value |
+|---|---|
+| Date | 2026-11-28 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D5, R16 |
+| Impacts | [scope.md](scope.md) SCP-IN-13; refines [DEC-006](#dec-006), [DEC-009](#dec-009) |
+| Supersedes / Superseded by | — |
+
+**Context:** Whether the 0.5 USD tolerance and 300 USD threshold are fixed was open (MTG-20261121 Q5).
+
+**Decision:** The price tolerance and the approval threshold are settings. Defaults: 0.5 USD and 300 USD.
+Only the Accounting Manager can change them.
+
+**Rationale:** Stated by the Product Owner.
+
+**Consequences & follow-ups:** None.
+
+### DEC-016
+**Shared exception queue**
+
+| Field | Value |
+|---|---|
+| Date | 2026-11-28 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D6 |
+| Impacts | [scope.md](scope.md) SCP-IN-04 |
+| Supersedes / Superseded by | — |
+
+**Context:** Assignment of exceptions was open (MTG-20261114 Q23, MTG-20261121 Q6).
+
+**Decision:** Invoices in status Exception go to one shared queue. Any available Accounting Member picks one up.
+
+**Rationale:** Proposed by the SA; accepted by the Product Owner.
+
+**Consequences & follow-ups:** None.
+
+### DEC-017
+**PoC demo on 2027-02-22**
+
+| Field | Value |
+|---|---|
+| Date | 2026-11-28 |
+| Category | Project |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D7 |
+| Impacts | [scope.md](scope.md) SCP-IN-11; [CON-02](../02-architecture/arc42/02-constraints.md); refines [DEC-003](#dec-003) |
+| Supersedes / Superseded by | — |
+
+**Context:** DEC-003 set a 3-month PoC from 2026-11-21 without an exact end date (MTG-20261121 Q7).
+
+**Decision:** The PoC demo is on 2027-02-22. There is no interim demo.
+
+**Rationale:** Stated by the Product Owner.
+
+**Consequences & follow-ups:** The demo date is one day after the 3-month mark (2027-02-21).
+
+### DEC-018
+**Exception types EX1–EX9 for the PoC**
+
+| Field | Value |
+|---|---|
+| Date | 2026-11-28 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D8 |
+| Impacts | [scope.md](scope.md) SCP-IN-04 |
+| Supersedes / Superseded by | — |
+
+**Context:** The SA proposed a merged exception list ([MTG-20261121](meetings/2026-11-21-requirements-workshop.md) R19, Q8).
+
+**Decision:** The PoC supports these exception types:
+
+| Code | Exception |
+|---|---|
+| EX1 | Invoice unreadable: extraction failed or file not in the dummy sample set |
+| EX2 | Non-PO invoice (manual review) |
+| EX3 | Invalid PO number (not 7 digits, or prefix other than 0 / 1) |
+| EX4 | PO not found |
+| EX5 | Trade and non-trade POs on one invoice |
+| EX6 | Unit price outside tolerance |
+| EX7 | Quantity mismatch |
+| EX8 | Missing goods receipt |
+| EX9 | Duplicate invoice |
+
+**Rationale:** Confirmed by the Product Owner "for now"; the list may grow after the PoC.
+
+**Consequences & follow-ups:** One demo scenario per exception type (SAPS-32).
+
+### DEC-019
+**Customer agrees the PoC technology stack**
+
+| Field | Value |
+|---|---|
+| Date | 2026-11-28 |
+| Category | Technical |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D9 |
+| Impacts | [ADR-0002](../02-architecture/adr/0002-use-python-fastapi-and-react.md), [ADR-0003](../02-architecture/adr/0003-use-postgresql-and-docker-compose.md) |
+| Supersedes / Superseded by | — |
+
+**Context:** ADR-0002 and ADR-0003 left customer agreement TBD; accepted ADRs cannot be edited.
+
+**Decision:** The customer agrees the PoC stack: Python/FastAPI, React, PostgreSQL, Docker Compose.
+
+**Rationale:** Stated by the Product Owner.
+
+**Consequences & follow-ups:** None.
+
+### DEC-020
+**PoC success criterion: all flows run successfully**
+
+| Field | Value |
+|---|---|
+| Date | 2026-11-28 |
+| Category | Scope |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D10 |
+| Impacts | [scope.md](scope.md) BO2; refines [DEC-003](#dec-003) |
+| Supersedes / Superseded by | — |
+
+**Context:** Business objectives are not defined yet (MTG-20261114 Q3).
+
+**Decision:** At this point, the PoC is successful when all flows run successfully in the demo.
+"All flows" means every scenario in the demo scenario catalog: happy paths per invoice type and one scenario per
+exception type EX1–EX9.
+
+**Rationale:** Stated by the Product Owner; the meaning of "all flows" was proposed by the SA and confirmed.
+
+**Consequences & follow-ups:** The demo scenario catalog is defined in the test strategy (SAPS-32).
+
+### DEC-021
+**Notification recipients by notification type**
+
+| Field | Value |
+|---|---|
+| Date | 2026-11-28 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D11, R17 |
+| Impacts | [scope.md](scope.md) SCP-IN-08 |
+| Supersedes / Superseded by | — |
+
+**Context:** Who receives in-app notifications was open (MTG-20261128 Q4).
+
+**Decision:**
+
+| Notification | Recipients |
+|---|---|
+| Invoice in status Exception | Accounting Members |
+| Invoice waiting for approval (above the approval threshold) | Accounting Manager |
+| Invoice ready for final review | Accounting Members |
+
+**Rationale:** Stated by the Product Owner; matches the flow in §6.2.
+
+**Consequences & follow-ups:** None.
