@@ -3,7 +3,7 @@ title: "§3 Context and Scope"
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
-last_updated: 2026-12-01
+last_updated: 2026-12-05
 related: [DEC-004, DEC-011, CON-03, SCP-OUT-01, SCP-OUT-02, ADR-0001]
 ---
 
@@ -27,7 +27,7 @@ The grey external systems show the context after the PoC ([SCP-OUT-01, SCP-OUT-0
 ## 3.2 Technical Context
 | Interface | Partner | Direction | Protocol / format | Auth | Frequency / volume | Spec |
 |---|---|---|---|---|---|---|
-| SAPS Web App (UI) | Accounting Member, Accounting Manager | In | HTTPS, browser | Simple user accounts ([NFR-SEC-001](../../01-requirements/nfr.md#nfr-sec-001)) | TBD (MTG-20261114 Q5) | `saps-api.openapi.yaml` (TBD) |
+| SAPS Web App (UI) | Accounting Member, Accounting Manager | In | HTTPS, browser | Simple user accounts ([NFR-SEC-001](../../01-requirements/nfr.md#nfr-sec-001)) | PoC: ≤ 1,000 invoices/day ([Workload Profile](../../01-requirements/nfr.md#2-workload-profile)) | [saps-api.openapi.yaml](../api/saps-api.openapi.yaml) |
 | Extraction API | Invoice Extraction Service | Out | HTTPS, format TBD | TBD | after the PoC | TBD |
 | ERP data API | MuleSoft APIs | Out | HTTPS/JSON or MuleSoft MCP Tools ([CON-03](02-constraints.md)) | TBD | after the PoC | TBD |
 

@@ -198,7 +198,8 @@ arc42 §8 Cross-cutting Concepts is not written yet. Until then:
 - Configuration: environment variables only (§6).
 
 ### 5.4 APIs & Events
-- Contract first: change `docs/02-architecture/api/saps-api.openapi.yaml` before or with the implementation (file not created yet).
+- Contract first: change [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) before or with the implementation;
+  run `redocly lint` and `openapi-spec-validator` on it. Feature specs reference its `operationId`s.
 - The SAPS Web App uses a TypeScript client generated from that file.
 - Messages to the SAPS Worker carry only the `invoice_id` (`process_invoice`, `rematch_invoice`).
 
@@ -251,7 +252,7 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 | When you… | Update |
 |---|---|
 | Build a non-trivial feature | Feature spec in `docs/03-features/` (template `docs/_templates/feature-spec.md`) |
-| Change an API | `docs/02-architecture/api/saps-api.openapi.yaml` |
+| Change an API | [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
 | Change the schema | [data-model.md](../02-architecture/data-model.md) |
 | Introduce a new domain term or component | [Glossary](../02-architecture/arc42/12-glossary.md) |
 | Make an architecturally significant decision | New ADR in `docs/02-architecture/adr/` |

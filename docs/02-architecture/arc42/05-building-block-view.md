@@ -18,7 +18,7 @@ SAPS API and SAPS Worker share one Python codebase ([ADR-0004](../adr/0004-proce
 | Container | Type | Technology | Responsibility | Repository | API |
 |---|---|---|---|---|---|
 | SAPS Web App | Web app | React SPA ([ADR-0002](../adr/0002-use-python-fastapi-and-react.md)) | UI for upload, exception queue, approval and review | TBD | — |
-| SAPS API | API | Python, FastAPI, SQLAlchemy async ([ADR-0002](../adr/0002-use-python-fastapi-and-react.md), [ADR-0005](../adr/0005-use-sqlalchemy-and-alembic.md)) | Upload, invoice workflow, approvals, settings and notifications | TBD | `saps-api.openapi.yaml` (TBD) |
+| SAPS API | API | Python, FastAPI, SQLAlchemy async ([ADR-0002](../adr/0002-use-python-fastapi-and-react.md), [ADR-0005](../adr/0005-use-sqlalchemy-and-alembic.md)) | Upload, invoice workflow, approvals, settings and notifications | TBD | [saps-api.openapi.yaml](../api/saps-api.openapi.yaml) |
 | SAPS Worker | Worker | Python, Dramatiq with AsyncIO middleware, APScheduler ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)) | Extraction, duplicate check, matching; sweeper for stuck invoices | TBD (same as SAPS API) | — |
 | SAPS Message Broker | Queue | Redis, AOF persistence ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)) | Queues processing messages | — | — |
 | SAPS File Storage | Object storage | SeaweedFS 4.53, S3 API ([ADR-0006](../adr/0006-store-invoice-files-in-seaweedfs.md)) | Stores uploaded invoice files | — | S3 API |

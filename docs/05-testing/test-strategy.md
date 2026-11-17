@@ -25,7 +25,7 @@ Scope: Proof of Concept ([DEC-003](../01-requirements/decision-log.md#dec-003)).
 |---|---|---|---|---|---|---|
 | Unit | Matching rules, type derivation, tolerance, approval and state transitions | SAPS API / SAPS Worker domain logic; SAPS Web App components | Dev | pytest; Vitest + React Testing Library | Yes | CI on every PR |
 | Integration | SAPS API and SAPS Worker with real PostgreSQL, Redis and SeaweedFS; redelivery after a worker stop; sweeper recovers invoices without a message; idempotent actors | SAPS API, SAPS Worker | Dev | pytest + Testcontainers (PostgreSQL, Redis, SeaweedFS) | Yes | CI on every PR |
-| Contract | SAPS API matches its OpenAPI specification | SAPS API | Dev | Schemathesis (proposal) | Yes | CI on every PR, once `saps-api.openapi.yaml` exists |
+| Contract | SAPS API matches its OpenAPI specification | SAPS API | Dev | Schemathesis (proposal) | Yes | CI on every PR, against [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
 | End-to-end | Demo scenarios DS-01 … DS-19 (§11) | UC-01 … UC-08 | SA | Playwright | Yes | local, clean Docker Compose stack, before each demo rehearsal |
 | Regression | Previously passing demo scenarios still pass | E2E suite | SA | Playwright | Yes | local, before merging to main |
 | Security | Vulnerable dependencies, insecure code patterns | all code | Dev | pip-audit, npm audit; Bandit (proposal) | Yes | CI on every PR |
