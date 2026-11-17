@@ -136,7 +136,7 @@ A line with EX6 is still checked for quantity, so the Accounting Member sees all
 |---|---|---|---|
 | EC-01 | Two lines of the same invoice refer to the same PO line | Quantities of these lines are added up before the quantity check | EX7 on both lines if the sum fails |
 | EC-02 | Two invoices for the same PO line are matched at the same time | A transaction-level advisory lock per (tenant, PO number, PO line number) serializes the quantity check and the status change, so both cannot consume the same quantity | Second invoice gets EX7 if the quantity is used up |
-| EC-03 | Duplicate or stale message (already processed, or re-match for an invoice no longer in Exception) | Idempotent: no change, message acknowledged | Log `matching_skipped` |
+| EC-03 | Duplicate or stale message (already processed, or `rematch_invoice` for an invoice no longer in Matching — [SAPS-20](SAPS-20-exception-handling.md)) | Idempotent: no change, message acknowledged | Log `matching_skipped` |
 | EC-04 | Some lines have a PO number and others do not | EX3 on the lines without a PO number; type from the other lines (BR-02, [DEC-031](../01-requirements/decision-log.md#dec-031)) | InvoiceException EX3 |
 | EC-05 | Vendor on the invoice differs from the vendor on the PO | EX10 on the line; price and quantity checks of that line are skipped (BR-15) | InvoiceException EX10 |
 | EC-06 | Invoice without lines | EX1 (extraction result not usable) | InvoiceException EX1 |

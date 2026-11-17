@@ -3,7 +3,7 @@
 openapi: 3.1.0
 info:
   title: SAPS API
-  version: "0.2.0"
+  version: "0.3.0"
   description: |
     HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload, the exception queue,
     approval, final review, notifications and matching settings.
@@ -230,7 +230,8 @@ paths:
         Allowed only in status `EXCEPTION` and only for the Accounting Member who claimed the invoice.
         Fields not sent stay unchanged; `lines`, when sent, replaces all lines.
         If a matching field changes (vendorCode, invoiceNumber, poNumber, poLineNumber, quantity, unitPrice — DEC-024),
-        re-matching is queued (DEC-010) and the response is `202`; otherwise `200`.
+        the status becomes `MATCHING`, re-matching is queued (DEC-010) and the response is `202`; otherwise `200`.
+        While the status is `MATCHING`, update, resolve and reject return `409` (SAPS-20).
       tags: [Invoices]
       x-roles: [ACCOUNTING_MEMBER]
       parameters:
@@ -284,6 +285,23 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      operationId: releaseInvoiceClaim
+      summary: Return a claimed invoice to the exception queue
+      description: |
+        Clears the claim of an invoice in status `EXCEPTION` (SAPS-20 BR-03). Allowed for the claimant; an Accounting
+        Manager can release any claim (pending SAPS-20 Q2). `409` if the invoice is not claimed.
+      tags: [Invoices]
+      x-roles: [ACCOUNTING_MEMBER, ACCOUNTING_MANAGER]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "204": { description: Claim released }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /v1/invoices/{invoiceId}/resolution:
     parameters:
@@ -294,7 +312,8 @@ paths:
       description: |
         For an invoice in status `EXCEPTION` claimed by the caller, e.g. a reviewed non-PO invoice (EX2, DEC-006).
         Sets the next status: `PENDING_APPROVAL` when the total amount is above the approval threshold
-        (DEC-009, DEC-013), otherwise `PENDING_REVIEW`.
+        (DEC-009, DEC-013), otherwise `PENDING_REVIEW`. The claim is cleared.
+        `422` if an open exception is of a type that may not be accepted as is (SAPS-20 BR-06, Q1).
       tags: [Invoices]
       x-roles: [ACCOUNTING_MEMBER]
       parameters:
@@ -311,6 +330,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "412": { $ref: "#/components/responses/PreconditionFailed" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "428": { $ref: "#/components/responses/PreconditionRequired" }
         "500": { $ref: "#/components/responses/InternalError" }
 

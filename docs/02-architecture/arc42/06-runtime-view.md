@@ -3,7 +3,7 @@ title: "§6 Runtime View"
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)", "Product Owner (Customer)"]
-last_updated: 2026-12-01
+last_updated: 2026-12-08
 related: [DEC-003, DEC-004, DEC-005, DEC-006, DEC-007, DEC-008, DEC-009, DEC-010, DEC-012, DEC-013, DEC-014, DEC-016, DEC-021, ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006]
 ---
 
@@ -129,7 +129,7 @@ sequenceDiagram
         Worker->>DB: Select invoices in Uploaded or Matching older than the limit, FOR UPDATE SKIP LOCKED [SQL]
         Note over DB: Invoices whose job is running are row-locked and skipped
         loop Each stuck invoice
-            Worker->>MQ: Send process_invoice(invoice_id) [Redis]
+            Worker->>MQ: Send process_invoice if Uploaded, rematch_invoice if Matching [Redis]
             Worker->>DB: Update updated_at, record InvoiceEvent [SQL]
         end
         Worker->>DB: Commit, lock released [SQL]
