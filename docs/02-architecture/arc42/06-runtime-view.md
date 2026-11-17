@@ -58,7 +58,7 @@ sequenceDiagram
     end
     Worker-->>MQ: Acknowledge message
 
-    loop While status is Exception (EX1 to EX9, DEC-016)
+    loop While status is Exception (EX1 to EX10, DEC-016)
         Web->>API: Poll status and notifications [HTTPS/JSON]
         API-->>Web: Notification for Accounting Members (DEC-021)
         Member->>Web: Pick invoice from queue, review and update it

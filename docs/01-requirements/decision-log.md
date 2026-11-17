@@ -3,8 +3,8 @@ title: Decision Log
 status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["PM (TBD)"]
-last_updated: 2026-12-05
-related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205]
+last_updated: 2026-12-08
+related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208]
 ---
 
 # Decision Log
@@ -29,19 +29,23 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205]
 | [DEC-015](#dec-015) | 2026-11-28 | Configurable tolerance and approval threshold | Business | confirmed |
 | [DEC-016](#dec-016) | 2026-11-28 | Shared exception queue | Business | confirmed |
 | [DEC-017](#dec-017) | 2026-11-28 | PoC demo on 2027-02-22 | Project | confirmed |
-| [DEC-018](#dec-018) | 2026-11-28 | Exception types EX1–EX9 for the PoC | Business | confirmed |
+| [DEC-018](#dec-018) | 2026-11-28 | Exception types EX1–EX9 for the PoC | Business | superseded |
 | [DEC-019](#dec-019) | 2026-11-28 | Customer agrees the PoC technology stack | Technical | confirmed |
 | [DEC-020](#dec-020) | 2026-11-28 | PoC success criterion: all flows run successfully | Scope | confirmed |
 | [DEC-021](#dec-021) | 2026-11-28 | Notification recipients by notification type | Business | confirmed |
 | [DEC-022](#dec-022) | 2026-12-05 | Redis and SeaweedFS added to the PoC stack | Technical | confirmed |
 | [DEC-023](#dec-023) | 2026-12-05 | Already invoiced quantity counts matched, approved and completed invoices | Business | confirmed |
 | [DEC-024](#dec-024) | 2026-12-05 | Matching fields that trigger re-matching | Business | confirmed |
-| [DEC-025](#dec-025) | 2026-12-05 | Demo scenario catalog defines "all flows" | Scope | confirmed |
+| [DEC-025](#dec-025) | 2026-12-05 | Demo scenario catalog defines "all flows" | Scope | superseded |
 | [DEC-026](#dec-026) | 2026-12-05 | Product direction: multi-company AP system on AWS | Business | confirmed |
 | [DEC-027](#dec-027) | 2026-12-05 | Meetings only when there are questions | Process | confirmed |
 | [DEC-028](#dec-028) | 2026-12-05 | Code and documentation in one public GitHub repository | Process | confirmed |
 | [DEC-029](#dec-029) | 2026-12-05 | Solution Architect is Tech Lead; Claude Code is the only developer | Project | confirmed |
 | [DEC-030](#dec-030) | 2026-12-05 | Repository license: MIT | Business | confirmed |
+| [DEC-031](#dec-031) | 2026-12-08 | Lines without a PO number on a PO invoice raise EX3 | Business | confirmed |
+| [DEC-032](#dec-032) | 2026-12-08 | Invoice quantity must not exceed the expected quantity | Business | confirmed |
+| [DEC-033](#dec-033) | 2026-12-08 | Exception types EX1–EX10 and demo scenarios DS-01 … DS-20 | Business | confirmed |
+| [DEC-034](#dec-034) | 2026-12-08 | Match cumulatively per PO line; no DO / GR reference in the PoC | Scope | confirmed |
 
 ## 2. Decisions
 
@@ -173,7 +177,7 @@ extraction data is open ([MTG-20261121](meetings/2026-11-21-requirements-worksho
 | Decided by | Customer representative (Customer) |
 | Source | [MTG-20261121](meetings/2026-11-21-requirements-workshop.md) D4 |
 | Impacts | [scope.md](scope.md) SCP-IN-03, SCP-OUT-06, SCP-OUT-07 |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Quantity rule partly superseded by [DEC-032](#dec-032) |
 
 **Context:** Matching level and tolerances were open (MTG-20261114 Q14–Q16).
 
@@ -447,11 +451,11 @@ Only the Accounting Manager can change them.
 |---|---|
 | Date | 2026-11-28 |
 | Category | Business |
-| Status | confirmed |
+| Status | superseded |
 | Decided by | Product Owner (Customer) |
 | Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D8 |
 | Impacts | [scope.md](scope.md) SCP-IN-04 |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Superseded by [DEC-033](#dec-033) |
 
 **Context:** The SA proposed a merged exception list ([MTG-20261121](meetings/2026-11-21-requirements-workshop.md) R19, Q8).
 
@@ -619,11 +623,11 @@ Changes to other fields (e.g. description, invoice date) do not trigger re-match
 |---|---|
 | Date | 2026-12-05 |
 | Category | Scope |
-| Status | confirmed |
+| Status | superseded |
 | Decided by | Product Owner (Customer) |
 | Source | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) D4 |
 | Impacts | [test-strategy.md §11](../05-testing/test-strategy.md#11-poc-demo-acceptance); refines [DEC-020](#dec-020) |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Superseded by [DEC-033](#dec-033) |
 
 **Context:** DEC-020 sets "all flows run successfully" as the PoC success criterion.
 
@@ -748,4 +752,107 @@ publishing source code. Apache-2.0 was the alternative (adds an explicit patent 
 **Consequences & follow-ups:** Anyone, including competitors, may also use the published code commercially. The copyright holder
 can still license future versions differently; code already published under MIT stays under MIT. Dependencies must stay
 compatible: no AGPL / SSPL in shipped code (Developer Guide §5.6).
+
+### DEC-031
+**Lines without a PO number on a PO invoice raise EX3**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-08 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20261208](meetings/2026-12-08-matching-rules.md) D1 |
+| Impacts | [SAPS-19](../03-features/SAPS-19-invoice-matching.md) BR-02; refines [DEC-005](#dec-005) |
+| Supersedes / Superseded by | — |
+
+**Context:** DEC-005 derives the invoice type from PO numbers but did not cover invoices where only some lines carry a PO number.
+
+**Decision:** On an invoice where at least one line has a PO number, every line without a PO number raises EX3.
+The invoice type comes from the lines with a PO number.
+
+**Rationale:** Proposed by the SA; accepted by the Product Owner.
+
+**Consequences & follow-ups:** None.
+
+### DEC-032
+**Invoice quantity must not exceed the expected quantity**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-08 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261208](meetings/2026-12-08-matching-rules.md) D2 |
+| Impacts | [SAPS-19](../03-features/SAPS-19-invoice-matching.md) BR-09; partly supersedes [DEC-006](#dec-006) (quantity rule); refines [DEC-007](#dec-007) |
+| Supersedes / Superseded by | Partly supersedes [DEC-006](#dec-006) (quantity rule only) |
+
+**Context:** DEC-006 said "quantity must match exactly", DEC-007 said "above it → exception"; the two readings differ for partial invoicing.
+
+**Decision:** The invoice quantity of a PO line must not exceed the expected quantity: received-not-invoiced quantity
+(3-way) or PO quantity not yet invoiced (2-way). A smaller quantity passes (partial invoicing). A larger quantity raises EX7.
+
+**Rationale:** Standard AP practice: one PO is often invoiced in several parts; only over-invoicing is blocked. The
+Product Owner first chose exact matching, then changed to this rule after the SA explained the practice ([MTG-20261208](meetings/2026-12-08-matching-rules.md) §5.2).
+
+**Consequences & follow-ups:** The remaining quantity stays available for later invoices of the same PO line.
+
+### DEC-033
+**Exception types EX1–EX10 and demo scenarios DS-01 … DS-20**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-08 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261208](meetings/2026-12-08-matching-rules.md) D3 |
+| Impacts | [scope.md](scope.md) SCP-IN-04; [SAPS-19](../03-features/SAPS-19-invoice-matching.md); [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml); [test-strategy.md §11](../05-testing/test-strategy.md#11-poc-demo-acceptance) |
+| Supersedes / Superseded by | Supersedes [DEC-018](#dec-018) and [DEC-025](#dec-025) |
+
+**Context:** The vendor on an invoice can differ from the vendor of the PO it refers to; EX1–EX9 had no type for this.
+
+**Decision:** The PoC supports these exception types:
+
+| Code | Exception |
+|---|---|
+| EX1 | Invoice unreadable: extraction failed or file not in the dummy sample set |
+| EX2 | Non-PO invoice (manual review) |
+| EX3 | Invalid or missing PO number (not 7 digits, prefix other than 0 / 1, or no PO number on a PO invoice line — DEC-031) |
+| EX4 | PO or PO line not found |
+| EX5 | Trade and non-trade POs on one invoice |
+| EX6 | Unit price outside tolerance |
+| EX7 | Quantity above the expected quantity (DEC-032) |
+| EX8 | Missing goods receipt |
+| EX9 | Duplicate invoice |
+| EX10 | Vendor does not match the PO |
+
+The demo scenario catalog DS-01 … DS-20 in the test strategy (DS-20 covers EX10) is the complete list of flows for the PoC demo.
+
+**Rationale:** Chosen by the Product Owner over reusing EX4: a dedicated type is clearer for the Accounting Member.
+
+**Consequences & follow-ups:** Changes to the exception list or the catalog need a new decision.
+
+### DEC-034
+**Match cumulatively per PO line; no DO / GR reference in the PoC**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-08 |
+| Category | Scope |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20261208](meetings/2026-12-08-matching-rules.md) D4 |
+| Impacts | [scope.md](scope.md) SCP-OUT-13; [SAPS-19](../03-features/SAPS-19-invoice-matching.md); confirms [DEC-007](#dec-007) |
+| Supersedes / Superseded by | — |
+
+**Context:** Matching can be cumulative per PO line, or GR-based (each invoice line references a goods receipt or delivery order).
+
+**Decision:** The PoC matches cumulatively per PO line (sum of goods receipts minus already invoiced quantity).
+Invoices carry no delivery order (DO) or goods receipt (GR) reference. GR-based invoice verification is a candidate after the PoC.
+
+**Rationale:** Simpler extraction and matching; enough for the demo scenarios.
+
+**Consequences & follow-ups:** Deliveries of the same PO line at different prices cannot be told apart in the PoC.
 

@@ -1,11 +1,11 @@
 ---
 title: Scope Statement
-version: "0.4"           # 1.0 = first customer-approved version
+version: "0.5"           # 1.0 = first customer-approved version
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Solution Architect (our company)", "Product Owner (Customer)"]
-last_updated: 2026-12-05
-related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-003, DEC-004, DEC-011, DEC-012, DEC-013, DEC-014, DEC-015, DEC-016, DEC-017, DEC-018, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024, DEC-025, DEC-026]
+last_updated: 2026-12-08
+related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-003, DEC-004, DEC-011, DEC-012, DEC-013, DEC-014, DEC-015, DEC-016, DEC-017, DEC-018, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024, DEC-025, DEC-026, DEC-031, DEC-032, DEC-033, DEC-034]
 ---
 
 # Scope Statement
@@ -26,7 +26,7 @@ Backlog items live in the Linear project
 | # | Objective | Success measure |
 |---|---|---|
 | BO1 | Automate the AP flow and grow into an AP system serving many customer companies on AWS ([DEC-026](decision-log.md#dec-026)) | TBD |
-| BO2 | Prove the automated AP business flow in a PoC | All flows run successfully in the demo on 2027-02-22: every scenario in the demo scenario catalog, i.e. happy paths per invoice type and one scenario per exception type EX1–EX9 ([DEC-020](decision-log.md#dec-020), [DEC-017](decision-log.md#dec-017)) |
+| BO2 | Prove the automated AP business flow in a PoC | All flows run successfully in the demo on 2027-02-22: every scenario in the demo scenario catalog, i.e. happy paths per invoice type and one scenario per exception type EX1–EX10 ([DEC-033](decision-log.md#dec-033), [DEC-020](decision-log.md#dec-020), [DEC-017](decision-log.md#dec-017)) |
 
 ## 3. In Scope
 
@@ -37,8 +37,8 @@ All items are priority Must for the PoC (AS2, confirmed).
 |---|---|---|---|---|---|
 | SCP-IN-01 | Invoice upload | An Accounting Member uploads an invoice (PDF or image) to the system manually | Must | [SAPS-17](https://linear.app/jiringuyen/issue/SAPS-17) | [MTG-20261114](meetings/2026-11-14-kickoff.md) R1 |
 | SCP-IN-02 | Invoice data extraction | Dummy extraction in the PoC: uploading a file from the dummy sample set loads its predefined data; any other file raises EX1 | Must | [SAPS-18](https://linear.app/jiringuyen/issue/SAPS-18) | [DEC-004](decision-log.md#dec-004), [DEC-012](decision-log.md#dec-012) |
-| SCP-IN-03 | Invoice matching | Invoice type derived from the PO number; line-level 2-way / 3-way matching with price tolerance; non-PO invoices to manual review | Must | [SAPS-19](https://linear.app/jiringuyen/issue/SAPS-19) | [DEC-005](decision-log.md#dec-005), [DEC-006](decision-log.md#dec-006), [DEC-007](decision-log.md#dec-007) |
-| SCP-IN-04 | Exception handling | On an exception (EX1–EX9) the flow pauses; the invoice goes to a shared queue; an Accounting Member reviews and updates it; matching re-runs when a matching field changes | Must | [SAPS-20](https://linear.app/jiringuyen/issue/SAPS-20) | [DEC-010](decision-log.md#dec-010), [DEC-016](decision-log.md#dec-016), [DEC-018](decision-log.md#dec-018) |
+| SCP-IN-03 | Invoice matching | Invoice type derived from the PO number; line-level 2-way / 3-way matching with price tolerance; non-PO invoices to manual review | Must | [SAPS-19](https://linear.app/jiringuyen/issue/SAPS-19) | [DEC-005](decision-log.md#dec-005), [DEC-006](decision-log.md#dec-006), [DEC-007](decision-log.md#dec-007), [DEC-031](decision-log.md#dec-031), [DEC-032](decision-log.md#dec-032), [DEC-034](decision-log.md#dec-034) |
+| SCP-IN-04 | Exception handling | On an exception (EX1–EX10) the flow pauses; the invoice goes to a shared queue; an Accounting Member reviews and updates it; matching re-runs when a matching field changes | Must | [SAPS-20](https://linear.app/jiringuyen/issue/SAPS-20) | [DEC-033](decision-log.md#dec-033), [DEC-010](decision-log.md#dec-010), [DEC-016](decision-log.md#dec-016) |
 | SCP-IN-05 | Final result review | At the end of the flow, an Accounting Member checks and confirms the result; the result is displayed in the application only | Must | [SAPS-21](https://linear.app/jiringuyen/issue/SAPS-21) | [MTG-20261114](meetings/2026-11-14-kickoff.md) R6; [MTG-20261121](meetings/2026-11-21-requirements-workshop.md) R16 |
 | SCP-IN-06 | Invoice approval | Invoices of any type with a total amount (tax included) above the approval threshold are approved by an Accounting Manager, before the final review | Must | [SAPS-22](https://linear.app/jiringuyen/issue/SAPS-22) | [DEC-009](decision-log.md#dec-009), [DEC-013](decision-log.md#dec-013) |
 | SCP-IN-07 | Duplicate invoice detection | An invoice with the same vendor and invoice number as an existing one becomes an exception | Must | [SAPS-23](https://linear.app/jiringuyen/issue/SAPS-23) | [DEC-008](decision-log.md#dec-008) |
@@ -80,6 +80,7 @@ Quality requirements are specified in the [Non-Functional Requirements](nfr.md).
 | SCP-OUT-10 | Single Sign-On | Not in the PoC; simple user accounts are used | [MTG-20261121](meetings/2026-11-21-requirements-workshop.md) R22 |
 | SCP-OUT-11 | Invoice intake from a dedicated mailbox | After the PoC; the PoC covers manual upload only | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) R7 |
 | SCP-OUT-12 | Serving several customer companies (multi-tenancy) | After the PoC; the PoC serves one company and only prepares the data model ([ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md)) | [DEC-026](decision-log.md#dec-026) |
+| SCP-OUT-13 | GR-based invoice verification (delivery order / goods receipt reference on invoice lines) | After the PoC; the PoC matches cumulatively per PO line | [DEC-034](decision-log.md#dec-034) |
 
 ## 5. Assumptions
 | # | Assumption | To be confirmed by | Status |
@@ -123,3 +124,4 @@ Scope-relevant questions are tracked and answered in the meeting minutes listed 
 | 0.2 | 2026-11-21 | Solution Architect (our company) | Scope set to the PoC phase; SCP-IN-02, -04, -05 changed; SCP-IN-06 to -12 and SCP-OUT-01 to -10 added; BO2 added | [DEC-003](decision-log.md#dec-003) to [DEC-010](decision-log.md#dec-010) |
 | 0.3 | 2026-11-28 | Solution Architect (our company) | SCP-IN-02, -04, -06, -08, -10, -11 and BO2 changed; SCP-IN-13, -14 added; AS2 confirmed; sign-off owner set; Linear epics linked | [DEC-011](decision-log.md#dec-011) to [DEC-021](decision-log.md#dec-021) |
 | 0.4 | 2026-12-05 | Solution Architect (our company) | BO1 changed; AS1 confirmed for the PoC; SCP-OUT-11, -12 added; open questions updated | [DEC-026](decision-log.md#dec-026) |
+| 0.5 | 2026-12-08 | Solution Architect (our company) | SCP-IN-03, -04 and BO2 changed (EX10, quantity rule); SCP-OUT-13 added | [DEC-031](decision-log.md#dec-031) to [DEC-034](decision-log.md#dec-034) |

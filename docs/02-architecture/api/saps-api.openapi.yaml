@@ -3,13 +3,13 @@
 openapi: 3.1.0
 info:
   title: SAPS API
-  version: "0.1.0"
+  version: "0.2.0"
   description: |
     HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload, the exception queue,
     approval, final review, notifications and matching settings.
 
     Owner container: SAPS API — see arc42 §5 (`docs/02-architecture/arc42/05-building-block-view.md`).
-    Runtime flow: arc42 §6.2. Business rules: decision log DEC-005 … DEC-024.
+    Runtime flow: arc42 §6.2. Business rules: decision log DEC-005 … DEC-034.
 
     **Conventions**
     - Money and quantities are decimal strings (no floating point). Currency is ISO 4217; only `USD` in the PoC (DEC-006).
@@ -597,8 +597,8 @@ components:
       description: Derived from the PO number (DEC-005)
     ExceptionCode:
       type: string
-      enum: [EX1, EX2, EX3, EX4, EX5, EX6, EX7, EX8, EX9]
-      description: Exception types of the PoC (DEC-018)
+      enum: [EX1, EX2, EX3, EX4, EX5, EX6, EX7, EX8, EX9, EX10]
+      description: Exception types of the PoC (DEC-033; EX10 added in API 0.2.0)
     ExceptionStatus:
       type: string
       enum: [OPEN, RESOLVED]

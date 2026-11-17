@@ -105,7 +105,7 @@ SAPS/
 │   └── tests/{unit,integration,architecture}/
 ├── frontend/                     # React + TypeScript (Vite) — SAPS Web App
 │   ├── src/
-│   └── e2e/                      # Playwright tests DS-01 … DS-19
+│   └── e2e/                      # Playwright tests DS-01 … DS-20
 ├── docs/                         # this documentation kit
 ├── spikes/                       # throwaway spike code
 ├── compose.yaml                  # 6 containers (local PoC)
@@ -188,7 +188,7 @@ The repository is public ([DEC-028](../01-requirements/decision-log.md#dec-028))
 ### 5.2 Naming
 - Classes, tables, API resources and UI labels use glossary terms ([§12](../02-architecture/arc42/12-glossary.md)):
   `Invoice`, `InvoiceLine`, `InvoiceException`, `Approval`, `MatchingSettings`, … No abbreviations except those in glossary §12.3.
-- Exception codes are `EX1` … `EX9` ([DEC-018](../01-requirements/decision-log.md#dec-018)); statuses are the enum values in the data model.
+- Exception codes are `EX1` … `EX10` ([DEC-033](../01-requirements/decision-log.md#dec-033)); statuses are the enum values in the data model.
 
 ### 5.3 Cross-cutting Rules
 arc42 §8 Cross-cutting Concepts is not written yet. Until then:
@@ -246,7 +246,7 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 | Integration | `cd backend && uv run pytest tests/integration` | Starts PostgreSQL, Redis, SeaweedFS with Testcontainers |
 | Coverage | `cd backend && uv run pytest --cov=saps --cov-report=term-missing` | Gate: ≥ 90 % on changed code |
 | Unit (frontend) | `cd frontend && npm test` | Vitest |
-| End-to-end | `docker compose up -d --build && cd frontend && npx playwright test` | Demo scenarios DS-01 … DS-19 |
+| End-to-end | `docker compose up -d --build && cd frontend && npx playwright test` | Demo scenarios DS-01 … DS-20 |
 
 - Test names: `test_<behavior>_when_<condition>` (Python), `it('<behavior> when <condition>')` (TypeScript).
 - Test data: fixtures in `backend/fixtures/<scenario>/`; builders in `backend/tests/builders.py`.

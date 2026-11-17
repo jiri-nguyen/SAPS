@@ -3,8 +3,8 @@ title: "§12 Glossary"
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["BA (TBD)", "Tech Lead (TBD)"]
-last_updated: 2026-12-05
-related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-018, ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006]
+last_updated: 2026-12-08
+related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-033, ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006]
 ---
 
 # §12 Glossary
@@ -24,15 +24,19 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-018, A
 | Accounts Payable | The process and ledger for amounts the company owes its vendors. | Công nợ phải trả | Payables |
 | Approval | The Accounting Manager's decision (approve or reject) on an invoice above the approval threshold. Entity `Approval` ([data model](../data-model.md#approval)). | Phê duyệt | Sign-off |
 | Approval threshold | Invoice total amount, tax included, above which Accounting Manager approval is required. Configurable by the Accounting Manager; default 300 USD ([DEC-015](../../01-requirements/decision-log.md#dec-015)). | Ngưỡng phê duyệt | Approval limit |
+| Completed | Final invoice state after the Accounting Member confirms the result: ready for posting. Posting to the ERP and payment happen outside Smart-AP-Suite ([SCP-OUT-03](../../01-requirements/scope.md#4-out-of-scope), [SCP-OUT-08](../../01-requirements/scope.md#4-out-of-scope)). | Hoàn tất | Paid, closed |
 | Credit note | Vendor document that reduces an amount previously invoiced. Out of the PoC scope. | Hóa đơn điều chỉnh giảm | Credit memo |
+| Delivery order | Vendor document that accompanies a delivery; the goods receipt is created from it. Not referenced by invoices in the PoC ([DEC-034](../../01-requirements/decision-log.md#dec-034)). | Phiếu giao hàng | DO, delivery note |
 | Demo scenario | One end-to-end flow shown at the PoC demo, with an expected end state (DS-NN in the test strategy). | Kịch bản demo | Test case |
 | Dummy data | Predefined test data that replaces a real data source in the PoC (invoice extraction results, ERP data). | Dữ liệu giả lập | Mock data, fake data |
 | Dummy sample set | Invoice files with predefined extraction data used in the PoC; uploading any other file raises EX1 ([DEC-012](../../01-requirements/decision-log.md#dec-012)). | Bộ hóa đơn mẫu | Test invoices |
 | Duplicate invoice | An invoice with the same vendor and invoice number as an invoice already in the system. | Hóa đơn trùng | — |
-| Exception | A condition that stops automatic processing of an invoice and needs review by an Accounting Member. PoC exception types EX1–EX9: [DEC-018](../../01-requirements/decision-log.md#dec-018). | Ngoại lệ | Error, issue |
+| Exception | A condition that stops automatic processing of an invoice and needs review by an Accounting Member. PoC exception types EX1–EX10: [DEC-033](../../01-requirements/decision-log.md#dec-033). | Ngoại lệ | Error, issue |
 | Exception queue | Shared list of invoices in status Exception; any available Accounting Member picks one up. | Hàng đợi ngoại lệ | Inbox, task list |
 | Extracted invoice | Invoice data returned by the Extraction Port for an uploaded file ([data model](../data-model.md#42-external-entities-read-through-ports-not-stored)). | Dữ liệu hóa đơn đã trích xuất | OCR result |
 | Goods Receipt | Record that ordered goods were received, used in 3-way matching. | Phiếu nhập kho | GRN, receiving report |
+| GR-based invoice verification | Matching where each invoice line references a specific goods receipt; a candidate after the PoC ([SCP-OUT-13](../../01-requirements/scope.md#4-out-of-scope)). | Đối chiếu theo từng phiếu nhập kho | — |
+| GR/IR clearing account | ERP account that holds goods received but not yet invoiced (and the reverse) until the invoice is posted. | Tài khoản trung gian hàng đã nhận chưa có hóa đơn | — |
 | Invoice | Vendor document requesting payment, uploaded as PDF or image. | Hóa đơn | Bill |
 | Invoice data extraction | Reading invoice fields from the uploaded file. In the PoC, the results come from dummy data. | Trích xuất dữ liệu hóa đơn | OCR, scanning |
 | Invoice event | Audit record of a status change or user action on an invoice. Entity `InvoiceEvent`. | Sự kiện hóa đơn | Log entry |
@@ -42,6 +46,7 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-018, A
 | Non-PO invoice | Invoice without a PO number; processed with 1-way matching. | Hóa đơn không có PO | — |
 | Non-trade PO invoice | Invoice whose PO number starts with `1`; processed with 2-way matching. Usually for indirect goods or services. | Hóa đơn PO phi thương mại | Indirect PO invoice |
 | Notification | In-app message to one user about an invoice that needs action. Entity `Notification`. | Thông báo | Alert |
+| Partial invoicing | Invoicing part of a PO line quantity; allowed as long as the quantity does not exceed the expected quantity ([DEC-032](../../01-requirements/decision-log.md#dec-032)). | Xuất hóa đơn từng phần | Partial billing |
 | PO number | Identifier of a purchase order: 7 characters, digits only. The first digit gives the PO type. | Số PO | PO ID |
 | Price tolerance | Maximum allowed difference between the invoice unit price and the PO unit price on a line. Configurable by the Accounting Manager; default 0.5 USD ([DEC-015](../../01-requirements/decision-log.md#dec-015)). | Sai lệch giá cho phép | Price variance |
 | Processing job | Unit of background work (process or re-match an invoice), sent as a message to the SAPS Message Broker and run by the SAPS Worker. Not stored as an entity. | Tác vụ xử lý | Task |
@@ -86,11 +91,13 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-018, A
 | AP | Accounts Payable |
 | API | Application Programming Interface |
 | CSRF | Cross-Site Request Forgery |
+| DO | Delivery order |
 | DS | Demo scenario (test strategy) |
 | E2E | End-to-end (test) |
 | ECC | SAP ERP Central Component |
 | ERP | Enterprise Resource Planning |
 | GR | Goods Receipt |
+| GR/IR | Goods Receipt / Invoice Receipt |
 | MCP | Model Context Protocol |
 | ORM | Object-Relational Mapping |
 | PO | Purchase Order |

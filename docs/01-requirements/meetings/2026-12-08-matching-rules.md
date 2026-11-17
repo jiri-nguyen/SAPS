@@ -5,7 +5,7 @@ status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["Solution Architect (our company)"]
 last_updated: 2026-12-08
-related: [MTG-20261205, SAPS-19, DEC-005, DEC-006, DEC-007, DEC-018, DEC-025]
+related: [MTG-20261205, SAPS-19, DEC-005, DEC-006, DEC-007, DEC-018, DEC-025, DEC-031, DEC-032, DEC-033, DEC-034]
 ---
 
 # MTG-20261208 — Matching rules clarification (SAPS-19)
@@ -68,19 +68,19 @@ related: [MTG-20261205, SAPS-19, DEC-005, DEC-006, DEC-007, DEC-018, DEC-025]
 ## 6. Decisions
 | # | Decision | Decided by | Logged as |
 |---|---|---|---|
-| D1 | Lines without a PO number on a PO invoice raise EX3; the invoice type comes from the lines with a PO number | Product Owner (Customer) | pending |
-| D2 | Quantity rule: the invoice quantity must not exceed the expected quantity (received-not-invoiced for 3-way, PO quantity not yet invoiced for 2-way); a smaller quantity passes | Product Owner (Customer) | pending |
-| D3 | New exception type EX10 "Vendor does not match the PO"; a demo scenario for it is added | Product Owner (Customer) | pending |
-| D4 | The PoC matches cumulatively per PO line; no DO / GR reference on the invoice | Product Owner (Customer) | pending |
+| D1 | Lines without a PO number on a PO invoice raise EX3; the invoice type comes from the lines with a PO number | Product Owner (Customer) | [DEC-031](../decision-log.md#dec-031) |
+| D2 | Quantity rule: the invoice quantity must not exceed the expected quantity (received-not-invoiced for 3-way, PO quantity not yet invoiced for 2-way); a smaller quantity passes | Product Owner (Customer) | [DEC-032](../decision-log.md#dec-032) |
+| D3 | New exception type EX10 "Vendor does not match the PO"; a demo scenario for it is added | Product Owner (Customer) | [DEC-033](../decision-log.md#dec-033) |
+| D4 | The PoC matches cumulatively per PO line; no DO / GR reference on the invoice | Product Owner (Customer) | [DEC-034](../decision-log.md#dec-034) |
 
 ## 7. Requirements Captured
 | # | Information / requirement | Type | Proposed target | Status |
 |---|---|---|---|---|
-| R1 | Lines without a PO number on a PO invoice → EX3 on those lines; type from the lines with a PO number | Functional | DEC-031 (refines DEC-005); SAPS-19 BR-02, EC-04 | proposed |
-| R2 | Invoice quantity must not exceed the expected quantity; smaller quantities pass (partial invoicing) | Functional | DEC-032 (partly supersedes DEC-006, refines DEC-007); SAPS-19 BR-09 | proposed |
-| R3 | EX10 "Vendor does not match the PO": the vendor on the invoice differs from the vendor of the PO | Functional | DEC-033 (supersedes DEC-018 and DEC-025); scope SCP-IN-04; demo scenario DS-20; OpenAPI `ExceptionCode`; data model | proposed |
-| R4 | Matching is cumulative per PO line; no DO / GR reference on the invoice in the PoC; GR-based invoice verification is a candidate after the PoC | Scope | DEC-034; SCP-OUT-13 | proposed |
-| R5 | Status Completed means "ready for posting"; posting and payment happen outside the system (out of scope) | Scope | Glossary (Completed); SCP-OUT-03 unchanged | proposed |
+| R1 | Lines without a PO number on a PO invoice → EX3 on those lines; type from the lines with a PO number | Functional | DEC-031 (refines DEC-005); SAPS-19 BR-02, EC-04 | logged |
+| R2 | Invoice quantity must not exceed the expected quantity; smaller quantities pass (partial invoicing) | Functional | DEC-032 (partly supersedes DEC-006, refines DEC-007); SAPS-19 BR-09 | logged |
+| R3 | EX10 "Vendor does not match the PO": the vendor on the invoice differs from the vendor of the PO | Functional | DEC-033 (supersedes DEC-018 and DEC-025); scope SCP-IN-04; demo scenario DS-20; OpenAPI `ExceptionCode`; data model | logged |
+| R4 | Matching is cumulative per PO line; no DO / GR reference on the invoice in the PoC; GR-based invoice verification is a candidate after the PoC | Scope | DEC-034; SCP-OUT-13 | logged |
+| R5 | Status Completed means "ready for posting"; posting and payment happen outside the system (out of scope) | Scope | Glossary (Completed); SCP-OUT-03 unchanged | logged |
 
 ### 7.1 Conflicts with existing items
 | # | Existing item | Conflict | Proposed resolution |
@@ -96,7 +96,7 @@ None.
 ## 8. Action Items
 | # | Action | Owner | Due | Status |
 |---|---|---|---|---|
-| A1 | Apply the confirmed decisions to the decision log, scope, SAPS-19 spec, OpenAPI, data model, glossary and test strategy | Solution Architect (our company) | 2026-12-09 | open |
+| A1 | Apply the confirmed decisions to the decision log, scope, SAPS-19 spec, OpenAPI, data model, glossary and test strategy | Solution Architect (our company) | 2026-12-09 | done (scope v0.5, OpenAPI 0.2.0, SAPS-19 spec, data model, glossary, test strategy) |
 
 ## 9. Open Questions
 None new. Open items from MTG-20261205 (Q1–Q3) stay open until after the PoC.

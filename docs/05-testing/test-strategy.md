@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)", "Product Owner (Customer)"]
 last_updated: 2026-11-28
-related: [ADR-0004, ADR-0006, DEC-003, DEC-011, DEC-017, DEC-018, DEC-020, NFR-SCAL-001, NFR-SEC-001, NFR-USAB-001, SAPS-32]
+related: [ADR-0004, ADR-0006, DEC-003, DEC-011, DEC-017, DEC-020, DEC-032, DEC-033, NFR-SCAL-001, NFR-SEC-001, NFR-USAB-001, SAPS-32]
 ---
 
 # Test Strategy
@@ -26,7 +26,7 @@ Scope: Proof of Concept ([DEC-003](../01-requirements/decision-log.md#dec-003)).
 | Unit | Matching rules, type derivation, tolerance, approval and state transitions | SAPS API / SAPS Worker domain logic; SAPS Web App components | Dev | pytest; Vitest + React Testing Library | Yes | CI on every PR |
 | Integration | SAPS API and SAPS Worker with real PostgreSQL, Redis and SeaweedFS; redelivery after a worker stop; sweeper recovers invoices without a message; idempotent actors | SAPS API, SAPS Worker | Dev | pytest + Testcontainers (PostgreSQL, Redis, SeaweedFS) | Yes | CI on every PR |
 | Contract | SAPS API matches its OpenAPI specification | SAPS API | Dev | Schemathesis (proposal) | Yes | CI on every PR, against [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
-| End-to-end | Demo scenarios DS-01 … DS-19 (§11) | UC-01 … UC-08 | SA | Playwright | Yes | local, clean Docker Compose stack, before each demo rehearsal |
+| End-to-end | Demo scenarios DS-01 … DS-20 (§11) | UC-01 … UC-08 | SA | Playwright | Yes | local, clean Docker Compose stack, before each demo rehearsal |
 | Regression | Previously passing demo scenarios still pass | E2E suite | SA | Playwright | Yes | local, before merging to main |
 | Security | Vulnerable dependencies, insecure code patterns | all code | Dev | pip-audit, npm audit; Bandit (proposal) | Yes | CI on every PR |
 | Demo acceptance | Product Owner accepts the PoC | all demo scenarios | Product Owner (SA supports) | live demo | No | demo on 2027-02-22 |
@@ -54,7 +54,7 @@ There are no dev / stg / prod environments in the PoC ([CON-01](../02-architectu
 |---|---|---|
 | Pull request | Build green; unit + integration tests pass; coverage ≥ 90 % on changed code; no high findings from dependency scan or Bandit; review approved | PR checks |
 | Merge to main | Pull request gate + E2E regression suite passes | PR checks |
-| Demo readiness | All demo scenarios DS-01 … DS-19 pass on a freshly created demo stack; no open Critical or High defects | Demo rehearsal checklist |
+| Demo readiness | All demo scenarios DS-01 … DS-20 pass on a freshly created demo stack; no open Critical or High defects | Demo rehearsal checklist |
 
 ## 6. Entry & Exit Criteria
 | Phase | Entry criteria | Exit criteria |
@@ -117,15 +117,16 @@ Scalability is verified by review (NFR-SCAL-001). Load tests and PSRs start afte
 | DS-10 | EX4 PO not found | Valid format, unknown PO; Member rejects | Rejected | EX4; DEC-014 |
 | DS-11 | EX5 trade and non-trade POs on one invoice | Lines refer to a `0…` and a `1…` PO; Member rejects | Rejected | EX5; DEC-007 |
 | DS-12 | EX6 price outside tolerance | Unit price differs by 0.60 USD; Member corrects the price; matching re-runs | Completed | EX6; DEC-006, DEC-010 |
-| DS-13 | EX7 quantity mismatch | Quantity above received-not-invoiced; Member corrects it; matching re-runs | Completed | EX7; DEC-007, DEC-010 |
+| DS-13 | EX7 quantity above expected | Quantity above received-not-invoiced (DEC-032); Member corrects it; matching re-runs | Completed | EX7; DEC-007, DEC-010 |
 | DS-14 | EX8 missing goods receipt | Trade PO without goods receipt; Member rejects | Rejected | EX8; DEC-014 |
 | DS-15 | EX9 duplicate invoice | Upload an invoice with the same vendor and invoice number as DS-01; Member rejects | Rejected | EX9; DEC-008 |
 | DS-16 | Rejection at approval | Invoice above threshold; Manager rejects with a reason | Rejected | UC-05; DEC-014 |
 | DS-17 | Rejection at final review | Matched invoice; Member rejects at final review | Rejected | UC-05; DEC-014 |
 | DS-18 | Change matching settings | Manager sets tolerance to 1.00 USD; an invoice with a 0.80 USD difference matches; Member cannot open the settings | Completed | UC-07; DEC-015 |
 | DS-19 | Sign-in and role access | Signed-out user is redirected to sign-in; Member cannot approve; Manager can | — | UC-01; NFR-SEC-001 |
+| DS-20 | EX10 vendor does not match the PO | Invoice of vendor V001 refers to a trade PO of vendor V002; Member rejects | Rejected | EX10; [DEC-033](../01-requirements/decision-log.md#dec-033) |
 
-Every exception type EX1–EX9 ([DEC-018](../01-requirements/decision-log.md#dec-018)) and every invoice type has at least one scenario.
+Every exception type EX1–EX10 ([DEC-033](../01-requirements/decision-log.md#dec-033)) and every invoice type has at least one scenario.
 In each scenario the test also checks the notifications: exceptions and final reviews to Accounting Members, approvals to the Accounting Manager ([DEC-021](../01-requirements/decision-log.md#dec-021)).
 
 ## 12. Roles & Responsibilities

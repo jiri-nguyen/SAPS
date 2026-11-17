@@ -3,8 +3,8 @@ title: Data Model
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
-last_updated: 2026-12-05
-related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-018, DEC-021, SAPS-31]
+last_updated: 2026-12-08
+related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-021, SAPS-31]
 ---
 
 # Data Model
@@ -276,7 +276,7 @@ An exception raised for an invoice; an invoice can have several, at most one ope
 | id | uuid | No | PK | Internal | Surrogate key |
 | invoice_id | uuid | No | FK → Invoice | Internal | Invoice concerned |
 | invoice_line_id | uuid | Yes | FK → InvoiceLine | Internal | Line concerned; null for header-level exceptions (EX1, EX2, EX5, EX9) |
-| code | enum | No | — | Internal | `EX1` … `EX9` ([DEC-018](../01-requirements/decision-log.md#dec-018)) |
+| code | enum | No | — | Internal | `EX1` … `EX10` ([DEC-033](../01-requirements/decision-log.md#dec-033)) |
 | message | string(1000) | No | — | Internal | Human-readable details, e.g. expected vs. invoiced value |
 | status | enum | No | — | Internal | `OPEN`, `RESOLVED` |
 | resolved_by | uuid | Yes | FK → UserAccount | Internal | User who resolved it; null when resolved by re-matching |
@@ -393,7 +393,7 @@ stateDiagram-v2
     [*] --> Uploaded: Accounting Member uploads file
     Uploaded --> Exception: EX1 extraction failed or unknown file
     Uploaded --> Matching: data extracted
-    Matching --> Exception: EX2–EX9
+    Matching --> Exception: EX2–EX10
     Matching --> PendingApproval: matched, total above threshold
     Matching --> PendingReview: matched, total at or below threshold
     Exception --> Matching: matching field updated (DEC-010)
@@ -412,7 +412,7 @@ stateDiagram-v2
 |---|---|---|
 | Uploaded | File received; processing message sent | SAPS Worker |
 | Matching | Extraction, duplicate check, type derivation and matching in progress | SAPS Worker |
-| Exception | Automatic processing stopped (EX1–EX9); in the shared exception queue | Accounting Member |
+| Exception | Automatic processing stopped (EX1–EX10); in the shared exception queue | Accounting Member |
 | PendingApproval | Total amount above the approval threshold | Accounting Manager |
 | PendingReview | Ready for the final check | Accounting Member |
 | Completed | Final result confirmed | — |
