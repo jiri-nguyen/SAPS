@@ -1,10 +1,10 @@
 ---
 title: Developer Guide
 status: draft            # draft | in-review | approved | deprecated
-owner: "Solution Architect (our company)"
-reviewers: ["Tech Lead (TBD)", "Developers (TBD)"]
+owner: "Solution Architect / Tech Lead (our company)"
+reviewers: []
 last_updated: 2026-12-05
-related: [ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, SAPS-26]
+related: [DEC-028, DEC-029, ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, SAPS-26]
 ---
 
 # Developer Guide
@@ -18,7 +18,8 @@ related: [ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, 
 Smart-AP-Suite automates the Accounts Payable flow: upload, (dummy) extraction, matching, exception handling, approval
 and final review. The PoC runs locally with Docker Compose: SAPS Web App (React), SAPS API (FastAPI), SAPS Worker
 (Dramatiq), SAPS Message Broker (Redis), SAPS File Storage (SeaweedFS) and SAPS Database (PostgreSQL).
-All code lives in **one repository** (mono-repo) *(proposal)*; SAPS API and SAPS Worker share one Python package.
+Code and this documentation live in **one public GitHub repository**, [jiri-nguyen/SAPS](https://github.com/jiri-nguyen/SAPS) ([DEC-028](../01-requirements/decision-log.md#dec-028)).
+SAPS API and SAPS Worker share one Python package. Code is written by Claude Code and reviewed by the Solution Architect / Tech Lead ([DEC-029](../01-requirements/decision-log.md#dec-029)).
 
 - Containers and responsibilities: [arc42 §5 Building Block View](../02-architecture/arc42/05-building-block-view.md)
 - Key decisions: [arc42 §9 Architecture Decisions](../02-architecture/arc42/09-architecture-decisions.md) (arc42 §4 Solution Strategy is not written yet)
@@ -34,9 +35,9 @@ OS: macOS (Apple silicon or Intel) or Linux; Windows via WSL 2.
 
 | Tool | Version | Install | Notes |
 |---|---|---|---|
-| Git | ≥ 2.40 | https://git-scm.com | |
+| Git | ≥ 2.40 | https://git-scm.com | GitHub account with access to the repository |
 | Docker engine with Compose v2 | Docker 27+ / Compose 2.30+ | Docker Desktop or OrbStack (macOS) | Runs all 6 containers |
-| Python | 3.13 | via `uv` | Pinned in `backend/.python-version` |
+| Python | 3.14 | via `uv` | Pinned in `backend/.python-version` |
 | uv | ≥ 0.9 | https://docs.astral.sh/uv/ | Python packages and virtual env |
 | Node.js | 24 LTS *(proposal)* | via a version manager (fnm / nvm) | Pinned in `frontend/.nvmrc` |
 | npm | bundled with Node.js | — | *(proposal; pnpm also possible)* |
@@ -44,21 +45,22 @@ OS: macOS (Apple silicon or Intel) or Linux; Windows via WSL 2.
 
 Library versions are locked in `backend/uv.lock` and `frontend/package-lock.json`. Versions verified in the spike:
 dramatiq 2.2.1, SQLAlchemy 2.1.8, psycopg 3.3.9, APScheduler 3.11.3, Redis 7.2, SeaweedFS 4.53, PostgreSQL 17
-([spikes/saps-34](../../spikes/saps-34/README.md)).
+([spikes/saps-34](../../spikes/saps-34/README.md); the spike ran on Python 3.13). On Python 3.14.2 the same libraries plus
+FastAPI 0.163.1, Pydantic 2.14.3, Alembic 1.20.1 and testcontainers 4.15.0 install and import without errors (checked 2026-12-05).
 
 ### 2.2 Access
 | Access | Request from | How |
 |---|---|---|
-| Source repository | Solution Architect | Hosting TBD (Q1) |
+| Source repository [jiri-nguyen/SAPS](https://github.com/jiri-nguyen/SAPS) (public) | Solution Architect / Tech Lead | GitHub collaborator invitation (write access only for the team) |
 | Linear project [Smart-AP-Suite](https://linear.app/jiringuyen/project/smart-ap-suite-766faab061af/overview) | Solution Architect | Invitation to workspace `jiringuyen`, team `SAPS` |
 | Cloud accounts | — | Not needed in the PoC (local only, [CON-01](../02-architecture/arc42/02-constraints.md)) |
 | Secrets | — | None in the PoC; all local values are test values in `.env.example` |
 
 ### 2.3 Set Up and Run Locally
 ```bash
-# 1. Clone (URL: Q1)
-git clone <repository-url> smart-ap-suite
-cd smart-ap-suite
+# 1. Clone
+git clone https://github.com/jiri-nguyen/SAPS.git
+cd SAPS
 
 # 2. Configuration (local test values only)
 cp .env.example .env
@@ -89,7 +91,7 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
 ## 3. Project Structure
 *(proposal)*
 ```
-smart-ap-suite/
+SAPS/
 ├── backend/                      # Python package "saps" — SAPS API and SAPS Worker
 │   ├── src/saps/
 │   │   ├── domain/               # entities, invoice lifecycle, matching rules (no framework imports)
@@ -138,8 +140,8 @@ smart-ap-suite/
 ### 4.3 Pull Requests
 - Size: aim for < 400 changed lines; split larger work.
 - Description: link the Linear issue and, if any, the feature spec in `docs/03-features/`.
-- Reviewers: at least 1 developer; the Solution Architect also reviews changes to APIs, the data model, ports or `compose.yaml`.
-- Required checks: [Test Strategy §5 Quality Gates](../05-testing/test-strategy.md#5-quality-gates) (coverage ≥ 90 % on changed code).
+- Author: Claude Code (the only developer, [DEC-029](../01-requirements/decision-log.md#dec-029)). Reviewer: the Solution Architect / Tech Lead reviews and merges every PR.
+- Required checks run in GitHub Actions: [Test Strategy §5 Quality Gates](../05-testing/test-strategy.md#5-quality-gates) (coverage ≥ 90 % on changed code).
 - Merge: squash merge; delete the branch after merge.
 
 ### 4.4 Code Review Checklist
@@ -153,7 +155,20 @@ smart-ap-suite/
 - [ ] API spec, data model and docs updated (§8)
 - [ ] Migrations are forward-only
 
-### 4.5 Definition of Ready / Definition of Done
+### 4.5 Public Repository Rules
+The repository is public ([DEC-028](../01-requirements/decision-log.md#dec-028)); everything committed is visible to anyone.
+- Never commit secrets, real credentials, real invoices, real customer or vendor data, or personal data.
+- GitHub secret scanning and push protection are on; gitleaks runs as a pre-commit hook.
+- Branch protection on `main`: pull request required, all checks green, no force push.
+- Documentation in `docs/` is public too; meeting minutes and decisions must not contain confidential customer information.
+
+### 4.6 Working with Claude Code
+- Each task is one Linear issue; Claude Code works on one branch and opens one PR per issue.
+- Claude Code follows CLAUDE.md and this guide, runs the tests of §7 before opening a PR, and states in the PR which
+  demo scenarios were run.
+- Non-trivial features start with a feature spec in `docs/03-features/` that the Solution Architect approves before coding.
+
+### 4.7 Definition of Ready / Definition of Done
 | Definition of Ready (before work starts) | Definition of Done (before the issue is closed) |
 |---|---|
 | Acceptance criteria written in the Linear issue | Merged to `main`; all quality gates green |
@@ -198,7 +213,7 @@ arc42 §8 Cross-cutting Concepts is not written yet. Until then:
 ### 5.6 Dependencies
 - New libraries need *(proposal)*: an OSI-approved license (no AGPL / SSPL in shipped code), active maintenance, a clean
   `pip-audit` / `npm audit` result, and Solution Architect approval for anything that affects architecture.
-- Updates: weekly automated update PRs (Renovate or Dependabot, depending on hosting, Q1).
+- Updates: weekly Dependabot PRs (GitHub).
 
 ## 6. Configuration & Secrets (Local)
 All settings are environment variables, read in `backend/src/saps/config.py`. `.env.example` holds local test values.
@@ -272,6 +287,7 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 ## 12. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | Where is the code hosted (GitHub / GitLab / other), and does the code live in this documentation repository or a separate one? | Solution Architect | TBD | open |
-| Q2 | Who is the Tech Lead, and who are the developers? | Solution Architect | TBD | open |
-| Q3 | Confirm the *(proposal)* items: mono-repo structure, Node.js 24 + npm, tooling (§5.1), API error format, broker and sweeper defaults (§6) | Solution Architect / Tech Lead | TBD | open |
+| Q1 | Where is the code hosted, and in which repository? | Solution Architect | — | answered: public GitHub repository [jiri-nguyen/SAPS](https://github.com/jiri-nguyen/SAPS), same repository as the docs ([DEC-028](../01-requirements/decision-log.md#dec-028)) |
+| Q2 | Who is the Tech Lead, and who are the developers? | Solution Architect | — | answered: the Solution Architect is also Tech Lead; Claude Code is the only developer ([DEC-029](../01-requirements/decision-log.md#dec-029)) |
+| Q3 | Confirm the *(proposal)* items: project structure (§3), Node.js 24 + npm, tooling (§5.1), API error format, broker and sweeper defaults (§6), dependency license rule (§5.6) | Solution Architect / Tech Lead | TBD | partly answered: Python 3.14 |
+| Q4 | Which license applies to the public repository (e.g. MIT, Apache-2.0, or "all rights reserved")? | Solution Architect / Product Owner | TBD | open |

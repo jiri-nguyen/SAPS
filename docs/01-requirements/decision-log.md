@@ -39,6 +39,8 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205]
 | [DEC-025](#dec-025) | 2026-12-05 | Demo scenario catalog defines "all flows" | Scope | confirmed |
 | [DEC-026](#dec-026) | 2026-12-05 | Product direction: multi-company AP system on AWS | Business | confirmed |
 | [DEC-027](#dec-027) | 2026-12-05 | Meetings only when there are questions | Process | confirmed |
+| [DEC-028](#dec-028) | 2026-12-05 | Code and documentation in one public GitHub repository | Process | confirmed |
+| [DEC-029](#dec-029) | 2026-12-05 | Solution Architect is Tech Lead; Claude Code is the only developer | Project | confirmed |
 
 ## 2. Decisions
 
@@ -675,3 +677,47 @@ model ([ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md)
 **Rationale:** Stated by the Product Owner.
 
 **Consequences & follow-ups:** Our team collects open questions and requests a meeting when needed.
+
+### DEC-028
+**Code and documentation in one public GitHub repository**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-05 |
+| Category | Process |
+| Status | confirmed |
+| Decided by | Solution Architect (our company) |
+| Source | Solution Architect, written answer to [Developer Guide](../04-development/developer-guide.md#12-open-questions) Q1 |
+| Impacts | [Developer Guide](../04-development/developer-guide.md) §1, §2.2, §4.5 |
+| Supersedes / Superseded by | — |
+
+**Context:** Code hosting and the relation between code and documentation were open.
+
+**Decision:** Code and documentation live in one public GitHub repository: https://github.com/jiri-nguyen/SAPS.
+
+**Rationale:** Stated by the Solution Architect.
+
+**Consequences & follow-ups:** Everything committed is public: no secrets, real customer or vendor data, real invoices or
+confidential information in code or docs. Secret scanning, push protection and branch protection are turned on.
+The repository license is open (Developer Guide Q4).
+
+### DEC-029
+**Solution Architect is Tech Lead; Claude Code is the only developer**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-05 |
+| Category | Project |
+| Status | confirmed |
+| Decided by | Solution Architect (our company) |
+| Source | Solution Architect, written answer to [Developer Guide](../04-development/developer-guide.md#12-open-questions) Q2 |
+| Impacts | [Developer Guide](../04-development/developer-guide.md) §4.3, §4.6; [Test Strategy](../05-testing/test-strategy.md) §12 |
+| Supersedes / Superseded by | — |
+
+**Context:** Tech Lead and developer roles were open.
+
+**Decision:** The Solution Architect also acts as Tech Lead (and QA, see the test strategy). Claude Code is the only developer.
+
+**Rationale:** Stated by the Solution Architect.
+
+**Consequences & follow-ups:** Claude Code writes code and opens pull requests; the Solution Architect / Tech Lead reviews and merges every pull request.

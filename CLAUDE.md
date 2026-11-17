@@ -11,7 +11,7 @@ project, then fill in **Project Context**.
 | Project name | `Smart-AP-Suite` |
 | Project code | `SAPS` (Linear team key) |
 | Customer | `TBD` |
-| Cloud | `TBD` (`AWS` / `Azure` / `Hybrid` — open question in MTG-20261114) |
+| Cloud | `AWS` after the PoC (Product Owner's company account, DEC-026); the PoC runs locally |
 | Primary region(s) | `TBD` |
 | Work tracker | Linear |
 | Work tracker base URL | `https://linear.app/jiringuyen/issue/` (project: `https://linear.app/jiringuyen/project/smart-ap-suite-766faab061af/overview`) |
@@ -21,6 +21,8 @@ project, then fill in **Project Context**.
 
 > **Project note:** this project tracks work in **Linear**. Wherever this standard says "Jira key" or
 > "Jira / Azure Boards", read **Linear issue key** (`SAPS-NNN`). File naming is unchanged, e.g. `SAPS-123-invoice-upload.md`.
+> Code lives in this repository (public, https://github.com/jiri-nguyen/SAPS). Claude Code is the developer: when writing
+> code, follow [docs/04-development/developer-guide.md](docs/04-development/developer-guide.md) (DEC-028, DEC-029).
 
 ## 2. Language & Writing Style
 - All documents are written in **English** (US spelling). The user may chat in Vietnamese; file content is always English.
