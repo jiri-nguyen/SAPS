@@ -23,12 +23,12 @@ Scope: Proof of Concept ([DEC-003](../01-requirements/decision-log.md#dec-003)).
 ## 2. Test Levels & Types
 | Level / type | Purpose | Scope | Responsible | Tools | Automated | When / environment |
 |---|---|---|---|---|---|---|
-| Unit | Matching rules, type derivation, tolerance, approval and state transitions | SAPS API / SAPS Worker domain logic; SAPS Web App components | Dev | pytest; Vitest + React Testing Library (proposal) | Yes | CI on every PR |
-| Integration | SAPS API and SAPS Worker with real PostgreSQL, Redis and SeaweedFS; redelivery after a worker stop; sweeper recovers invoices without a message; idempotent actors | SAPS API, SAPS Worker | Dev | pytest + Testcontainers (PostgreSQL, Redis, SeaweedFS) (proposal) | Yes | CI on every PR |
+| Unit | Matching rules, type derivation, tolerance, approval and state transitions | SAPS API / SAPS Worker domain logic; SAPS Web App components | Dev | pytest; Vitest + React Testing Library | Yes | CI on every PR |
+| Integration | SAPS API and SAPS Worker with real PostgreSQL, Redis and SeaweedFS; redelivery after a worker stop; sweeper recovers invoices without a message; idempotent actors | SAPS API, SAPS Worker | Dev | pytest + Testcontainers (PostgreSQL, Redis, SeaweedFS) | Yes | CI on every PR |
 | Contract | SAPS API matches its OpenAPI specification | SAPS API | Dev | Schemathesis (proposal) | Yes | CI on every PR, once `saps-api.openapi.yaml` exists |
-| End-to-end | Demo scenarios DS-01 … DS-19 (§11) | UC-01 … UC-08 | SA | Playwright (proposal) | Yes | local, clean Docker Compose stack, before each demo rehearsal |
+| End-to-end | Demo scenarios DS-01 … DS-19 (§11) | UC-01 … UC-08 | SA | Playwright | Yes | local, clean Docker Compose stack, before each demo rehearsal |
 | Regression | Previously passing demo scenarios still pass | E2E suite | SA | Playwright | Yes | local, before merging to main |
-| Security | Vulnerable dependencies, insecure code patterns | all code | Dev | pip-audit, npm audit, Bandit (proposal) | Yes | CI on every PR |
+| Security | Vulnerable dependencies, insecure code patterns | all code | Dev | pip-audit, npm audit; Bandit (proposal) | Yes | CI on every PR |
 | Demo acceptance | Product Owner accepts the PoC | all demo scenarios | Product Owner (SA supports) | live demo | No | demo on 2027-02-22 |
 
 Not applicable in the PoC: performance (no target, [MTG-20261128](../01-requirements/meetings/2026-11-28-poc-flow-review.md) R11), DR / resilience (local only, [CON-01](../02-architecture/arc42/02-constraints.md)).
@@ -89,7 +89,7 @@ Scalability is verified by review (NFR-SCAL-001). Load tests and PSRs start afte
 
 ## 10. Security Testing Approach
 - SAST: Bandit (Python), on every PR (proposal).
-- Dependency scanning: pip-audit and npm audit, on every PR (proposal).
+- Dependency scanning: pip-audit and npm audit, on every PR.
 - DAST, penetration test, infrastructure checks: not in the PoC (local only, synthetic data).
 
 ## 11. PoC Demo Acceptance

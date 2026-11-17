@@ -4,14 +4,14 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect / Tech Lead (our company)"
 reviewers: []
 last_updated: 2026-12-05
-related: [DEC-028, DEC-029, ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, SAPS-26]
+related: [DEC-028, DEC-029, DEC-030, ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, SAPS-26]
 ---
 
 # Developer Guide
 
 > **Status of this guide:** the PoC code does not exist yet. Structure, tooling and commands below are the **target**
 > that the repository skeleton ([SAPS-26](https://linear.app/jiringuyen/issue/SAPS-26), Local PoC environment) must
-> implement. Items marked *(proposal)* are open for the Tech Lead / Solution Architect (see §12). Commands are verified
+> implement. Commands are verified
 > and this note is removed when SAPS-26 is done.
 
 ## 1. Overview
@@ -39,8 +39,8 @@ OS: macOS (Apple silicon or Intel) or Linux; Windows via WSL 2.
 | Docker engine with Compose v2 | Docker 27+ / Compose 2.30+ | Docker Desktop or OrbStack (macOS) | Runs all 6 containers |
 | Python | 3.14 | via `uv` | Pinned in `backend/.python-version` |
 | uv | ≥ 0.9 | https://docs.astral.sh/uv/ | Python packages and virtual env |
-| Node.js | 24 LTS *(proposal)* | via a version manager (fnm / nvm) | Pinned in `frontend/.nvmrc` |
-| npm | bundled with Node.js | — | *(proposal; pnpm also possible)* |
+| Node.js | 24 LTS | via a version manager (fnm / nvm) | Pinned in `frontend/.nvmrc` |
+| npm | bundled with Node.js | — | |
 | IDE | VS Code or PyCharm | — | Recommended extensions in `.vscode/extensions.json` |
 
 Library versions are locked in `backend/uv.lock` and `frontend/package-lock.json`. Versions verified in the spike:
@@ -89,7 +89,6 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
 - `cd backend && uv run pytest tests/unit` — all tests pass.
 
 ## 3. Project Structure
-*(proposal)*
 ```
 SAPS/
 ├── backend/                      # Python package "saps" — SAPS API and SAPS Worker
@@ -126,7 +125,7 @@ SAPS/
 ## 4. Development Workflow
 
 ### 4.1 Branching
-- Model: trunk-based development with short-lived branches *(proposal)*.
+- Model: trunk-based development with short-lived branches.
 - Main branch: `main` — always runs with `docker compose up`.
 - Branch names: `feature|fix|chore/SAPS-<n>-<short-description>`, e.g. `feature/SAPS-19-line-matching`
   (the Linear key links the branch to the issue).
@@ -179,7 +178,6 @@ The repository is public ([DEC-028](../01-requirements/decision-log.md#dec-028))
 ## 5. Coding Conventions
 
 ### 5.1 Style & Tooling
-*(proposal)*
 
 | Language / area | Formatter | Linter / type check | Config |
 |---|---|---|---|
@@ -194,14 +192,14 @@ The repository is public ([DEC-028](../01-requirements/decision-log.md#dec-028))
 
 ### 5.3 Cross-cutting Rules
 arc42 §8 Cross-cutting Concepts is not written yet. Until then:
-- Errors: API errors use `application/problem+json` (RFC 9457) *(proposal)*.
+- Errors: API errors use `application/problem+json` (RFC 9457).
 - Logging: structured JSON logs to stdout; include `invoice_id` and `tenant_id`; never log passwords or file contents.
 - Security: simple user accounts ([NFR-SEC-001](../01-requirements/nfr.md#nfr-sec-001)); passwords stored as salted hashes.
 - Configuration: environment variables only (§6).
 
 ### 5.4 APIs & Events
 - Contract first: change `docs/02-architecture/api/saps-api.openapi.yaml` before or with the implementation (file not created yet).
-- The SAPS Web App uses a TypeScript client generated from that file *(proposal)*.
+- The SAPS Web App uses a TypeScript client generated from that file.
 - Messages to the SAPS Worker carry only the `invoice_id` (`process_invoice`, `rematch_invoice`).
 
 ### 5.5 Database Changes
@@ -211,7 +209,7 @@ arc42 §8 Cross-cutting Concepts is not written yet. Until then:
 - Every new tenant-owned table gets a non-null `tenant_id` ([ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md)).
 
 ### 5.6 Dependencies
-- New libraries need *(proposal)*: an OSI-approved license (no AGPL / SSPL in shipped code), active maintenance, a clean
+- New libraries need: an OSI-approved license (no AGPL / SSPL in shipped code), active maintenance, a clean
   `pip-audit` / `npm audit` result, and Solution Architect approval for anything that affects architecture.
 - Updates: weekly Dependabot PRs (GitHub).
 
@@ -223,10 +221,10 @@ All settings are environment variables, read in `backend/src/saps/config.py`. `.
 | `DATABASE_URL` | SAPS Database connection (psycopg async) | `.env.example` |
 | `REDIS_URL` | SAPS Message Broker | `.env.example` |
 | `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | SAPS File Storage (S3 API) | `.env.example` (local test credentials) |
-| `DRAMATIQ_HEARTBEAT_TIMEOUT_MS` | Broker heartbeat timeout — default 30000 *(proposal)* | `.env.example` |
-| `DRAMATIQ_MAINTENANCE_CHANCE` | Broker maintenance frequency out of 1,000,000 — default 100000 = 10 % *(proposal)* ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S7) | `.env.example` |
+| `DRAMATIQ_HEARTBEAT_TIMEOUT_MS` | Broker heartbeat timeout — default 30000 | `.env.example` |
+| `DRAMATIQ_MAINTENANCE_CHANCE` | Broker maintenance frequency out of 1,000,000 — default 100000 = 10 % ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S7) | `.env.example` |
 | `ACTOR_TIME_LIMIT_MS` | Time limit per job — default 60000 | `.env.example` |
-| `SWEEPER_INTERVAL_SECONDS`, `SWEEPER_STUCK_AFTER_SECONDS` | Sweeper tick and stuck age — defaults 10 and 60 *(proposal)* | `.env.example` |
+| `SWEEPER_INTERVAL_SECONDS`, `SWEEPER_STUCK_AFTER_SECONDS` | Sweeper tick and stuck age — defaults 10 and 60 | `.env.example` |
 | `EXTRACTION_ADAPTER`, `ERP_ADAPTER` | Port adapters — `dummy` in the PoC | `.env.example` |
 | `FIXTURES_DIR` | Dummy sample set and ERP data | `.env.example` |
 | `SESSION_SECRET` | Signs session cookies | generate locally (`openssl rand -hex 32`) |
@@ -289,5 +287,5 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 |---|---|---|---|---|
 | Q1 | Where is the code hosted, and in which repository? | Solution Architect | — | answered: public GitHub repository [jiri-nguyen/SAPS](https://github.com/jiri-nguyen/SAPS), same repository as the docs ([DEC-028](../01-requirements/decision-log.md#dec-028)) |
 | Q2 | Who is the Tech Lead, and who are the developers? | Solution Architect | — | answered: the Solution Architect is also Tech Lead; Claude Code is the only developer ([DEC-029](../01-requirements/decision-log.md#dec-029)) |
-| Q3 | Confirm the *(proposal)* items: project structure (§3), Node.js 24 + npm, tooling (§5.1), API error format, broker and sweeper defaults (§6), dependency license rule (§5.6) | Solution Architect / Tech Lead | TBD | partly answered: Python 3.14 |
-| Q4 | Which license applies to the public repository (e.g. MIT, Apache-2.0, or "all rights reserved")? | Solution Architect / Product Owner | TBD | open |
+| Q3 | Confirm the items: project structure (§3), Node.js 24 + npm, tooling (§5.1), API error format, broker and sweeper defaults (§6), dependency license rule (§5.6) | Solution Architect / Tech Lead | — | answered: all confirmed; Python 3.14 |
+| Q4 | Which license applies to the public repository? | Solution Architect / Product Owner | — | answered: MIT ([DEC-030](../01-requirements/decision-log.md#dec-030)) |

@@ -41,6 +41,7 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205]
 | [DEC-027](#dec-027) | 2026-12-05 | Meetings only when there are questions | Process | confirmed |
 | [DEC-028](#dec-028) | 2026-12-05 | Code and documentation in one public GitHub repository | Process | confirmed |
 | [DEC-029](#dec-029) | 2026-12-05 | Solution Architect is Tech Lead; Claude Code is the only developer | Project | confirmed |
+| [DEC-030](#dec-030) | 2026-12-05 | Repository license: MIT | Business | confirmed |
 
 ## 2. Decisions
 
@@ -721,3 +722,30 @@ The repository license is open (Developer Guide Q4).
 **Rationale:** Stated by the Solution Architect.
 
 **Consequences & follow-ups:** Claude Code writes code and opens pull requests; the Solution Architect / Tech Lead reviews and merges every pull request.
+
+### DEC-030
+**Repository license: MIT**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-05 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Solution Architect (our company) |
+| Source | Solution Architect, written answer to [Developer Guide](../04-development/developer-guide.md#12-open-questions) Q4 |
+| Impacts | `LICENSE` in the repository root; [Developer Guide](../04-development/developer-guide.md) §5.6 |
+| Supersedes / Superseded by | — |
+
+**Context:** The repository is public ([DEC-028](#dec-028)). The Solution Architect wants a license that allows commercial use
+with no restrictions related to the source code.
+
+**Decision:** The repository is licensed under the MIT License.
+
+**Rationale:** MIT is a permissive license: commercial use, modification and closed-source distribution are allowed; the only
+condition is to keep the copyright and license notice. Copyleft licenses (GPL, AGPL) were excluded because they require
+publishing source code. Apache-2.0 was the alternative (adds an explicit patent grant, but more conditions).
+
+**Consequences & follow-ups:** Anyone, including competitors, may also use the published code commercially. The copyright holder
+can still license future versions differently; code already published under MIT stays under MIT. Dependencies must stay
+compatible: no AGPL / SSPL in shipped code (Developer Guide §5.6).
+
