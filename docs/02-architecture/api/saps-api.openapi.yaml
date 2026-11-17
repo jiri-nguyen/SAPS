@@ -9,7 +9,7 @@ info:
     approval, final review, notifications and matching settings.
 
     Owner container: SAPS API — see arc42 §5 (`docs/02-architecture/arc42/05-building-block-view.md`).
-    Runtime flow: arc42 §6.2. Business rules: decision log DEC-005 … DEC-034.
+    Runtime flow: arc42 §6.2. Business rules: decision log DEC-005 … DEC-037.
 
     **Conventions**
     - Money and quantities are decimal strings (no floating point). Currency is ISO 4217; only `USD` in the PoC (DEC-006).
@@ -290,7 +290,7 @@ paths:
       summary: Return a claimed invoice to the exception queue
       description: |
         Clears the claim of an invoice in status `EXCEPTION` (SAPS-20 BR-03). Allowed for the claimant; an Accounting
-        Manager can release any claim (pending SAPS-20 Q2). `409` if the invoice is not claimed.
+        Manager can release any claim (DEC-036). `409` if the invoice is not claimed.
       tags: [Invoices]
       x-roles: [ACCOUNTING_MEMBER, ACCOUNTING_MANAGER]
       parameters:
@@ -313,7 +313,7 @@ paths:
         For an invoice in status `EXCEPTION` claimed by the caller, e.g. a reviewed non-PO invoice (EX2, DEC-006).
         Sets the next status: `PENDING_APPROVAL` when the total amount is above the approval threshold
         (DEC-009, DEC-013), otherwise `PENDING_REVIEW`. The claim is cleared.
-        `422` if an open exception is of a type that may not be accepted as is (SAPS-20 BR-06, Q1).
+        Only EX2, EX6, EX7 and EX9 may be accepted as is (DEC-035); if any other exception is open, `422`.
       tags: [Invoices]
       x-roles: [ACCOUNTING_MEMBER]
       parameters:

@@ -3,8 +3,8 @@ title: Decision Log
 status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["PM (TBD)"]
-last_updated: 2026-12-08
-related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208]
+last_updated: 2026-12-10
+related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, MTG-20261210]
 ---
 
 # Decision Log
@@ -46,6 +46,9 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208]
 | [DEC-032](#dec-032) | 2026-12-08 | Invoice quantity must not exceed the expected quantity | Business | confirmed |
 | [DEC-033](#dec-033) | 2026-12-08 | Exception types EX1–EX10 and demo scenarios DS-01 … DS-20 | Business | confirmed |
 | [DEC-034](#dec-034) | 2026-12-08 | Match cumulatively per PO line; no DO / GR reference in the PoC | Scope | confirmed |
+| [DEC-035](#dec-035) | 2026-12-10 | Exception types that may be accepted as is | Business | confirmed |
+| [DEC-036](#dec-036) | 2026-12-10 | Accounting Manager may release any claim | Business | confirmed |
+| [DEC-037](#dec-037) | 2026-12-10 | Repeated exception after re-matching notifies the claimant only | Business | confirmed |
 
 ## 2. Decisions
 
@@ -855,4 +858,81 @@ Invoices carry no delivery order (DO) or goods receipt (GR) reference. GR-based 
 **Rationale:** Simpler extraction and matching; enough for the demo scenarios.
 
 **Consequences & follow-ups:** Deliveries of the same PO line at different prices cannot be told apart in the PoC.
+
+### DEC-035
+**Exception types that may be accepted as is**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-10 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20261210](meetings/2026-12-10-exception-handling-rules.md) D1 |
+| Impacts | [SAPS-20](../03-features/SAPS-20-exception-handling.md) BR-06; `resolveInvoiceExceptions` in [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
+| Supersedes / Superseded by | — |
+
+**Context:** An Accounting Member can correct the data, accept the invoice as is, or reject it. Which exception types
+allow acceptance without correction was open.
+
+**Decision:** An invoice can be accepted as is only when every open exception is one of:
+
+| Code | May be accepted as is |
+|---|---|
+| EX2 Non-PO invoice | Yes (manual review is the only path) |
+| EX6 Unit price outside tolerance | Yes |
+| EX7 Quantity above the expected quantity | Yes |
+| EX9 Duplicate invoice (found not to be a duplicate) | Yes |
+| EX1, EX3, EX4, EX5, EX8, EX10 | No — correct the data or reject |
+
+Accepted invoices above the approval threshold still need Accounting Manager approval ([DEC-009](#dec-009), [DEC-013](#dec-013)).
+
+**Rationale:** Price and quantity variances can be accepted by an authorized person (common AP practice); errors in the
+source data (PO, vendor, goods receipt) must be corrected.
+
+**Consequences & follow-ups:** None.
+
+### DEC-036
+**Accounting Manager may release any claim**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-10 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20261210](meetings/2026-12-10-exception-handling-rules.md) D2 |
+| Impacts | [SAPS-20](../03-features/SAPS-20-exception-handling.md) BR-03; `releaseInvoiceClaim`; refines [DEC-016](#dec-016) |
+| Supersedes / Superseded by | — |
+
+**Context:** A claimed invoice is blocked when the claimant is absent.
+
+**Decision:** The claimant can release their own claim; an Accounting Manager can release any claim. The invoice returns
+to the shared exception queue.
+
+**Rationale:** Proposed by the SA; accepted by the Product Owner.
+
+**Consequences & follow-ups:** None.
+
+### DEC-037
+**Repeated exception after re-matching notifies the claimant only**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-10 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261210](meetings/2026-12-10-exception-handling-rules.md) D3 |
+| Impacts | [SAPS-20](../03-features/SAPS-20-exception-handling.md) BR-10; refines [DEC-021](#dec-021) |
+| Supersedes / Superseded by | — |
+
+**Context:** DEC-021 sends exception notifications to Accounting Members. After re-matching, the invoice is still claimed.
+
+**Decision:** When re-matching of a claimed invoice raises exceptions again, only the claimant is notified. A new
+exception on an unclaimed invoice still notifies all Accounting Members.
+
+**Rationale:** Only the claimant can act on the invoice; notifying everyone would be noise.
+
+**Consequences & follow-ups:** None.
 

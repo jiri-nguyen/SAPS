@@ -4,8 +4,8 @@ title: "SAPS-20 — Exception handling"
 status: draft            # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
-last_updated: 2026-12-08
-related: [UC-03, UC-05, SCP-IN-04, SCP-IN-14, DEC-010, DEC-013, DEC-014, DEC-016, DEC-021, DEC-024, DEC-033, NFR-SEC-001, ADR-0004, ADR-0007, ADR-0008, SAPS-19]
+last_updated: 2026-12-10
+related: [UC-03, UC-05, SCP-IN-04, SCP-IN-14, DEC-010, DEC-013, DEC-014, DEC-016, DEC-021, DEC-024, DEC-033, DEC-035, DEC-036, DEC-037, NFR-SEC-001, ADR-0004, ADR-0007, ADR-0008, SAPS-19]
 ---
 
 # SAPS-20 — Exception handling
@@ -30,14 +30,14 @@ This is the main manual step of the PoC and covers 11 of the 20 demo scenarios.
 |---|---|---|
 | BR-01 | Invoices in status Exception form one shared queue per tenant; any Accounting Member can claim an unclaimed invoice. | [DEC-016](../01-requirements/decision-log.md#dec-016) |
 | BR-02 | Only the Accounting Member who claimed an invoice can update it, resolve its exceptions or reject it during exception handling. | [DEC-016](../01-requirements/decision-log.md#dec-016) |
-| BR-03 | A claim can be released by the claimant, or by an Accounting Manager (pending Q2); the invoice returns to the unclaimed queue. | proposal, Q2 |
+| BR-03 | A claim can be released by the claimant, or by an Accounting Manager for any claim; the invoice returns to the unclaimed queue. | [DEC-036](../01-requirements/decision-log.md#dec-036) |
 | BR-04 | Correcting data: header fields and lines can be changed; `lines`, when sent, replaces all lines. If a matching field changes, the status becomes Matching and re-matching is queued; the invoice stays claimed. | [DEC-010](../01-requirements/decision-log.md#dec-010), [DEC-024](../01-requirements/decision-log.md#dec-024) |
 | BR-05 | Matching fields: vendor code, invoice number, PO number, PO line number, quantity, unit price. Changes to other fields are saved without re-matching. | [DEC-024](../01-requirements/decision-log.md#dec-024) |
-| BR-06 | Accepting as is (resolve): marks all open exceptions resolved without re-matching and sets the next status — PendingApproval if the total amount is above the approval threshold, otherwise PendingReview. Allowed only when every open exception is of a type that may be accepted (pending Q1). | [DEC-013](../01-requirements/decision-log.md#dec-013), Q1 |
+| BR-06 | Accepting as is (resolve): marks all open exceptions resolved without re-matching and sets the next status — PendingApproval if the total amount is above the approval threshold, otherwise PendingReview. Allowed only when every open exception is EX2, EX6, EX7 or EX9; EX1, EX3, EX4, EX5, EX8 and EX10 need corrected data or a rejection. | [DEC-013](../01-requirements/decision-log.md#dec-013), [DEC-035](../01-requirements/decision-log.md#dec-035) |
 | BR-07 | A non-PO invoice (EX2) is always handled by accepting it after review (BR-06) or rejecting it. | [DEC-006](../01-requirements/decision-log.md#dec-006) |
 | BR-08 | Rejecting requires a reason; status Rejected is final. | [DEC-014](../01-requirements/decision-log.md#dec-014) |
 | BR-09 | When an invoice leaves status Exception (to PendingApproval, PendingReview or Rejected) the claim is cleared. | design, §6 |
-| BR-10 | When re-matching ends in Exception again, only the claimant is notified; a new unclaimed exception notifies all Accounting Members. | [DEC-021](../01-requirements/decision-log.md#dec-021), Q3 |
+| BR-10 | When re-matching ends in Exception again, only the claimant is notified; a new unclaimed exception notifies all Accounting Members. | [DEC-021](../01-requirements/decision-log.md#dec-021), [DEC-037](../01-requirements/decision-log.md#dec-037) |
 | BR-11 | Every action is recorded as an InvoiceEvent: `CLAIM`, `RELEASE`, `UPDATE_FIELDS` (changed fields with old and new values), `RESOLVE`, `REJECT`. | [data model](../02-architecture/data-model.md#invoiceevent) |
 
 ### 2.2 Affected NFRs
@@ -118,7 +118,7 @@ sequenceDiagram
 | EC-01 | Two members claim the same invoice at the same time | Conditional update (`assigned_to IS NULL`); one wins | Loser: `409` |
 | EC-02 | The invoice changed since the member loaded it (e.g. re-match finished, another tab) | Optimistic locking with ETag | `412`; the Web App reloads the invoice |
 | EC-03 | Update, resolve or reject while the status is Matching (re-match pending) | Not allowed until re-matching finishes | `409`; the Web App shows "re-matching in progress" |
-| EC-04 | Resolve with an exception type that may not be accepted (Q1) | Refused; the member must correct the data or reject | `422` naming the exception codes |
+| EC-04 | Resolve while an open exception is EX1, EX3, EX4, EX5, EX8 or EX10 (BR-06) | Refused; the member must correct the data or reject | `422` naming the exception codes |
 | EC-05 | Re-match message lost or worker crashed | Sweeper re-sends `rematch_invoice` for invoices in Matching ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S1) | Log `sweeper_resent` |
 | EC-06 | EX1 (file not in the sample set): no extracted data | The member may enter header and lines manually (`updateInvoice`), which re-runs matching; or reject (DS-07) | `202` / `200` |
 | EC-07 | Vendor code or invoice number changed on an invoice with EX9 | Re-matching also re-runs the duplicate check ([SAPS-23](https://linear.app/jiringuyen/issue/SAPS-23)) | EX9 resolved or raised again |
@@ -148,7 +148,7 @@ None. Uses `Invoice.assigned_to`, `Invoice.rejected_reason`, InvoiceException `s
 and InvoiceEvent actions `CLAIM`, `RELEASE`, `UPDATE_FIELDS`, `RESOLVE`, `REJECT` ([data model](../02-architecture/data-model.md)).
 
 ### 3.7 Security & Permissions
-- Roles: Accounting Member for all write operations; Accounting Manager may read and may release claims (pending Q2).
+- Roles: Accounting Member for all write operations; Accounting Manager may read and may release any claim ([DEC-036](../01-requirements/decision-log.md#dec-036)).
 - Authorization check: in the SAPS API application layer — role (`x-roles`), claimant (`assigned_to` = caller), tenant (`tenant_id` of the session's user, [ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md)), status.
 - CSRF: `Origin` check on all state-changing requests ([ADR-0008](../02-architecture/adr/0008-use-session-cookies-for-authentication.md)).
 - Sensitive data: invoice data is Confidential; `UPDATE_FIELDS` events store old and new values in the database, never in logs.
@@ -172,11 +172,11 @@ None.
 |---|---|---|---|
 | TS-01 | Claim an unclaimed invoice; second claim by another member gets 409 | Integration | BR-01, EC-01 |
 | TS-02 | Non-claimant and Accounting Manager cannot update, resolve or reject | Integration | BR-02, EC-10 |
-| TS-03 | Release by claimant; release by Accounting Manager (after Q2) | Integration | BR-03 |
+| TS-03 | Release by claimant; release of another member's claim by an Accounting Manager; release by a non-claimant member → 403 | Integration | BR-03 |
 | TS-04 | Update with a matching field → status Matching, 202, re-match queued; update with other fields only → 200, no re-match | Integration | BR-04, BR-05 |
 | TS-05 | Stale ETag → 412; missing If-Match → 428 | Integration | EC-02 |
 | TS-06 | Update / resolve / reject while Matching → 409 | Integration | EC-03 |
-| TS-07 | Resolve: allowed and not allowed exception types; next status by approval threshold | Unit + Integration | BR-06, BR-07, EC-04 |
+| TS-07 | Resolve with each of EX2, EX6, EX7, EX9 → next status by approval threshold; with any of EX1, EX3, EX4, EX5, EX8, EX10 → 422 | Unit + Integration | BR-06, BR-07, EC-04 |
 | TS-08 | Reject with and without reason | Integration | BR-08, EC-09 |
 | TS-09 | Claim cleared when leaving Exception; notifications to claimant vs. all members | Integration | BR-09, BR-10 |
 | TS-10 | Sweeper re-sends `rematch_invoice` for an invoice stuck in Matching | Integration | EC-05 |

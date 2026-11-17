@@ -5,7 +5,7 @@ status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["Solution Architect (our company)"]
 last_updated: 2026-12-10
-related: [MTG-20261208, SAPS-20, DEC-016, DEC-021, DEC-033]
+related: [MTG-20261208, SAPS-20, DEC-016, DEC-021, DEC-033, DEC-035, DEC-036, DEC-037]
 ---
 
 # MTG-20261210 — Exception handling rules (SAPS-20)
@@ -51,16 +51,16 @@ related: [MTG-20261208, SAPS-20, DEC-016, DEC-021, DEC-033]
 ## 6. Decisions
 | # | Decision | Decided by | Logged as |
 |---|---|---|---|
-| D1 | Exceptions that may be accepted as is: EX2, EX6, EX7, EX9. Not allowed: EX1, EX3, EX4, EX5, EX8, EX10 (correct the data or reject) | Product Owner (Customer) | pending |
-| D2 | An Accounting Manager may release any claim; the claimant may release their own | Product Owner (Customer) | pending |
-| D3 | When re-matching raises exceptions again, only the claimant is notified | Product Owner (Customer) | pending |
+| D1 | Exceptions that may be accepted as is: EX2, EX6, EX7, EX9. Not allowed: EX1, EX3, EX4, EX5, EX8, EX10 (correct the data or reject) | Product Owner (Customer) | [DEC-035](../decision-log.md#dec-035) |
+| D2 | An Accounting Manager may release any claim; the claimant may release their own | Product Owner (Customer) | [DEC-036](../decision-log.md#dec-036) |
+| D3 | When re-matching raises exceptions again, only the claimant is notified | Product Owner (Customer) | [DEC-037](../decision-log.md#dec-037) |
 
 ## 7. Requirements Captured
 | # | Information / requirement | Type | Proposed target | Status |
 |---|---|---|---|---|
-| R1 | Accept as is allowed only when every open exception is EX2, EX6, EX7 or EX9 | Functional | DEC-035; SAPS-20 BR-06; OpenAPI `resolveInvoiceExceptions` | proposed |
-| R2 | Accounting Manager may release any claim | Functional | DEC-036; SAPS-20 BR-03; OpenAPI `releaseInvoiceClaim` | proposed |
-| R3 | Repeated exception after re-matching → notify the claimant only | Functional | DEC-037 (refines DEC-021); SAPS-20 BR-10 | proposed |
+| R1 | Accept as is allowed only when every open exception is EX2, EX6, EX7 or EX9 | Functional | DEC-035; SAPS-20 BR-06; OpenAPI `resolveInvoiceExceptions` | logged |
+| R2 | Accounting Manager may release any claim | Functional | DEC-036; SAPS-20 BR-03; OpenAPI `releaseInvoiceClaim` | logged |
+| R3 | Repeated exception after re-matching → notify the claimant only | Functional | DEC-037 (refines DEC-021); SAPS-20 BR-10 | logged |
 
 ### 7.1 Conflicts with existing items
 | # | Existing item | Conflict | Proposed resolution |
@@ -73,7 +73,7 @@ None.
 ## 8. Action Items
 | # | Action | Owner | Due | Status |
 |---|---|---|---|---|
-| A1 | Apply the confirmed decisions to the decision log, SAPS-20 spec and OpenAPI | Solution Architect (our company) | 2026-12-11 | open |
+| A1 | Apply the confirmed decisions to the decision log, SAPS-20 spec and OpenAPI | Solution Architect (our company) | 2026-12-11 | done |
 
 ## 9. Open Questions
 None new. Open items from MTG-20261205 (Q1–Q3) stay open until after the PoC.
