@@ -147,9 +147,9 @@ None. Uses [Approval](../02-architecture/data-model.md#approval), Invoice `statu
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | With several Accounting Managers, can any of them decide, the first decision being final? Proposal: yes. | Product Owner (Customer) | next meeting | open |
-| Q2 | Should the manager be able to return an invoice for correction (back to Exception) instead of rejecting it? Proposal: not in the PoC; reject only. | Product Owner (Customer) | next meeting | open |
-| Q3 | Should anyone be notified when an invoice is rejected (by the manager or at final review)? Proposal: no notification in the PoC; the status is visible in the invoice list. | Product Owner (Customer) | next meeting | open |
+| Q1 | With several Accounting Managers, can any of them decide, the first decision being final? Proposal: yes. | Product Owner (Customer) | next meeting | answered → [MTG-20261211](../01-requirements/meetings/2026-12-11-approval-review-rules.md) R1 |
+| Q2 | Should the manager be able to return an invoice for correction (back to Exception) instead of rejecting it? Proposal: not in the PoC; reject only. | Product Owner (Customer) | next meeting | answered → [MTG-20261211](../01-requirements/meetings/2026-12-11-approval-review-rules.md) R2 |
+| Q3 | Should anyone be notified when an invoice is rejected (by the manager or at final review)? Proposal: no notification in the PoC; the status is visible in the invoice list. | Product Owner (Customer) | next meeting | answered → [MTG-20261211](../01-requirements/meetings/2026-12-11-approval-review-rules.md) R3 |
 
 ## 8. Documentation Checklist
 - [ ] Release notes entry prepared

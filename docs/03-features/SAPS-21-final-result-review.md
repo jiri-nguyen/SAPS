@@ -137,7 +137,7 @@ None. Uses Invoice `status` / `rejected_reason` and InvoiceEvent ([data model](.
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | May the Accounting Member who uploaded the invoice or accepted its exceptions also confirm it at final review, or must another member review it (four-eyes principle)? Proposal: no restriction in the PoC. | Product Owner (Customer) | next meeting | open |
+| Q1 | May the Accounting Member who uploaded the invoice or accepted its exceptions also confirm it at final review, or must another member review it (four-eyes principle)? Proposal: no restriction in the PoC. | Product Owner (Customer) | next meeting | answered → [MTG-20261211](../01-requirements/meetings/2026-12-11-approval-review-rules.md) R4 |
 
 Return for correction and notification on rejection are asked in [SAPS-22](SAPS-22-invoice-approval.md#7-open-questions) Q2 and Q3; the answers apply to this feature too.
 
