@@ -1,11 +1,11 @@
 ---
 id: "SAPS-22"
 title: "SAPS-22 — Invoice approval"
-status: draft            # draft | in-review | approved | deprecated
+status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
-last_updated: 2026-12-10
-related: [UC-04, UC-05, SCP-IN-06, SCP-IN-14, DEC-009, DEC-013, DEC-014, DEC-015, DEC-021, DEC-035, NFR-SEC-001, ADR-0007, ADR-0008, SAPS-19, SAPS-20, SAPS-21]
+last_updated: 2026-12-11
+related: [UC-04, UC-05, SCP-IN-06, SCP-IN-14, DEC-009, DEC-013, DEC-014, DEC-015, DEC-021, DEC-035, DEC-038, DEC-039, DEC-040, NFR-SEC-001, ADR-0007, ADR-0008, SAPS-19, SAPS-20, SAPS-21]
 ---
 
 # SAPS-22 — Invoice approval
@@ -30,10 +30,10 @@ rejected invoices end in status Rejected.
 |---|---|---|
 | BR-01 | An invoice needs approval when its total amount (tax included) is above the approval threshold stored on the invoice (`approvalThresholdApplied`). The status PendingApproval is set by matching ([SAPS-19](SAPS-19-invoice-matching.md) BR-12) or by accepting exceptions ([SAPS-20](SAPS-20-exception-handling.md) BR-06). | [DEC-009](../01-requirements/decision-log.md#dec-009), [DEC-015](../01-requirements/decision-log.md#dec-015) |
 | BR-02 | The rule applies to all invoice types, including non-PO invoices. | [DEC-013](../01-requirements/decision-log.md#dec-013) |
-| BR-03 | Only an Accounting Manager of the invoice's tenant can decide. Any Accounting Manager of the tenant can decide; the first decision wins (pending Q1). | [DEC-009](../01-requirements/decision-log.md#dec-009), Q1 |
+| BR-03 | Only an Accounting Manager of the invoice's tenant can decide. Any Accounting Manager of the tenant can decide; the first decision wins. | [DEC-009](../01-requirements/decision-log.md#dec-009), [DEC-038](../01-requirements/decision-log.md#dec-038) |
 | BR-04 | Approve → status PendingReview; Accounting Members get a `REVIEW_REQUESTED` notification. | [DEC-013](../01-requirements/decision-log.md#dec-013), [DEC-021](../01-requirements/decision-log.md#dec-021) |
-| BR-05 | Reject → status Rejected, a final state. A comment is required. | [DEC-014](../01-requirements/decision-log.md#dec-014) |
-| BR-06 | The manager cannot change invoice data. Return for correction instead of rejection: pending Q2. | [DEC-014](../01-requirements/decision-log.md#dec-014), Q2 |
+| BR-05 | Reject → status Rejected, a final state. A comment is required. No notification is sent on rejection. | [DEC-014](../01-requirements/decision-log.md#dec-014), [DEC-040](../01-requirements/decision-log.md#dec-040) |
+| BR-06 | The manager cannot change invoice data and cannot return the invoice for correction; the only alternative to approval is rejection. | [DEC-014](../01-requirements/decision-log.md#dec-014), [DEC-039](../01-requirements/decision-log.md#dec-039) |
 | BR-07 | The approval screen shows the exceptions that were accepted as is (code, who accepted, when), so the manager knows which variances were accepted. | [DEC-035](../01-requirements/decision-log.md#dec-035) |
 | BR-08 | Each decision is saved as an Approval and recorded as an InvoiceEvent (`APPROVE` or `REJECT`). | [data model](../02-architecture/data-model.md#approval) |
 | BR-09 | Changing the approval threshold later does not change invoices already in PendingApproval; they keep the stored threshold. | [DEC-015](../01-requirements/decision-log.md#dec-015) |

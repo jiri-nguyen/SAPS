@@ -1,11 +1,11 @@
 ---
 title: Scope Statement
-version: "0.5"           # 1.0 = first customer-approved version
+version: "0.6"           # 1.0 = first customer-approved version
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Solution Architect (our company)", "Product Owner (Customer)"]
-last_updated: 2026-12-08
-related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-003, DEC-004, DEC-011, DEC-012, DEC-013, DEC-014, DEC-015, DEC-016, DEC-017, DEC-018, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024, DEC-025, DEC-026, DEC-031, DEC-032, DEC-033, DEC-034]
+last_updated: 2026-12-11
+related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-003, DEC-004, DEC-011, DEC-012, DEC-013, DEC-014, DEC-015, DEC-016, DEC-017, DEC-018, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024, DEC-025, DEC-026, DEC-031, DEC-032, DEC-033, DEC-034, DEC-039, DEC-041]
 ---
 
 # Scope Statement
@@ -81,6 +81,8 @@ Quality requirements are specified in the [Non-Functional Requirements](nfr.md).
 | SCP-OUT-11 | Invoice intake from a dedicated mailbox | After the PoC; the PoC covers manual upload only | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) R7 |
 | SCP-OUT-12 | Serving several customer companies (multi-tenancy) | After the PoC; the PoC serves one company and only prepares the data model ([ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md)) | [DEC-026](decision-log.md#dec-026) |
 | SCP-OUT-13 | GR-based invoice verification (delivery order / goods receipt reference on invoice lines) | After the PoC; the PoC matches cumulatively per PO line | [DEC-034](decision-log.md#dec-034) |
+| SCP-OUT-14 | Return an invoice for correction (back to Exception) at approval or final review | After the PoC; reject only in the PoC | [DEC-039](decision-log.md#dec-039) |
+| SCP-OUT-15 | Four-eyes rule (segregation of duties) at final review | After the PoC | [DEC-041](decision-log.md#dec-041) |
 
 ## 5. Assumptions
 | # | Assumption | To be confirmed by | Status |
@@ -125,3 +127,4 @@ Scope-relevant questions are tracked and answered in the meeting minutes listed 
 | 0.3 | 2026-11-28 | Solution Architect (our company) | SCP-IN-02, -04, -06, -08, -10, -11 and BO2 changed; SCP-IN-13, -14 added; AS2 confirmed; sign-off owner set; Linear epics linked | [DEC-011](decision-log.md#dec-011) to [DEC-021](decision-log.md#dec-021) |
 | 0.4 | 2026-12-05 | Solution Architect (our company) | BO1 changed; AS1 confirmed for the PoC; SCP-OUT-11, -12 added; open questions updated | [DEC-026](decision-log.md#dec-026) |
 | 0.5 | 2026-12-08 | Solution Architect (our company) | SCP-IN-03, -04 and BO2 changed (EX10, quantity rule); SCP-OUT-13 added | [DEC-031](decision-log.md#dec-031) to [DEC-034](decision-log.md#dec-034) |
+| 0.6 | 2026-12-11 | Solution Architect (our company) | SCP-OUT-14, -15 added | [DEC-039](decision-log.md#dec-039), [DEC-041](decision-log.md#dec-041) |

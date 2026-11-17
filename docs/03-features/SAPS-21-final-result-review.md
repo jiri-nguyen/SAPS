@@ -1,11 +1,11 @@
 ---
 id: "SAPS-21"
 title: "SAPS-21 — Final result review"
-status: draft            # draft | in-review | approved | deprecated
+status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
-last_updated: 2026-12-10
-related: [UC-05, UC-06, SCP-IN-05, SCP-IN-14, DEC-013, DEC-014, DEC-021, NFR-SEC-001, ADR-0007, ADR-0008, SAPS-19, SAPS-20, SAPS-22]
+last_updated: 2026-12-11
+related: [UC-05, UC-06, SCP-IN-05, SCP-IN-14, DEC-013, DEC-014, DEC-021, DEC-039, DEC-040, DEC-041, NFR-SEC-001, ADR-0007, ADR-0008, SAPS-19, SAPS-20, SAPS-22]
 ---
 
 # SAPS-21 — Final result review
@@ -28,10 +28,10 @@ confirms (status Completed, ready for posting) or rejects the invoice. The resul
 | ID | Rule | Source |
 |---|---|---|
 | BR-01 | Invoices reach PendingReview from matching, from accepting exceptions, or from approval; Accounting Members get a `REVIEW_REQUESTED` notification. | [DEC-013](../01-requirements/decision-log.md#dec-013), [DEC-021](../01-requirements/decision-log.md#dec-021) |
-| BR-02 | Any Accounting Member of the tenant can review; there is no claim. The first action wins. Whether the member who uploaded or resolved the invoice may also review it: pending Q1. | [DEC-021](../01-requirements/decision-log.md#dec-021), Q1 |
+| BR-02 | Any Accounting Member of the tenant can review, including the member who uploaded the invoice or accepted its exceptions (no four-eyes rule in the PoC); there is no claim. The first action wins. | [DEC-021](../01-requirements/decision-log.md#dec-021), [DEC-041](../01-requirements/decision-log.md#dec-041) |
 | BR-03 | Confirm → status Completed, a final state meaning "ready for posting"; posting and payment happen outside the system. | [glossary: Completed](../02-architecture/arc42/12-glossary.md#121-domain-terms), [SCP-OUT-08](../01-requirements/scope.md#4-out-of-scope) |
-| BR-04 | Reject → status Rejected, a final state. A reason is required. | [DEC-014](../01-requirements/decision-log.md#dec-014) |
-| BR-05 | The review screen shows the file, header, lines with match results, accepted exceptions and the approval decision (if any). Data cannot be changed in this step; return for correction: pending SAPS-22 Q2. | [SCP-IN-05](../01-requirements/scope.md#31-functional-capabilities) |
+| BR-04 | Reject → status Rejected, a final state. A reason is required. No notification is sent on rejection. | [DEC-014](../01-requirements/decision-log.md#dec-014), [DEC-040](../01-requirements/decision-log.md#dec-040) |
+| BR-05 | The review screen shows the file, header, lines with match results, accepted exceptions and the approval decision (if any). Data cannot be changed in this step and the invoice cannot be returned for correction. | [SCP-IN-05](../01-requirements/scope.md#31-functional-capabilities), [DEC-039](../01-requirements/decision-log.md#dec-039) |
 | BR-06 | Each action is recorded as an InvoiceEvent (`CONFIRM` or `REJECT`). | [data model](../02-architecture/data-model.md#invoiceevent) |
 
 ### 2.2 Affected NFRs
@@ -139,7 +139,7 @@ None. Uses Invoice `status` / `rejected_reason` and InvoiceEvent ([data model](.
 |---|---|---|---|---|
 | Q1 | May the Accounting Member who uploaded the invoice or accepted its exceptions also confirm it at final review, or must another member review it (four-eyes principle)? Proposal: no restriction in the PoC. | Product Owner (Customer) | next meeting | answered → [MTG-20261211](../01-requirements/meetings/2026-12-11-approval-review-rules.md) R4 |
 
-Return for correction and notification on rejection are asked in [SAPS-22](SAPS-22-invoice-approval.md#7-open-questions) Q2 and Q3; the answers apply to this feature too.
+Return for correction and notification on rejection were decided with SAPS-22: [DEC-039](../01-requirements/decision-log.md#dec-039), [DEC-040](../01-requirements/decision-log.md#dec-040).
 
 ## 8. Documentation Checklist
 - [ ] Release notes entry prepared

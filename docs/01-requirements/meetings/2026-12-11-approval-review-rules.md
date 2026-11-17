@@ -5,7 +5,7 @@ status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["Solution Architect (our company)"]
 last_updated: 2026-12-11
-related: [MTG-20261210, SAPS-21, SAPS-22, DEC-009, DEC-014, DEC-021]
+related: [MTG-20261210, SAPS-21, SAPS-22, DEC-009, DEC-014, DEC-021, DEC-038, DEC-039, DEC-040, DEC-041]
 ---
 
 # MTG-20261211 — Approval and final review rules (SAPS-21, SAPS-22)
@@ -51,18 +51,18 @@ related: [MTG-20261210, SAPS-21, SAPS-22, DEC-009, DEC-014, DEC-021]
 ## 6. Decisions
 | # | Decision | Decided by | Logged as |
 |---|---|---|---|
-| D1 | Any Accounting Manager of the tenant may decide an approval; the first decision is final | Product Owner (Customer) | pending |
-| D2 | No "return for correction" in the PoC; approval and final review offer reject only | Product Owner (Customer) | pending |
-| D3 | No notification when an invoice is rejected in the PoC | Product Owner (Customer) | pending |
-| D4 | No four-eyes rule at final review in the PoC; any Accounting Member may confirm | Product Owner (Customer) | pending |
+| D1 | Any Accounting Manager of the tenant may decide an approval; the first decision is final | Product Owner (Customer) | [DEC-038](../decision-log.md#dec-038) |
+| D2 | No "return for correction" in the PoC; approval and final review offer reject only | Product Owner (Customer) | [DEC-039](../decision-log.md#dec-039) |
+| D3 | No notification when an invoice is rejected in the PoC | Product Owner (Customer) | [DEC-040](../decision-log.md#dec-040) |
+| D4 | No four-eyes rule at final review in the PoC; any Accounting Member may confirm | Product Owner (Customer) | [DEC-041](../decision-log.md#dec-041) |
 
 ## 7. Requirements Captured
 | # | Information / requirement | Type | Proposed target | Status |
 |---|---|---|---|---|
-| R1 | Any Accounting Manager decides; first decision wins | Functional | DEC-038; SAPS-22 BR-03 | proposed |
-| R2 | Reject only at approval and final review; return for correction after the PoC | Scope | DEC-039; SCP-OUT-14; SAPS-22 BR-06, SAPS-21 BR-05 | proposed |
-| R3 | No notification on rejection | Functional | DEC-040 (refines DEC-021) | proposed |
-| R4 | No four-eyes rule at final review in the PoC; segregation of duties after the PoC | Scope | DEC-041; SCP-OUT-15; SAPS-21 BR-02 | proposed |
+| R1 | Any Accounting Manager decides; first decision wins | Functional | DEC-038; SAPS-22 BR-03 | logged |
+| R2 | Reject only at approval and final review; return for correction after the PoC | Scope | DEC-039; SCP-OUT-14; SAPS-22 BR-06, SAPS-21 BR-05 | logged |
+| R3 | No notification on rejection | Functional | DEC-040 (refines DEC-021) | logged |
+| R4 | No four-eyes rule at final review in the PoC; segregation of duties after the PoC | Scope | DEC-041; SCP-OUT-15; SAPS-21 BR-02 | logged |
 
 ### 7.1 Conflicts with existing items
 None.
@@ -73,7 +73,7 @@ None.
 ## 8. Action Items
 | # | Action | Owner | Due | Status |
 |---|---|---|---|---|
-| A1 | Apply the confirmed decisions to the decision log, scope, SAPS-21 and SAPS-22 specs | Solution Architect (our company) | 2026-12-12 | open |
+| A1 | Apply the confirmed decisions to the decision log, scope, SAPS-21 and SAPS-22 specs | Solution Architect (our company) | 2026-12-12 | done (scope v0.6; SAPS-21 and SAPS-22 approved) |
 
 ## 9. Open Questions
 None new. Open items from MTG-20261205 (Q1–Q3) stay open until after the PoC.

@@ -3,8 +3,8 @@ title: Decision Log
 status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["PM (TBD)"]
-last_updated: 2026-12-10
-related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, MTG-20261210]
+last_updated: 2026-12-11
+related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, MTG-20261210, MTG-20261211]
 ---
 
 # Decision Log
@@ -49,6 +49,10 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, 
 | [DEC-035](#dec-035) | 2026-12-10 | Exception types that may be accepted as is | Business | confirmed |
 | [DEC-036](#dec-036) | 2026-12-10 | Accounting Manager may release any claim | Business | confirmed |
 | [DEC-037](#dec-037) | 2026-12-10 | Repeated exception after re-matching notifies the claimant only | Business | confirmed |
+| [DEC-038](#dec-038) | 2026-12-11 | Any Accounting Manager may decide an approval; first decision is final | Business | confirmed |
+| [DEC-039](#dec-039) | 2026-12-11 | No return for correction in the PoC; reject only | Scope | confirmed |
+| [DEC-040](#dec-040) | 2026-12-11 | No notification on rejection in the PoC | Business | confirmed |
+| [DEC-041](#dec-041) | 2026-12-11 | No four-eyes rule at final review in the PoC | Scope | confirmed |
 
 ## 2. Decisions
 
@@ -936,3 +940,86 @@ exception on an unclaimed invoice still notifies all Accounting Members.
 
 **Consequences & follow-ups:** None.
 
+### DEC-038
+**Any Accounting Manager may decide an approval; first decision is final**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-11 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20261211](meetings/2026-12-11-approval-review-rules.md) D1 |
+| Impacts | [SAPS-22](../03-features/SAPS-22-invoice-approval.md) BR-03; refines [DEC-009](#dec-009) |
+| Supersedes / Superseded by | — |
+
+**Context:** A tenant can have several Accounting Managers; who decides an approval was open.
+
+**Decision:** Any Accounting Manager of the tenant may approve or reject an invoice in PendingApproval. The first decision is final; a later attempt is refused.
+
+**Rationale:** Same shared-queue approach as for exceptions (DEC-016); no assignment needed.
+
+**Consequences & follow-ups:** None.
+
+### DEC-039
+**No return for correction in the PoC; reject only**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-11 |
+| Category | Scope |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20261211](meetings/2026-12-11-approval-review-rules.md) D2 |
+| Impacts | [SAPS-22](../03-features/SAPS-22-invoice-approval.md) BR-06; [SAPS-21](../03-features/SAPS-21-final-result-review.md) BR-05; [SCP-OUT-14](scope.md#4-out-of-scope); refines [DEC-014](#dec-014) |
+| Supersedes / Superseded by | — |
+
+**Context:** An approver or reviewer may find a correctable error; returning the invoice to Exception was an option.
+
+**Decision:** At approval and at final review, the only alternative to approving or confirming is rejection. Return for correction is a candidate after the PoC.
+
+**Rationale:** Keeps the PoC lifecycle and API unchanged; the Product Owner agreed it fits a real product later.
+
+**Consequences & follow-ups:** A corrected invoice must be uploaded again.
+
+### DEC-040
+**No notification on rejection in the PoC**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-11 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20261211](meetings/2026-12-11-approval-review-rules.md) D3 |
+| Impacts | [SAPS-22](../03-features/SAPS-22-invoice-approval.md) BR-05; [SAPS-21](../03-features/SAPS-21-final-result-review.md) BR-04; refines [DEC-021](#dec-021) |
+| Supersedes / Superseded by | — |
+
+**Context:** DEC-021 defines notifications for exceptions, approvals and reviews, not for rejections.
+
+**Decision:** No notification is sent when an invoice is rejected. Status Rejected and the reason stay visible in the invoice list.
+
+**Rationale:** Stated by the Product Owner.
+
+**Consequences & follow-ups:** None.
+
+### DEC-041
+**No four-eyes rule at final review in the PoC**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-11 |
+| Category | Scope |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20261211](meetings/2026-12-11-approval-review-rules.md) D4 |
+| Impacts | [SAPS-21](../03-features/SAPS-21-final-result-review.md) BR-02; [SCP-OUT-15](scope.md#4-out-of-scope) |
+| Supersedes / Superseded by | — |
+
+**Context:** Segregation of duties would forbid the member who uploaded an invoice or accepted its exceptions from confirming it.
+
+**Decision:** Any Accounting Member may confirm an invoice at final review, including the member who uploaded it or accepted its exceptions. A four-eyes rule is a candidate after the PoC.
+
+**Rationale:** The PoC has only a few demo users; the control matters for production.
+
+**Consequences & follow-ups:** One person can take an invoice below the approval threshold from upload to Completed in the PoC.
