@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
 last_updated: 2026-12-05
-related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-018, DEC-021, SAPS-31]
+related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-018, DEC-021, SAPS-31]
 ---
 
 # Data Model
@@ -16,7 +16,7 @@ Containers and stores: [ADR-0003](adr/0003-use-postgresql-and-docker-compose.md)
 ## 1. Overview
 | Data store | Technology | Owning container | Entities | ADR |
 |---|---|---|---|---|
-| SAPS Database | PostgreSQL (version in the Developer Guide) | SAPS API (the SAPS Worker shares the codebase and schema) | Tenant, UserAccount, Invoice, InvoiceLine, InvoiceException, Approval, InvoiceEvent, Notification, MatchingSettings | [ADR-0003](adr/0003-use-postgresql-and-docker-compose.md), [ADR-0004](adr/0004-process-invoices-in-background-worker.md) |
+| SAPS Database | PostgreSQL (version in the Developer Guide) | SAPS API (the SAPS Worker shares the codebase and schema) | Tenant, UserAccount, UserSession, Invoice, InvoiceLine, InvoiceException, Approval, InvoiceEvent, Notification, MatchingSettings | [ADR-0003](adr/0003-use-postgresql-and-docker-compose.md), [ADR-0004](adr/0004-process-invoices-in-background-worker.md) |
 | SAPS Message Broker | Redis, persistence on (AOF) | SAPS API (sends), SAPS Worker (consumes) | Transient processing messages only (invoice ID + job type); no business data; never the source of truth | [ADR-0004](adr/0004-process-invoices-in-background-worker.md) |
 | SAPS File Storage | SeaweedFS (S3 API) | SAPS API (writes), SAPS Worker (reads) | Uploaded invoice files, key `invoices/{invoice_id}/{file_sha256}` in `Invoice.file_storage_key` | [ADR-0006](adr/0006-store-invoice-files-in-seaweedfs.md) |
 | Dummy sample set | JSON fixture files | Dummy Extraction Adapter | ExtractedInvoice (§4.2) | [ADR-0001](adr/0001-isolate-extraction-and-erp-behind-ports.md), [DEC-012](../01-requirements/decision-log.md#dec-012) |
@@ -33,6 +33,7 @@ erDiagram
     Tenant ||--o{ UserAccount : "has"
     Tenant ||--o{ Invoice : "owns"
     Tenant ||--|| MatchingSettings : "configures"
+    UserAccount ||--o{ UserSession : "signs in with"
     UserAccount ||--o{ Invoice : "uploads"
     UserAccount ||--o{ Approval : "decides"
     UserAccount ||--o{ Notification : "receives"
@@ -52,6 +53,12 @@ erDiagram
         uuid tenant_id FK
         string username UK
         enum role
+    }
+    UserSession {
+        uuid id PK
+        uuid user_account_id FK
+        string token_hash UK
+        timestamp expires_at
     }
     Invoice {
         uuid id PK
@@ -164,9 +171,29 @@ A person who signs in: an Accounting Member or an Accounting Manager ([NFR-SEC-0
 | id | uuid | No | PK | Internal | Surrogate key |
 | username | string(100) | No | UK | Internal | Sign-in name; unique across tenants, so sign-in identifies the tenant |
 | display_name | string(200) | No | — | Restricted | Name shown in the UI |
-| password_hash | string(255) | No | — | Restricted | Salted password hash; never logged |
+| password_hash | string(255) | No | — | Restricted | Argon2id password hash ([ADR-0008](adr/0008-use-session-cookies-for-authentication.md)); never logged |
 | role | enum | No | — | Internal | `ACCOUNTING_MEMBER`, `ACCOUNTING_MANAGER` |
 | is_active | boolean | No | — | Internal | Inactive users cannot sign in |
+
+### UserSession
+A signed-in browser session ([ADR-0008](adr/0008-use-session-cookies-for-authentication.md)). The cookie holds a random value; only its hash is stored.
+
+| Property | Value |
+|---|---|
+| Data store / table | SAPS Database / `user_session` |
+| Owning container | SAPS API |
+| Lifecycle | created at sign-in; ends at sign-out (`revoked_at`), idle timeout or absolute timeout |
+| Retention | delete expired and revoked sessions after TBD days |
+| Expected volume | a few per user |
+
+| Attribute | Type | Null | Key | Class. | Description |
+|---|---|---|---|---|---|
+| id | uuid | No | PK | Internal | Surrogate key |
+| user_account_id | uuid | No | FK → UserAccount | Internal | Signed-in user; the tenant comes from this user |
+| token_hash | string(64) | No | UK | Restricted | SHA-256 of the cookie value; the cookie value itself is never stored or logged |
+| expires_at | timestamp UTC | No | — | Internal | Absolute timeout |
+| last_seen_at | timestamp UTC | No | — | Internal | Used for the idle timeout |
+| revoked_at | timestamp UTC | Yes | — | Internal | Set at sign-out or deactivation |
 
 ### Invoice
 An uploaded vendor invoice and its processing state.

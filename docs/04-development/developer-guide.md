@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect / Tech Lead (our company)"
 reviewers: []
 last_updated: 2026-12-05
-related: [DEC-028, DEC-029, DEC-030, ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, SAPS-26]
+related: [DEC-028, DEC-029, DEC-030, ADR-0001, ADR-0008, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, SAPS-26]
 ---
 
 # Developer Guide
@@ -194,7 +194,8 @@ The repository is public ([DEC-028](../01-requirements/decision-log.md#dec-028))
 arc42 §8 Cross-cutting Concepts is not written yet. Until then:
 - Errors: API errors use `application/problem+json` (RFC 9457).
 - Logging: structured JSON logs to stdout; include `invoice_id` and `tenant_id`; never log passwords or file contents.
-- Security: simple user accounts ([NFR-SEC-001](../01-requirements/nfr.md#nfr-sec-001)); passwords stored as salted hashes.
+- Security: simple user accounts ([NFR-SEC-001](../01-requirements/nfr.md#nfr-sec-001)); server-side sessions in the HttpOnly cookie
+  `saps_session`, Argon2id password hashes, `Origin` check on state-changing requests ([ADR-0008](../02-architecture/adr/0008-use-session-cookies-for-authentication.md)).
 - Configuration: environment variables only (§6).
 
 ### 5.4 APIs & Events
@@ -228,7 +229,9 @@ All settings are environment variables, read in `backend/src/saps/config.py`. `.
 | `SWEEPER_INTERVAL_SECONDS`, `SWEEPER_STUCK_AFTER_SECONDS` | Sweeper tick and stuck age — defaults 10 and 60 | `.env.example` |
 | `EXTRACTION_ADAPTER`, `ERP_ADAPTER` | Port adapters — `dummy` in the PoC | `.env.example` |
 | `FIXTURES_DIR` | Dummy sample set and ERP data | `.env.example` |
-| `SESSION_SECRET` | Signs session cookies | generate locally (`openssl rand -hex 32`) |
+| `WEB_APP_ORIGIN` | Allowed `Origin` for state-changing requests (CSRF check) — `http://localhost:5173` locally | `.env.example` |
+| `SESSION_IDLE_TIMEOUT_MINUTES`, `SESSION_ABSOLUTE_TIMEOUT_HOURS` | Session timeouts — defaults 30 and 8 ([ADR-0008](../02-architecture/adr/0008-use-session-cookies-for-authentication.md)) | `.env.example` |
+| `SESSION_COOKIE_SECURE` | `Secure` flag on the session cookie — `false` only for local HTTP | `.env.example` |
 | `SEED_USER_PASSWORD` | Password of the seeded demo users | set locally |
 
 - Never commit `.env`; gitleaks runs as a pre-commit hook.
