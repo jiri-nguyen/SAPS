@@ -3,7 +3,7 @@
 openapi: 3.1.0
 info:
   title: SAPS API
-  version: "0.3.0"
+  version: "0.3.1"
   description: |
     HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload, the exception queue,
     approval, final review, notifications and matching settings.
@@ -121,7 +121,9 @@ paths:
         Stores the file in SAPS File Storage, creates the invoice with status `UPLOADED` and queues processing
         (ADR-0004, ADR-0006). Extraction, duplicate check, type derivation and matching run asynchronously.
         A file that is not in the dummy sample set ends in status `EXCEPTION` with `EX1` (DEC-012).
-        Accepted media types in the PoC: PDF, JPEG, PNG. Maximum file size: TBD (MTG-20261114 Q7).
+        Accepted media types in the PoC: PDF, JPEG, PNG, checked by file content (magic bytes).
+        Maximum file size: setting `MAX_UPLOAD_SIZE_MB`, default 10 MB in the PoC (SAPS-17).
+        A repeated request with the same `Idempotency-Key` returns the invoice of the first request.
       tags: [Invoices]
       x-roles: [ACCOUNTING_MEMBER]
       parameters:

@@ -44,7 +44,8 @@ There are no dev / stg / prod environments in the PoC ([CON-01](../02-architectu
 ## 4. Test Data Management
 - Source: JSON fixtures in the repository — the dummy sample set (invoice files with predefined extraction data,
   [DEC-012](../01-requirements/decision-log.md#dec-012)) and dummy ERP data (vendors, POs, goods receipts).
-  One fixture set per demo scenario, so scenarios do not interfere.
+  One fixture set per demo scenario, so scenarios do not interfere. Layout, generator and manifest:
+  [SAPS-18 §3.8](../03-features/SAPS-18-dummy-invoice-extraction.md#38-configuration--fixtures).
 - Masking rules: not needed — all data is synthetic; no real invoices, vendors or people.
 - Volume: demo scale; no volume testing.
 - Ownership: the Solution Architect owns the fixtures; any change to a fixture is reviewed together with the scenario it serves.

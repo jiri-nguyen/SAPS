@@ -3,7 +3,7 @@ title: Data Model
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
-last_updated: 2026-12-08
+last_updated: 2026-12-11
 related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-021, SAPS-31]
 ---
 
@@ -229,9 +229,10 @@ An uploaded vendor invoice and its processing state.
 | file_size_bytes | bigint | No | — | Internal | File size |
 | file_sha256 | string(64) | No | — | Internal | Content hash; identifies the dummy sample (Q4) |
 | file_storage_key | string(500) | No | — | Internal | Object key in SAPS File Storage |
+| idempotency_key | string(64) | No | UK (with tenant_id) | Internal | `Idempotency-Key` of the upload request; a repeated request returns this invoice ([SAPS-17](../03-features/SAPS-17-invoice-upload.md)) |
 | rejected_reason | string(1000) | Yes | — | Internal | Reason entered at rejection ([DEC-014](../01-requirements/decision-log.md#dec-014)) |
 
-Index (not unique): (`tenant_id`, `vendor_code`, `invoice_number`) for duplicate detection. It is not a unique key because a
+Unique index: (`tenant_id`, `idempotency_key`). Index (not unique): (`tenant_id`, `vendor_code`, `invoice_number`) for duplicate detection. It is not a unique key because a
 duplicate is stored and raised as EX9.
 
 ### InvoiceLine
