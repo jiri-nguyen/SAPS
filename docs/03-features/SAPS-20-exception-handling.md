@@ -195,9 +195,9 @@ None.
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | Which exception types may an Accounting Member accept as is (resolve without correcting data)? Proposal: allowed for EX2 (non-PO review), EX6 (price variance), EX7 (quantity variance), EX9 (not a real duplicate); not allowed for EX1, EX3, EX4, EX5, EX8, EX10 — these need corrected data or a rejection. | Product Owner (Customer) | next meeting | open |
-| Q2 | Can an Accounting Manager release another member's claim (e.g. the member is absent)? Proposal: yes. | Product Owner (Customer) | next meeting | open |
-| Q3 | When re-matching raises exceptions again, notify only the claimant (proposal) or all Accounting Members? | Product Owner (Customer) | next meeting | open |
+| Q1 | Which exception types may an Accounting Member accept as is (resolve without correcting data)? Proposal: allowed for EX2 (non-PO review), EX6 (price variance), EX7 (quantity variance), EX9 (not a real duplicate); not allowed for EX1, EX3, EX4, EX5, EX8, EX10 — these need corrected data or a rejection. | Product Owner (Customer) | next meeting | answered → [MTG-20261210](../01-requirements/meetings/2026-12-10-exception-handling-rules.md) R1 |
+| Q2 | Can an Accounting Manager release another member's claim (e.g. the member is absent)? Proposal: yes. | Product Owner (Customer) | next meeting | answered → [MTG-20261210](../01-requirements/meetings/2026-12-10-exception-handling-rules.md) R2 |
+| Q3 | When re-matching raises exceptions again, notify only the claimant (proposal) or all Accounting Members? | Product Owner (Customer) | next meeting | answered → [MTG-20261210](../01-requirements/meetings/2026-12-10-exception-handling-rules.md) R3 |
 
 ## 8. Documentation Checklist
 - [ ] API spec updated (`releaseInvoiceClaim`, `updateInvoice`, `resolveInvoiceExceptions`; version 0.3.0)
