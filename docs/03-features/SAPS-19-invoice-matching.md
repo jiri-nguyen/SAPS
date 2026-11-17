@@ -211,9 +211,9 @@ SAPS Message Broker ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | An invoice where some lines have a PO number and others do not: how is it handled? Proposal: EX3 on the lines without a PO number; the type comes from the lines with a PO number. | Product Owner (Customer) | next meeting | open |
-| Q2 | Quantity rule: must the invoice quantity **equal** the expected quantity (DEC-006 "match exactly"), or only **not exceed** it (DEC-007 "above it → exception", which allows invoicing part of a delivery)? Proposal: must not exceed. | Product Owner (Customer) | next meeting | open |
-| Q3 | Vendor on the invoice differs from the vendor on the PO: is this an exception? Proposal: yes, EX4 (PO not found for this vendor). | Product Owner (Customer) | next meeting | open |
+| Q1 | An invoice where some lines have a PO number and others do not: how is it handled? Proposal: EX3 on the lines without a PO number; the type comes from the lines with a PO number. | Product Owner (Customer) | next meeting | answered → [MTG-20261208](../01-requirements/meetings/2026-12-08-matching-rules.md) R1 |
+| Q2 | Quantity rule: must the invoice quantity **equal** the expected quantity (DEC-006 "match exactly"), or only **not exceed** it (DEC-007 "above it → exception", which allows invoicing part of a delivery)? Proposal: must not exceed. | Product Owner (Customer) | next meeting | answered → [MTG-20261208](../01-requirements/meetings/2026-12-08-matching-rules.md) R2 |
+| Q3 | Vendor on the invoice differs from the vendor on the PO: is this an exception? Proposal: yes, EX4 (PO not found for this vendor). | Product Owner (Customer) | next meeting | answered → [MTG-20261208](../01-requirements/meetings/2026-12-08-matching-rules.md) R3 |
 | Q4 | After the PoC: what happens to an invoice when the ERP Data Port still fails after the last retry? | Solution Architect / Tech Lead | after PoC | open |
 
 ## 8. Documentation Checklist
