@@ -1,5 +1,5 @@
 # SAPS API and SAPS Worker share this image (ADR-0004); the command selects the container role.
-FROM ghcr.io/astral-sh/uv:0.9.18 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.9 AS uv
 
 FROM python:3.14-slim AS build
 COPY --from=uv /uv /usr/local/bin/uv
