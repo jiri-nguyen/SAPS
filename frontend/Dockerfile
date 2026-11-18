@@ -1,5 +1,5 @@
 # SAPS Web App: static build served by nginx; /v1 and /health are proxied to the SAPS API (same origin, ADR-0008).
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
