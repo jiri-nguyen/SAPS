@@ -179,5 +179,5 @@ Two users per role are needed for the demo of the shared queue (DEC-016) and of 
 
 ## 8. Documentation Checklist
 - [x] arc42 §11: TD-03
-- [ ] Developer Guide §2.4: sign-in step verified
+- [x] Developer Guide §2.4: sign-in step verified
 - [ ] Release notes entry prepared
