@@ -1,8 +1,13 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { type ApiHealth, fetchApiHealth } from "./api/health";
+import { type SessionApi, createSessionApi } from "./api/session";
+import { SessionProvider } from "./auth/SessionProvider";
+import { SignInPage } from "./auth/SignInPage";
+import { useSession } from "./auth/session-context";
+import { AppShell } from "./layout/AppShell";
 
-export function App({ checkHealth = fetchApiHealth }: { checkHealth?: () => Promise<ApiHealth> }) {
+function HealthFooter({ checkHealth }: { checkHealth: () => Promise<ApiHealth> }) {
   const [health, setHealth] = useState<ApiHealth | "checking">("checking");
 
   useEffect(() => {
@@ -16,11 +21,36 @@ export function App({ checkHealth = fetchApiHealth }: { checkHealth?: () => Prom
   }, [checkHealth]);
 
   return (
-    <main>
-      <h1>Smart-AP-Suite</h1>
-      <p>
-        SAPS API: <strong data-testid="api-health">{health}</strong>
-      </p>
-    </main>
+    <footer>
+      SAPS API: <strong data-testid="api-health">{health}</strong>
+    </footer>
+  );
+}
+
+function Screens({ footer }: { footer: ReactNode }) {
+  const { user } = useSession();
+  if (user === undefined) return <p>Loading…</p>;
+  if (user === null)
+    return (
+      <>
+        <SignInPage />
+        {footer}
+      </>
+    );
+  return <AppShell user={user} footer={footer} />;
+}
+
+export function App({
+  checkHealth = fetchApiHealth,
+  sessionApi,
+}: {
+  checkHealth?: () => Promise<ApiHealth>;
+  sessionApi?: SessionApi;
+}) {
+  const api = useMemo(() => sessionApi ?? createSessionApi(), [sessionApi]);
+  return (
+    <SessionProvider api={api}>
+      <Screens footer={<HealthFooter checkHealth={checkHealth} />} />
+    </SessionProvider>
   );
 }
