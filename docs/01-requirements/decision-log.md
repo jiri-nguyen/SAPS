@@ -3,7 +3,7 @@ title: Decision Log
 status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["PM (TBD)"]
-last_updated: 2026-12-14
+last_updated: 2026-12-15
 related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, MTG-20261210, MTG-20261211, MTG-20261214]
 ---
 
@@ -55,6 +55,7 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, 
 | [DEC-041](#dec-041) | 2026-12-11 | No four-eyes rule at final review in the PoC | Scope | confirmed |
 | [DEC-042](#dec-042) | 2026-12-14 | Normalize invoice numbers for duplicate detection | Business | confirmed |
 | [DEC-043](#dec-043) | 2026-12-14 | Duplicate check ignores rejected invoices | Business | confirmed |
+| [DEC-044](#dec-044) | 2026-12-15 | Dependency audit gate: runtime blocking, dev-only report when no fix exists | Process | confirmed |
 
 ## 2. Decisions
 
@@ -1069,4 +1070,30 @@ it with the rejected invoice would always raise EX9.
 **Rationale:** A rejected invoice is never paid, so ignoring it creates no double-payment risk.
 
 **Consequences & follow-ups:** None.
+
+### DEC-044
+**Dependency audit gate: runtime blocking, dev-only report when no fix exists**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-15 |
+| Category | Process |
+| Status | confirmed |
+| Decided by | Solution Architect / Tech Lead (our company) |
+| Source | Solution Architect, written approval during [SAPS-26](https://linear.app/jiringuyen/issue/SAPS-26) (CI set-up), 2026-12-15 |
+| Impacts | [Test Strategy §5, §10](../05-testing/test-strategy.md#5-quality-gates); `.github/workflows/ci.yml` |
+| Supersedes / Superseded by | — |
+
+**Context:** The PR gate required "no high findings from dependency scan". At SAPS-26, `npm audit` reported 13 high
+findings, all caused by one ReDoS advisory in `picomatch` (≤ 4.0.7) pulled in by dev tools (Vite, Vitest,
+typescript-eslint). No fixed version exists; npm suggested downgrading major versions. Runtime dependencies were clean.
+
+**Decision:** High findings in runtime dependencies block the pull request (pip-audit; `npm audit --omit=dev`).
+High findings in dev-only dependencies are reported but do not block when no fixed version is available.
+Python SAST uses Ruff's security rules (`S`, ported from Bandit) instead of a separate Bandit run.
+
+**Rationale:** Dev tools do not ship in the SAPS Web App image and process only trusted project files; blocking every
+PR on an unfixable dev-tool advisory gives no security benefit.
+
+**Consequences & follow-ups:** Findings are rechecked with each weekly Dependabot update; when a fix exists, it is applied.
 

@@ -1,0 +1,4 @@
+# False positives only. Each line: <commit>:<file>:<rule>:<line> from a gitleaks report, with the reason above it.
+
+# CLAUDE.md "Feature specs start with the Jira key …: APA-123-invoice-approval.md" — a file name example, not a key.
+357f08114d3474899bf18989716ff376f052c7f5:CLAUDE.md:generic-api-key:151

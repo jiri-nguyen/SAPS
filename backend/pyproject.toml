@@ -1,0 +1,100 @@
+[project]
+name = "saps"
+version = "0.1.0"
+description = "Smart-AP-Suite PoC: SAPS API and SAPS Worker"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.20.1",
+    "apscheduler<4",
+    "boto3>=1.44.5",
+    "dramatiq[redis]>=2.2.1",
+    "fastapi[standard]>=0.164.0",
+    "psycopg[binary]>=3.3.9",
+    "pydantic-settings>=2.16.3",
+    "sqlalchemy[asyncio]>=2.1.9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/saps"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py314"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "ASYNC", "RUF"]
+ignore = ["S101"]  # assert is fine in tests
+
+[tool.ruff.lint.per-file-ignores]
+"migrations/**" = ["S", "E501"]
+
+[tool.mypy]
+python_version = "3.14"
+mypy_path = "src"
+packages = ["saps"]
+strict = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["dramatiq.*", "apscheduler.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Dramatiq has partial type hints; only the worker package calls it.
+module = ["saps.worker.*"]
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra"
+markers = ["integration: needs Docker (Testcontainers)"]
+
+[tool.coverage.run]
+source = ["saps"]
+branch = true
+
+[tool.importlinter]
+root_package = "saps"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Domain does not depend on outer layers or frameworks (ADR-0001)"
+type = "forbidden"
+source_modules = ["saps.domain"]
+forbidden_modules = ["saps.application", "saps.adapters", "saps.api", "saps.worker", "fastapi", "sqlalchemy", "dramatiq", "boto3"]
+
+[[tool.importlinter.contracts]]
+name = "Application depends only on domain and ports (ADR-0001)"
+type = "forbidden"
+source_modules = ["saps.application"]
+forbidden_modules = ["saps.adapters", "saps.api", "saps.worker", "fastapi", "sqlalchemy", "dramatiq", "boto3"]
+
+[[tool.importlinter.contracts]]
+name = "Ports contain no implementations (ADR-0001)"
+type = "forbidden"
+source_modules = ["saps.ports"]
+forbidden_modules = ["saps.adapters", "saps.api", "saps.worker"]
+
+[dependency-groups]
+dev = [
+    "diff-cover>=11.0.3",
+    "httpx>=0.28.1",
+    "import-linter>=2.17",
+    "mypy>=2.4.1",
+    "pip-audit>=2.10.1",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.5.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.5",
+    "testcontainers[postgres]>=4.15.0",
+]

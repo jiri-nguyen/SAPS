@@ -28,7 +28,7 @@ Scope: Proof of Concept ([DEC-003](../01-requirements/decision-log.md#dec-003)).
 | Contract | SAPS API matches its OpenAPI specification | SAPS API | Dev | Schemathesis (proposal) | Yes | CI on every PR, against [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
 | End-to-end | Demo scenarios DS-01 … DS-20 (§11) | UC-01 … UC-08 | SA | Playwright | Yes | local, clean Docker Compose stack, before each demo rehearsal |
 | Regression | Previously passing demo scenarios still pass | E2E suite | SA | Playwright | Yes | local, before merging to main |
-| Security | Vulnerable dependencies, insecure code patterns | all code | Dev | pip-audit, npm audit; Bandit (proposal) | Yes | CI on every PR |
+| Security | Vulnerable dependencies, insecure code patterns | all code | Dev | pip-audit, npm audit; Ruff security rules `S` (Bandit-derived) | Yes | CI on every PR |
 | Demo acceptance | Product Owner accepts the PoC | all demo scenarios | Product Owner (SA supports) | live demo | No | demo on 2027-02-22 |
 
 Not applicable in the PoC: performance (no target, [MTG-20261128](../01-requirements/meetings/2026-11-28-poc-flow-review.md) R11), DR / resilience (local only, [CON-01](../02-architecture/arc42/02-constraints.md)).
@@ -53,7 +53,7 @@ There are no dev / stg / prod environments in the PoC ([CON-01](../02-architectu
 ## 5. Quality Gates
 | Gate | Criteria | Enforced at |
 |---|---|---|
-| Pull request | Build green; unit + integration tests pass; coverage ≥ 90 % on changed code; no high findings from dependency scan or Bandit; review approved | PR checks |
+| Pull request | Build green; unit + integration tests pass; coverage ≥ 90 % on changed code; no high findings in runtime dependencies (pip-audit; `npm audit --omit=dev`) or from Ruff security rules; high findings in dev-only dependencies without an available fix are reported, not blocking ([DEC-044](../01-requirements/decision-log.md#dec-044)); review approved | PR checks |
 | Merge to main | Pull request gate + E2E regression suite passes | PR checks |
 | Demo readiness | All demo scenarios DS-01 … DS-20 pass on a freshly created demo stack; no open Critical or High defects | Demo rehearsal checklist |
 
@@ -89,8 +89,9 @@ None in the PoC: there is no performance target ([MTG-20261128](../01-requiremen
 Scalability is verified by review (NFR-SCAL-001). Load tests and PSRs start after the PoC, when the workload profile is known (MTG-20261114 Q5, Q6).
 
 ## 10. Security Testing Approach
-- SAST: Bandit (Python), on every PR (proposal).
-- Dependency scanning: pip-audit and npm audit, on every PR.
+- SAST: Ruff security rules `S` (ported from Bandit), on every PR as part of `ruff check`.
+- Dependency scanning on every PR: pip-audit (blocking); `npm audit --omit=dev --audit-level=high` (blocking);
+  `npm audit --audit-level=high` for dev dependencies (report only, [DEC-044](../01-requirements/decision-log.md#dec-044)). Findings without a fix are rechecked with each Dependabot update.
 - DAST, penetration test, infrastructure checks: not in the PoC (local only, synthetic data).
 
 ## 11. PoC Demo Acceptance
