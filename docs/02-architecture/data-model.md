@@ -346,6 +346,8 @@ so read state is per user.
 | message | string(500) | No | — | Internal | Text shown in the UI |
 | read_at | timestamp UTC | Yes | — | Internal | Null while unread |
 
+Index: (`recipient_id`, `read_at`, `created_at`) for the unread list and count ([SAPS-24](../03-features/SAPS-24-in-app-notifications.md)).
+
 ### MatchingSettings
 One row per tenant with the configurable matching settings ([DEC-015](../01-requirements/decision-log.md#dec-015), [ADR-0007](adr/0007-prepare-data-model-for-tenants.md)).
 

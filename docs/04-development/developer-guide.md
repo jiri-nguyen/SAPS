@@ -227,6 +227,7 @@ All settings are environment variables, read in `backend/src/saps/config.py`. `.
 | `DRAMATIQ_MAINTENANCE_CHANCE` | Broker maintenance frequency out of 1,000,000 — default 100000 = 10 % ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S7) | `.env.example` |
 | `ACTOR_TIME_LIMIT_MS` | Time limit per job — default 60000 | `.env.example` |
 | `SWEEPER_INTERVAL_SECONDS`, `SWEEPER_STUCK_AFTER_SECONDS` | Sweeper tick and stuck age — defaults 10 and 60 | `.env.example` |
+| `VITE_NOTIFICATION_POLL_SECONDS` | SAPS Web App polling interval for notifications — default 15 ([SAPS-24](../03-features/SAPS-24-in-app-notifications.md)) | `frontend/.env.example` |
 | `MAX_UPLOAD_SIZE_MB` | Maximum invoice file size — default 10 ([SAPS-17](../03-features/SAPS-17-invoice-upload.md)) | `.env.example` |
 | `EXTRACTION_ADAPTER`, `ERP_ADAPTER` | Port adapters — `dummy` in the PoC | `.env.example` |
 | `FIXTURES_DIR` | Dummy sample set and ERP data | `.env.example` |

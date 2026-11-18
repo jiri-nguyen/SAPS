@@ -3,7 +3,7 @@
 openapi: 3.1.0
 info:
   title: SAPS API
-  version: "0.3.1"
+  version: "0.4.0"
   description: |
     HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload, the exception queue,
     approval, final review, notifications and matching settings.
@@ -499,6 +499,20 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /v1/notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      summary: Mark all of the caller's notifications as read
+      tags: [Notifications]
+      x-roles: [ACCOUNTING_MEMBER, ACCOUNTING_MANAGER]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "204": { description: All marked as read (idempotent) }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /v1/notifications/{notificationId}/read:
     parameters:
       - name: notificationId
@@ -878,10 +892,11 @@ components:
         nextPageToken: { type: [string, "null"] }
     NotificationPage:
       type: object
-      required: [items]
+      required: [items, unreadCount]
       properties:
         items: { type: array, items: { $ref: "#/components/schemas/Notification" } }
         nextPageToken: { type: [string, "null"] }
+        unreadCount: { type: integer, minimum: 0, description: "Number of unread notifications of the caller (bell badge, SAPS-24)" }
 
     # ---------- errors ----------
     Problem:
