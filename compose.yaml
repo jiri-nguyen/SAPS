@@ -1,0 +1,73 @@
+# Smart-AP-Suite PoC — local stack (CON-01, ADR-0003, ADR-0004, ADR-0006). Start: docker compose up -d --build --wait
+name: saps
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-saps}:${POSTGRES_PASSWORD:-saps-local}@db:5432/${POSTGRES_DB:-saps}
+  REDIS_URL: redis://redis:6379/0
+  S3_ENDPOINT_URL: http://seaweedfs:8333
+
+services:
+  db:                      # SAPS Database
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-saps}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saps-local}
+      POSTGRES_DB: ${POSTGRES_DB:-saps}
+    ports: ["5432:5432"]
+    volumes: ["db-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 20
+
+  redis:                   # SAPS Message Broker
+    image: redis:7.2-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 20
+
+  seaweedfs:               # SAPS File Storage
+    image: chrislusf/seaweedfs:4.53
+    command: ["server", "-dir=/data", "-s3", "-s3.config=/etc/seaweedfs/s3.json", "-ip.bind=0.0.0.0"]
+    ports: ["8333:8333"]
+    volumes:
+      - seaweed-data:/data
+      - ./deploy/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+
+  api:                     # SAPS API
+    build: ./backend
+    env_file: [{ path: .env, required: false }]
+    environment: *app-env
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      seaweedfs: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')"]
+      interval: 5s
+      retries: 20
+
+  worker:                  # SAPS Worker
+    build: ./backend
+    command: ["dramatiq", "saps.worker.actors", "--processes", "1", "--threads", "4"]
+    env_file: [{ path: .env, required: false }]
+    environment: *app-env
+    depends_on:
+      api: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  web:                     # SAPS Web App
+    build: ./frontend
+    ports: ["5173:80"]
+    depends_on:
+      api: { condition: service_healthy }
+
+volumes:
+  db-data: {}
+  redis-data: {}
+  seaweed-data: {}

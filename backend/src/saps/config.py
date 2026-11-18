@@ -10,7 +10,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """All runtime configuration of the SAPS API and SAPS Worker."""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # `.env` is read from the repository root (when run from backend/) and from the working directory.
+    model_config = SettingsConfigDict(env_file=("../.env", ".env"), env_file_encoding="utf-8", extra="ignore")
 
     # SAPS Database (ADR-0003, ADR-0005)
     database_url: str = "postgresql+psycopg://saps:saps@localhost:5432/saps"
