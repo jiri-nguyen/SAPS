@@ -124,8 +124,8 @@ None. EX9 is visible through `getInvoice` ([saps-api.openapi.yaml](../02-archite
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | Should invoice numbers be normalized before comparison, so that "INV-0001", "inv 0001" and "INV0001" count as the same? Proposal: yes — ignore case, spaces, dashes, dots and slashes; keep leading zeros. | Product Owner (Customer) | next meeting | open |
-| Q2 | Should rejected invoices be ignored by the duplicate check, so that a corrected invoice can be uploaded again (DEC-039)? Proposal: yes. | Product Owner (Customer) | next meeting | open |
+| Q1 | Should invoice numbers be normalized before comparison, so that "INV-0001", "inv 0001" and "INV0001" count as the same? Proposal: yes — ignore case, spaces, dashes, dots and slashes; keep leading zeros. | Product Owner (Customer) | next meeting | answered → [MTG-20261214](../01-requirements/meetings/2026-12-14-duplicate-detection-rules.md) R1 |
+| Q2 | Should rejected invoices be ignored by the duplicate check, so that a corrected invoice can be uploaded again (DEC-039)? Proposal: yes. | Product Owner (Customer) | next meeting | answered → [MTG-20261214](../01-requirements/meetings/2026-12-14-duplicate-detection-rules.md) R2 |
 
 ## 8. Documentation Checklist
 - [ ] Data model updated (only if Q1 adds normalization)
