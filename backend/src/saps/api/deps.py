@@ -1,0 +1,82 @@
+"""Request-scoped dependencies: database session, auth service, current user, role checks (SAPS-27)."""
+
+from collections.abc import AsyncIterator, Awaitable, Callable
+from datetime import UTC, datetime, timedelta
+from functools import lru_cache
+from typing import Annotated
+
+from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from saps.adapters.persistence.db import get_engine, session_factory
+from saps.adapters.persistence.user_repository import SqlUserRepository
+from saps.adapters.security.argon2_hasher import Argon2PasswordHasher
+from saps.application.auth import AuthService
+from saps.config import get_settings
+from saps.domain.users import AccessDeniedError, CurrentUser, Role, SessionPolicy, ensure_role
+
+SESSION_COOKIE = "saps_session"
+
+
+@lru_cache
+def password_hasher() -> Argon2PasswordHasher:
+    return Argon2PasswordHasher()
+
+
+def session_policy() -> SessionPolicy:
+    settings = get_settings()
+    return SessionPolicy(
+        idle_timeout=timedelta(minutes=settings.session_idle_timeout_minutes),
+        absolute_timeout=timedelta(hours=settings.session_absolute_timeout_hours),
+    )
+
+
+def utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+async def db_session() -> AsyncIterator[AsyncSession]:
+    """One transaction per request; committed when the request succeeds."""
+    engine = get_engine(get_settings().database_url)
+    async with session_factory(engine)() as session, session.begin():
+        yield session
+
+
+DbSession = Annotated[AsyncSession, Depends(db_session)]
+
+
+def auth_service(session: DbSession) -> AuthService:
+    return AuthService(SqlUserRepository(session), password_hasher(), session_policy(), utc_now)
+
+
+Auth = Annotated[AuthService, Depends(auth_service)]
+
+_UNAUTHORIZED = HTTPException(status.HTTP_401_UNAUTHORIZED, "Sign-in required.")
+
+
+async def current_user(request: Request, auth: Auth) -> CurrentUser:
+    token = request.cookies.get(SESSION_COOKIE)
+    if not token:
+        raise _UNAUTHORIZED
+    user = await auth.resolve(token)
+    if user is None:
+        raise _UNAUTHORIZED
+    return user
+
+
+User = Annotated[CurrentUser, Depends(current_user)]
+
+
+def require_roles(*roles: Role) -> Callable[[CurrentUser], Awaitable[CurrentUser]]:
+    """Dependency enforcing the operation's `x-roles` (SAPS-27 BR-07)."""
+
+    async def check(user: User) -> CurrentUser:
+        try:
+            ensure_role(user, roles)
+        except AccessDeniedError as exc:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN, "Your role is not allowed for this operation."
+            ) from exc
+        return user
+
+    return check

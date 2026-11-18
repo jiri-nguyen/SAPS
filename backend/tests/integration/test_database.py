@@ -1,41 +1,20 @@
-"""Integration: real PostgreSQL in Docker (Testcontainers); skipped when Docker is not available."""
-
-import subprocess
-from collections.abc import Iterator
-from pathlib import Path
+"""Integration: migrations and readiness on a real PostgreSQL."""
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from tests.integration.conftest import alembic
+
 pytestmark = pytest.mark.integration
 
-docker = pytest.importorskip("testcontainers.postgres")
 
-
-@pytest.fixture(scope="module")
-def database_url() -> Iterator[str]:
-    try:
-        container = docker.PostgresContainer("postgres:17-alpine", driver="psycopg")
-        container.start()
-    except Exception as exc:  # Docker not running
-        pytest.skip(f"Docker not available: {exc}")
-    try:
-        yield container.get_connection_url()
-    finally:
-        container.stop()
-
-
-def test_migrations_run_to_head(database_url: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", database_url)
-    backend = Path(__file__).parents[2]
-    result = subprocess.run(
-        ["uv", "run", "alembic", "upgrade", "head"],  # noqa: S607
-        cwd=backend,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert result.returncode == 0, result.stderr
+def test_migrations_match_the_models_and_downgrade(database_url: str) -> None:
+    check = alembic(database_url, "check")
+    assert check.returncode == 0, check.stdout + check.stderr  # no drift between models and migrations
+    down = alembic(database_url, "downgrade", "0001")
+    assert down.returncode == 0, down.stderr
+    up = alembic(database_url, "upgrade", "head")
+    assert up.returncode == 0, up.stderr
 
 
 async def test_ready_is_ok_with_a_reachable_database(
