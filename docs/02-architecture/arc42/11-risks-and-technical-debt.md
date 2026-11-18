@@ -3,8 +3,8 @@ title: "§11 Risks and Technical Debt"
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
-last_updated: 2026-12-05
-related: [ADR-0001, ADR-0004, ADR-0007, CON-03, CON-06, DEC-026, SAPS-34, SAPS-35]
+last_updated: 2026-12-15
+related: [ADR-0001, ADR-0004, ADR-0007, CON-03, CON-06, DEC-026, SAPS-27, SAPS-34, SAPS-35]
 ---
 
 # §11 Risks and Technical Debt
@@ -52,6 +52,7 @@ Probability and impact are the Solution Architect's assessment; reviewed at each
 |---|---|---|---|---|
 | [TD-01](#td-01) | Worker holds a database transaction for the whole job | M | M | open |
 | [TD-02](#td-02) | No tenant isolation in the PoC | H | L | open |
+| [TD-03](#td-03) | No account lockout or sign-in rate limiting | M | S | open |
 
 ### TD-01
 **Worker holds a database transaction for the whole job**
@@ -78,3 +79,17 @@ Probability and impact are the Solution Architect's assessment; reviewed at each
 | Effort | L |
 | Backlog | TBD — after the PoC demo |
 | Status | open |
+
+### TD-03
+**No account lockout or sign-in rate limiting**
+
+| Field | Value |
+|---|---|
+| Description | `createSession` does not lock accounts or slow down repeated failed sign-ins. |
+| Cause | PoC runs locally with seeded, synthetic demo users ([SAPS-27](../../03-features/SAPS-27-user-roles-sign-in.md) Q3). |
+| Impact | Password guessing is not limited; acceptable only without real users or network exposure. |
+| Remediation | Rate limiting per username and per IP, temporary lockout after repeated failures, or SSO through an identity provider (replaces ADR-0008). |
+| Effort | S |
+| Backlog | TBD — before any deployment beyond a local machine |
+| Status | open |
+

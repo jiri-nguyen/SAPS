@@ -1,7 +1,7 @@
 ---
 id: "SAPS-27"
 title: "SAPS-27 — User roles and sign-in"
-status: draft            # draft | in-review | approved | deprecated
+status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2026-12-15
@@ -35,7 +35,7 @@ Accounting Manager. Every other feature builds on this one: it provides the curr
 | BR-06 | Every POST, PUT, PATCH and DELETE must carry an `Origin` header equal to `WEB_APP_ORIGIN`; otherwise `403` (CSRF protection). | [ADR-0008](../02-architecture/adr/0008-use-session-cookies-for-authentication.md) |
 | BR-07 | Role check per operation (`x-roles` in the OpenAPI contract); a wrong role gives `403`. | [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
 | BR-08 | The tenant of a request is the tenant of the session's user; data of other tenants is never returned (`404`). | [ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md) |
-| BR-09 | Demo data: one tenant "PoC Customer" with its MatchingSettings (0.5 USD, 300 USD) and the users in §3.8, created by an idempotent seed. | [DEC-015](../01-requirements/decision-log.md#dec-015), Q1, Q2 |
+| BR-09 | Demo data: one tenant "PoC Customer" with its MatchingSettings (0.5 USD, 300 USD) and the users in §3.8, created by an idempotent seed. | [DEC-015](../01-requirements/decision-log.md#dec-015) |
 | BR-10 | The SAPS Web App shows a sign-in page, the signed-in user and role, a sign-out button, and only the menu items allowed for the role. A `401` from any call returns to the sign-in page. | [NFR-USAB-001](../01-requirements/nfr.md#nfr-usab-001) |
 
 ### 2.2 Affected NFRs
@@ -47,7 +47,7 @@ Accounting Manager. Every other feature builds on this one: it provides the curr
 ### 2.3 Out of Scope
 - User administration UI, self-registration, password change or reset (demo users are seeded).
 - SSO ([SCP-OUT-10](../01-requirements/scope.md#4-out-of-scope)); multi-factor authentication.
-- Account lockout and rate limiting of sign-in (Q3).
+- Account lockout and rate limiting of sign-in ([TD-03](../02-architecture/arc42/11-risks-and-technical-debt.md#td-03)).
 
 ## 3. Design
 
@@ -130,7 +130,7 @@ No contract change; implements operations of [saps-api.openapi.yaml](../02-archi
 | `SESSION_IDLE_TIMEOUT_MINUTES`, `SESSION_ABSOLUTE_TIMEOUT_HOURS`, `SESSION_COOKIE_SECURE` | Session rules | 30, 8, true (`false` in `.env.example` for local HTTP) |
 | `SEED_USER_PASSWORD` | Password of all seeded demo users | empty → seed skipped |
 
-Seeded demo users (proposal, Q1):
+Seeded demo users (Q1, agreed):
 
 | Username | Display name | Role |
 |---|---|---|
@@ -145,7 +145,7 @@ Two users per role are needed for the demo of the shared queue (DEC-016) and of 
 - Logs as in §3.7, with `user_id` and `tenant_id`.
 
 ## 4. Rollout & Rollback
-1. Migration `0002_tenants_users_sessions`; the SAPS API container runs migrations, then the seed (Q2).
+1. Migration `0002_tenants_users_sessions`; the SAPS API container runs migrations, then the seed.
 2. `docker compose up -d --build --wait`.
 
 **Rollback:** revert the pull request and recreate the local stack (`docker compose down -v`).
@@ -173,11 +173,11 @@ Two users per role are needed for the demo of the shared queue (DEC-016) and of 
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | Demo users: two Accounting Members and two Accounting Managers as in §3.8? | Solution Architect / Tech Lead | before coding | open |
-| Q2 | Seed runs automatically after migrations when the SAPS API container starts (idempotent) — or only by a manual command? Proposal: automatically. | Solution Architect / Tech Lead | before coding | open |
-| Q3 | No account lockout or sign-in rate limiting in the PoC (local, synthetic users); recorded as technical debt TD-03 for later phases. Agreed? | Solution Architect / Tech Lead | before coding | open |
+| Q1 | Demo users: two Accounting Members and two Accounting Managers as in §3.8? | Solution Architect / Tech Lead | before coding | answered: agreed (2026-12-15) |
+| Q2 | Seed runs automatically after migrations when the SAPS API container starts (idempotent) — or only by a manual command? Proposal: automatically. | Solution Architect / Tech Lead | before coding | answered: automatically after migrations (2026-12-15) |
+| Q3 | No account lockout or sign-in rate limiting in the PoC (local, synthetic users); recorded as technical debt TD-03 for later phases. Agreed? | Solution Architect / Tech Lead | before coding | answered: agreed; [TD-03](../02-architecture/arc42/11-risks-and-technical-debt.md#td-03) (2026-12-15) |
 
 ## 8. Documentation Checklist
-- [ ] arc42 §11: TD-03 (if Q3 is agreed)
+- [x] arc42 §11: TD-03
 - [ ] Developer Guide §2.4: sign-in step verified
 - [ ] Release notes entry prepared
