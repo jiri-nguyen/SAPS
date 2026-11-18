@@ -1,0 +1,125 @@
+# Quality gates of the PoC — docs/05-testing/test-strategy.md §5, docs/04-development/developer-guide.md §4.3.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (SAPS API, SAPS Worker)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # diff-cover compares with origin/main
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.14"
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Format
+        run: uv run ruff format --check .
+      - name: Lint
+        run: uv run ruff check .
+      - name: Type check
+        run: uv run mypy
+      - name: Architecture rules (ADR-0001)
+        run: uv run lint-imports
+      - name: Tests (unit, integration with Testcontainers)
+        run: uv run pytest --cov --cov-report=xml --cov-report=term
+      - name: Coverage on changed code >= 90 %
+        run: uv run diff-cover coverage.xml --compare-branch=origin/main --fail-under=90
+      - name: Dependency audit
+        run: uv run pip-audit --skip-editable
+
+  frontend:
+    name: frontend (SAPS Web App)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Generated API types match the contract
+        run: npm run gen:api && git diff --exit-code src/api/schema.d.ts
+      - name: Type check
+        run: npm run typecheck
+      - name: Lint and format
+        run: npm run lint
+      - name: Tests (coverage >= 90 %)
+        run: npm run test:coverage
+      - name: Build
+        run: npm run build
+      - name: Dependency audit (runtime dependencies, blocking)
+        run: npm audit --omit=dev --audit-level=high
+      - name: Dependency audit (dev dependencies, report only)
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+  contract:
+    name: API contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - run: npx --yes @redocly/cli@1.34.5 lint docs/02-architecture/api/saps-api.openapi.yaml
+
+  secrets:
+    name: secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  compose-smoke:
+    name: local stack smoke test
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Start all containers
+        run: docker compose up -d --build --wait
+      - name: SAPS Web App, proxy and SAPS API
+        run: |
+          curl -fsS http://localhost:5173/ > /dev/null
+          curl -fsS http://localhost:5173/health
+          curl -fsS http://localhost:8000/ready
+      - name: SAPS API → SAPS Message Broker → SAPS Worker
+        run: |
+          docker compose exec -T api python -c "from saps.worker.actors import ping; ping.send('ci-smoke')"
+          for i in $(seq 1 20); do
+            docker compose logs worker | grep -q '"correlation_id": "ci-smoke"' && exit 0
+            sleep 1
+          done
+          docker compose logs worker
+          exit 1
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs
+      - name: Stop
+        if: always()
+        run: docker compose down -v
