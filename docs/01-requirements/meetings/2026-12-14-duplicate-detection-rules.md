@@ -5,7 +5,7 @@ status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["Solution Architect (our company)"]
 last_updated: 2026-12-14
-related: [MTG-20261211, SAPS-23, DEC-008, DEC-035, DEC-039]
+related: [MTG-20261211, SAPS-23, DEC-008, DEC-035, DEC-039, DEC-042, DEC-043]
 ---
 
 # MTG-20261214 — Duplicate detection rules (SAPS-23)
@@ -49,14 +49,14 @@ related: [MTG-20261211, SAPS-23, DEC-008, DEC-035, DEC-039]
 ## 6. Decisions
 | # | Decision | Decided by | Logged as |
 |---|---|---|---|
-| D1 | Invoice numbers are compared after normalization: case ignored; spaces, `-`, `.` and `/` removed; leading zeros kept | Product Owner (Customer) | pending |
-| D2 | Rejected invoices are ignored by the duplicate check | Product Owner (Customer) | pending |
+| D1 | Invoice numbers are compared after normalization: case ignored; spaces, `-`, `.` and `/` removed; leading zeros kept | Product Owner (Customer) | [DEC-042](../decision-log.md#dec-042) |
+| D2 | Rejected invoices are ignored by the duplicate check | Product Owner (Customer) | [DEC-043](../decision-log.md#dec-043) |
 
 ## 7. Requirements Captured
 | # | Information / requirement | Type | Proposed target | Status |
 |---|---|---|---|---|
-| R1 | Normalize invoice numbers before the duplicate comparison (rule in D1) | Functional | DEC-042 (refines DEC-008); SAPS-23 BR-02; data model `Invoice.invoice_number_normalized` | proposed |
-| R2 | The duplicate check ignores invoices in status Rejected | Functional | DEC-043 (refines DEC-008); SAPS-23 BR-03 | proposed |
+| R1 | Normalize invoice numbers before the duplicate comparison (rule in D1) | Functional | DEC-042 (refines DEC-008); SAPS-23 BR-02; data model `Invoice.invoice_number_normalized` | logged |
+| R2 | The duplicate check ignores invoices in status Rejected | Functional | DEC-043 (refines DEC-008); SAPS-23 BR-03 | logged |
 
 ### 7.1 Conflicts with existing items
 None.
@@ -67,7 +67,7 @@ None.
 ## 8. Action Items
 | # | Action | Owner | Due | Status |
 |---|---|---|---|---|
-| A1 | Apply the confirmed decisions to the decision log, SAPS-23 spec and data model | Solution Architect (our company) | 2026-12-15 | open |
+| A1 | Apply the confirmed decisions to the decision log, SAPS-23 spec and data model | Solution Architect (our company) | 2026-12-15 | done (SAPS-23 approved) |
 
 ## 9. Open Questions
 None new. Open items from MTG-20261205 (Q1–Q3) stay open until after the PoC.

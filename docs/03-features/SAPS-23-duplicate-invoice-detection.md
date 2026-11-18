@@ -1,11 +1,11 @@
 ---
 id: "SAPS-23"
 title: "SAPS-23 — Duplicate invoice detection"
-status: draft            # draft | in-review | approved | deprecated
+status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
-last_updated: 2026-12-11
-related: [UC-02, UC-03, SCP-IN-07, DEC-008, DEC-024, DEC-033, DEC-035, DEC-039, ADR-0004, ADR-0007, SAPS-18, SAPS-19, SAPS-20]
+last_updated: 2026-12-14
+related: [UC-02, UC-03, SCP-IN-07, DEC-008, DEC-024, DEC-033, DEC-035, DEC-039, DEC-042, DEC-043, ADR-0004, ADR-0007, SAPS-18, SAPS-19, SAPS-20]
 ---
 
 # SAPS-23 — Duplicate invoice detection
@@ -29,8 +29,8 @@ code or invoice number is corrected.
 | ID | Rule | Source |
 |---|---|---|
 | BR-01 | An invoice is a duplicate when another invoice of the same tenant has the same vendor code and the same invoice number. | [DEC-008](../01-requirements/decision-log.md#dec-008), [ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md) |
-| BR-02 | Invoice numbers are compared after normalization (pending Q1). | Q1 |
-| BR-03 | Invoices compared with: status Exception, PendingApproval, PendingReview or Completed. Not compared: Uploaded / Matching (no data yet) and Rejected (pending Q2). | [DEC-039](../01-requirements/decision-log.md#dec-039), Q2 |
+| BR-02 | Invoice numbers are compared after normalization: case ignored; spaces, `-`, `.` and `/` removed; leading zeros kept (e.g. "INV-0001" = "inv 0001" = "INV0001", but "INV-0001" ≠ "INV-001"). | [DEC-042](../01-requirements/decision-log.md#dec-042) |
+| BR-03 | Invoices compared with: status Exception, PendingApproval, PendingReview or Completed. Not compared: Uploaded / Matching (no data yet) and Rejected (a corrected invoice can be uploaded again). | [DEC-039](../01-requirements/decision-log.md#dec-039), [DEC-043](../01-requirements/decision-log.md#dec-043) |
 | BR-04 | A duplicate raises one EX9 on the invoice being processed (header level); the message names the other invoice (number and status). The earlier invoice is not changed. | [DEC-008](../01-requirements/decision-log.md#dec-008), [DEC-033](../01-requirements/decision-log.md#dec-033) |
 | BR-05 | A duplicate is never rejected automatically; matching still runs, so all exceptions are shown together. | [DEC-008](../01-requirements/decision-log.md#dec-008), [SAPS-19](SAPS-19-invoice-matching.md) §6 |
 | BR-06 | The check runs in `process_invoice` after extraction and before matching, and again in `rematch_invoice` (the vendor code and invoice number are matching fields). | [DEC-024](../01-requirements/decision-log.md#dec-024), [SAPS-20](SAPS-20-exception-handling.md) EC-07 |
@@ -77,7 +77,7 @@ sequenceDiagram
 |---|---|---|---|
 | EC-01 | Two copies processed at the same time by two workers | The advisory lock is held until the job commits; the second copy sees the first and gets EX9 | EX9 on one invoice |
 | EC-02 | Same sample uploaded twice (DS-15) | The second invoice gets EX9 | EX9 |
-| EC-03 | Invoice rejected, corrected invoice uploaded again (DEC-039) | Not a duplicate of the rejected invoice (BR-03, pending Q2) | — |
+| EC-03 | Invoice rejected, corrected invoice uploaded again (DEC-039) | Not a duplicate of the rejected invoice (BR-03) | — |
 | EC-04 | Member corrects the invoice number after EX9 | Re-match runs the check again; EX9 is resolved by the system if no other invoice matches | EX9 resolved |
 | EC-05 | EX9 accepted as is, later another invoice with the same key arrives | The new invoice gets EX9 against both earlier invoices | EX9 |
 | EC-06 | Vendor code or invoice number missing after extraction | No duplicate check for this invoice (cannot compare); other checks continue | — |
@@ -88,7 +88,7 @@ None. EX9 is visible through `getInvoice` ([saps-api.openapi.yaml](../02-archite
 ### 3.6 Data Model Changes
 | Entity | Change | Migration | Backward compatible |
 |---|---|---|---|
-| [Invoice](../02-architecture/data-model.md#invoice) | Depends on Q1: if invoice numbers are normalized, add `invoice_number_normalized` string(50) and replace the duplicate index with (`tenant_id`, `vendor_code`, `invoice_number_normalized`) | `add_invoice_number_normalized` | Yes |
+| [Invoice](../02-architecture/data-model.md#invoice) | Add `invoice_number_normalized` string(50), set from `invoice_number` on every save, and replace the duplicate index with (`tenant_id`, `vendor_code`, `invoice_number_normalized`) | `add_invoice_number_normalized` | Yes |
 
 ### 3.7 Security & Permissions
 - Runs as `system`; queries are limited to the invoice's tenant ([ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md)).
@@ -98,7 +98,7 @@ None. EX9 is visible through `getInvoice` ([saps-api.openapi.yaml](../02-archite
 - Logs: `duplicate_found` (invoice_id, other_invoice_id), `duplicate_cleared`.
 
 ## 4. Rollout & Rollback
-1. Migration (only if Q1 introduces normalization).
+1. Migration `add_invoice_number_normalized` (fills the column for existing rows).
 2. Deploy SAPS Worker with `docker compose up -d --build`.
 
 **Rollback:** revert the pull request and recreate the local stack.
@@ -107,7 +107,7 @@ None. EX9 is visible through `getInvoice` ([saps-api.openapi.yaml](../02-archite
 | ID | Scenario | Level | Covers |
 |---|---|---|---|
 | TS-01 | Same vendor and number as an invoice in each compared status → EX9; in Uploaded, Matching, Rejected → no EX9 | Integration | BR-01, BR-03 |
-| TS-02 | Normalization variants of the invoice number (per Q1) | Unit | BR-02 |
+| TS-02 | Normalization: "INV-0001", "inv 0001", "INV0001", "INV.0001", "INV/0001" are equal; "INV-0001" and "INV-001" are not | Unit | BR-02 |
 | TS-03 | Same number, different vendor → no EX9 | Unit | BR-01 |
 | TS-04 | Two copies processed in parallel → exactly one EX9 | Integration | EC-01 |
 | TS-05 | Duplicate also gets its matching exceptions | Integration | BR-05 |
@@ -128,5 +128,5 @@ None. EX9 is visible through `getInvoice` ([saps-api.openapi.yaml](../02-archite
 | Q2 | Should rejected invoices be ignored by the duplicate check, so that a corrected invoice can be uploaded again (DEC-039)? Proposal: yes. | Product Owner (Customer) | next meeting | answered → [MTG-20261214](../01-requirements/meetings/2026-12-14-duplicate-detection-rules.md) R2 |
 
 ## 8. Documentation Checklist
-- [ ] Data model updated (only if Q1 adds normalization)
+- [x] Data model updated (`Invoice.invoice_number_normalized`)
 - [ ] Release notes entry prepared

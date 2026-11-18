@@ -3,8 +3,8 @@ title: Decision Log
 status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["PM (TBD)"]
-last_updated: 2026-12-11
-related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, MTG-20261210, MTG-20261211]
+last_updated: 2026-12-14
+related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, MTG-20261210, MTG-20261211, MTG-20261214]
 ---
 
 # Decision Log
@@ -53,6 +53,8 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, 
 | [DEC-039](#dec-039) | 2026-12-11 | No return for correction in the PoC; reject only | Scope | confirmed |
 | [DEC-040](#dec-040) | 2026-12-11 | No notification on rejection in the PoC | Business | confirmed |
 | [DEC-041](#dec-041) | 2026-12-11 | No four-eyes rule at final review in the PoC | Scope | confirmed |
+| [DEC-042](#dec-042) | 2026-12-14 | Normalize invoice numbers for duplicate detection | Business | confirmed |
+| [DEC-043](#dec-043) | 2026-12-14 | Duplicate check ignores rejected invoices | Business | confirmed |
 
 ## 2. Decisions
 
@@ -1023,3 +1025,48 @@ exception on an unclaimed invoice still notifies all Accounting Members.
 **Rationale:** The PoC has only a few demo users; the control matters for production.
 
 **Consequences & follow-ups:** One person can take an invoice below the approval threshold from upload to Completed in the PoC.
+
+### DEC-042
+**Normalize invoice numbers for duplicate detection**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-14 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20261214](meetings/2026-12-14-duplicate-detection-rules.md) D1 |
+| Impacts | [SAPS-23](../03-features/SAPS-23-duplicate-invoice-detection.md) BR-02; [data model](../02-architecture/data-model.md#invoice) `invoice_number_normalized`; refines [DEC-008](#dec-008) |
+| Supersedes / Superseded by | — |
+
+**Context:** The same invoice number can be written differently ("INV-0001", "INV0001", "inv 0001"); an exact comparison misses such duplicates.
+
+**Decision:** Before comparing, invoice numbers are normalized: case is ignored; spaces, `-`, `.` and `/` are removed;
+leading zeros are kept ("INV-0001" and "INV-001" stay different).
+
+**Rationale:** Catches more real duplicates; false positives are harmless because EX9 may be accepted as is ([DEC-035](#dec-035)).
+
+**Consequences & follow-ups:** None.
+
+### DEC-043
+**Duplicate check ignores rejected invoices**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-14 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20261214](meetings/2026-12-14-duplicate-detection-rules.md) D2 |
+| Impacts | [SAPS-23](../03-features/SAPS-23-duplicate-invoice-detection.md) BR-03; refines [DEC-008](#dec-008) |
+| Supersedes / Superseded by | — |
+
+**Context:** A corrected invoice is uploaded again with the same number after a rejection ([DEC-039](#dec-039)); comparing
+it with the rejected invoice would always raise EX9.
+
+**Decision:** Invoices in status Rejected are not compared by the duplicate check.
+
+**Rationale:** A rejected invoice is never paid, so ignoring it creates no double-payment risk.
+
+**Consequences & follow-ups:** None.
+

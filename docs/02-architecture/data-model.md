@@ -3,7 +3,7 @@ title: Data Model
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
-last_updated: 2026-12-11
+last_updated: 2026-12-14
 related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-021, SAPS-31]
 ---
 
@@ -214,6 +214,7 @@ An uploaded vendor invoice and its processing state.
 | vendor_code | string(20) | Yes | — | Confidential | Vendor identifier from extraction; with `invoice_number` used for duplicate detection ([DEC-008](../01-requirements/decision-log.md#dec-008)) |
 | vendor_name | string(200) | Yes | — | Confidential | Vendor name from extraction |
 | invoice_number | string(50) | Yes | — | Confidential | Vendor's invoice number |
+| invoice_number_normalized | string(50) | Yes | — | Confidential | `invoice_number` without case, spaces, `-`, `.`, `/`; used for duplicate detection ([DEC-042](../01-requirements/decision-log.md#dec-042)) |
 | invoice_date | date | Yes | — | Confidential | Invoice date |
 | currency | string(3) | No | — | Internal | `USD` only in the PoC |
 | subtotal_amount | decimal(18,2) | Yes | — | Confidential | Amount before tax |
@@ -232,8 +233,8 @@ An uploaded vendor invoice and its processing state.
 | idempotency_key | string(64) | No | UK (with tenant_id) | Internal | `Idempotency-Key` of the upload request; a repeated request returns this invoice ([SAPS-17](../03-features/SAPS-17-invoice-upload.md)) |
 | rejected_reason | string(1000) | Yes | — | Internal | Reason entered at rejection ([DEC-014](../01-requirements/decision-log.md#dec-014)) |
 
-Unique index: (`tenant_id`, `idempotency_key`). Index (not unique): (`tenant_id`, `vendor_code`, `invoice_number`) for duplicate detection. It is not a unique key because a
-duplicate is stored and raised as EX9.
+Unique index: (`tenant_id`, `idempotency_key`). Index (not unique): (`tenant_id`, `vendor_code`, `invoice_number_normalized`) for duplicate detection. It is not a unique
+key because a duplicate is stored and raised as EX9; rejected invoices are ignored by the check ([DEC-043](../01-requirements/decision-log.md#dec-043)).
 
 ### InvoiceLine
 One line of an invoice and its matching result.
