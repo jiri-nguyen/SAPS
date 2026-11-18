@@ -101,6 +101,11 @@ jobs:
     needs: [backend, frontend]
     steps:
       - uses: actions/checkout@v7
+      - name: Local settings with a random CI-only seed password
+        run: |
+          password="$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          sed "s/^SEED_USER_PASSWORD=.*/SEED_USER_PASSWORD=$password/" .env.example > .env
       - name: Start all containers
         run: docker compose up -d --build --wait
       - name: SAPS Web App, proxy and SAPS API
@@ -108,6 +113,18 @@ jobs:
           curl -fsS http://localhost:5173/ > /dev/null
           curl -fsS http://localhost:5173/health
           curl -fsS http://localhost:8000/ready
+      - name: Sign-in, Origin check and sign-out through the proxy (SAPS-27)
+        run: |
+          base=http://localhost:5173/v1/session
+          origin="Origin: http://localhost:5173"
+          password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
+          body="{\"username\":\"member1\",\"password\":\"$password\"}"
+          code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+          test "$(code -X POST -H 'Content-Type: application/json' -d "$body" "$base")" = 403
+          curl -fsS -c jar -H "$origin" -H 'Content-Type: application/json' -d "$body" "$base" | grep -q ACCOUNTING_MEMBER
+          curl -fsS -b jar "$base" | grep -q '"displayName":"Accounting Member 1"'
+          test "$(code -b jar -c jar -X DELETE -H "$origin" "$base")" = 204
+          test "$(code -b jar "$base")" = 401
       - name: SAPS API → SAPS Message Broker → SAPS Worker
         run: |
           docker compose exec -T api python -c "from saps.worker.actors import ping; ping.send('ci-smoke')"
