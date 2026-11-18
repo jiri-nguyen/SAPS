@@ -3,16 +3,14 @@ title: Developer Guide
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect / Tech Lead (our company)"
 reviewers: []
-last_updated: 2026-12-05
+last_updated: 2026-12-15
 related: [DEC-028, DEC-029, DEC-030, ADR-0001, ADR-0008, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, SAPS-26]
 ---
 
 # Developer Guide
 
-> **Status of this guide:** the PoC code does not exist yet. Structure, tooling and commands below are the **target**
-> that the repository skeleton ([SAPS-26](https://linear.app/jiringuyen/issue/SAPS-26), Local PoC environment) must
-> implement. Commands are verified
-> and this note is removed when SAPS-26 is done.
+> **Status of this guide:** the repository skeleton ([SAPS-26](https://linear.app/jiringuyen/issue/SAPS-26)) exists;
+> the commands in §2 and §7 are verified on macOS. Steps that need later features are marked with their Linear issue.
 
 ## 1. Overview
 Smart-AP-Suite automates the Accounts Payable flow: upload, (dummy) extraction, matching, exception handling, approval
@@ -41,6 +39,7 @@ OS: macOS (Apple silicon or Intel) or Linux; Windows via WSL 2.
 | uv | ≥ 0.9 | https://docs.astral.sh/uv/ | Python packages and virtual env |
 | Node.js | 24 LTS | via a version manager (fnm / nvm) | Pinned in `frontend/.nvmrc` |
 | npm | bundled with Node.js | — | |
+| TypeScript | 5.9 (pinned) | via npm | TypeScript 7 is not yet supported by `openapi-typescript`; revisit with Dependabot |
 | IDE | VS Code or PyCharm | — | Recommended extensions in `.vscode/extensions.json` |
 
 Library versions are locked in `backend/uv.lock` and `frontend/package-lock.json`. Versions verified in the spike:
@@ -65,28 +64,32 @@ cd SAPS
 # 2. Configuration (local test values only)
 cp .env.example .env
 
-# 3. Build and start all containers; the SAPS API runs Alembic migrations and seeds the PoC tenant,
-#    users and dummy fixtures on start
-docker compose up -d --build
+# 3. Build and start all six containers; the SAPS API runs Alembic migrations on start.
+#    --wait returns when every container is healthy.
+docker compose up -d --build --wait
 
-# 4. Follow logs until SAPS API and SAPS Worker report "ready"
-docker compose logs -f api worker
+# 4. Optional: install the git hooks (gitleaks, ruff, eslint/prettier)
+uvx pre-commit install
 ```
 
 For development with hot reload, run only the dependencies in Docker and the apps locally:
 ```bash
 docker compose up -d db redis seaweedfs
-cd backend && uv sync && uv run alembic upgrade head && uv run python -m saps.seed
+cd backend && uv sync && uv run alembic upgrade head      # seed of demo users: SAPS-27
 uv run fastapi dev src/saps/api/main.py                      # SAPS API on :8000
 uv run dramatiq saps.worker.actors --processes 1 --threads 4   # SAPS Worker (second terminal)
-cd ../frontend && npm ci && npm run dev                        # SAPS Web App on :5173 (third terminal)
+cd ../frontend && npm ci && npm run dev                        # SAPS Web App on :5173, proxies /v1 and /health
 ```
 
 ### 2.4 Verify the Setup
-- Open `http://localhost:5173`, sign in as `member1` (Accounting Member) or `manager1` (Accounting Manager); the
-  password is `SEED_USER_PASSWORD` from your `.env`.
-- Upload a file from `backend/fixtures/sample-invoices/` — the invoice reaches status PendingReview within seconds (DS-01).
-- `cd backend && uv run pytest tests/unit` — all tests pass.
+- Open `http://localhost:5173` — the page shows "Smart-AP-Suite" and "SAPS API: ok".
+- `curl http://localhost:8000/ready` returns `{"status":"ready","database":true}`.
+- SAPS API → SAPS Message Broker → SAPS Worker:
+  `docker compose exec api python -c "from saps.worker.actors import ping; ping.send('check')"`, then
+  `docker compose logs worker` shows `ping_received` with `correlation_id` `check`.
+- `cd backend && uv run pytest` and `cd frontend && npm test` — all tests pass.
+- After [SAPS-27](https://linear.app/jiringuyen/issue/SAPS-27) and [SAPS-17](https://linear.app/jiringuyen/issue/SAPS-17):
+  sign in as `member1` or `manager1` (password `SEED_USER_PASSWORD` from `.env`) and upload a sample invoice (DS-01).
 
 ## 3. Project Structure
 ```
@@ -109,6 +112,8 @@ SAPS/
 ├── docs/                         # this documentation kit
 ├── spikes/                       # throwaway spike code
 ├── compose.yaml                  # 6 containers (local PoC)
+├── deploy/seaweedfs/s3.json      # local test identity of SAPS File Storage
+├── .github/                      # CI workflow (ci.yml) and Dependabot
 └── .env.example
 ```
 
@@ -248,7 +253,7 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 | Integration | `cd backend && uv run pytest tests/integration` | Starts PostgreSQL, Redis, SeaweedFS with Testcontainers |
 | Coverage | `cd backend && uv run pytest --cov=saps --cov-report=term-missing` | Gate: ≥ 90 % on changed code |
 | Unit (frontend) | `cd frontend && npm test` | Vitest |
-| End-to-end | `docker compose up -d --build && cd frontend && npx playwright test` | Demo scenarios DS-01 … DS-20 |
+| End-to-end | `docker compose up -d --build --wait && cd frontend && npx playwright test` | Demo scenarios DS-01 … DS-20; Playwright is added with the first feature UI |
 
 - Test names: `test_<behavior>_when_<condition>` (Python), `it('<behavior> when <condition>')` (TypeScript).
 - Test data: fixtures in `backend/fixtures/<scenario>/`; builders in `backend/tests/builders.py`.
@@ -274,8 +279,8 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 ## 10. Command Cheat Sheet
 | Task | Command |
 |---|---|
-| Start / stop the stack | `docker compose up -d --build` / `docker compose down` |
-| Reset all demo data | `docker compose down -v && docker compose up -d --build` |
+| Start / stop the stack | `docker compose up -d --build --wait` / `docker compose down` |
+| Reset all demo data | `docker compose down -v && docker compose up -d --build --wait` |
 | Run all backend tests | `cd backend && uv run pytest` |
 | Create a migration | `cd backend && uv run alembic revision --autogenerate -m "<description>"` |
 | Lint and format | `cd backend && uv run ruff format && uv run ruff check --fix && uv run mypy src` / `cd frontend && npm run lint` |
