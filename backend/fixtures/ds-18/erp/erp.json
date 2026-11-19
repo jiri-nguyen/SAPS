@@ -1,0 +1,18 @@
+{
+  "purchase_orders": [
+    {
+      "po_number": "1100018",
+      "vendor_code": "V002",
+      "currency": "USD",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "description": "IT support, hourly",
+          "ordered_quantity": "4",
+          "unit_price": "50.00"
+        }
+      ]
+    }
+  ],
+  "goods_receipts": []
+}

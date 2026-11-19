@@ -1,0 +1,18 @@
+{
+  "purchase_orders": [
+    {
+      "po_number": "1100002",
+      "vendor_code": "V002",
+      "currency": "USD",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "description": "Office cleaning service, December",
+          "ordered_quantity": "1",
+          "unit_price": "180.00"
+        }
+      ]
+    }
+  ],
+  "goods_receipts": []
+}

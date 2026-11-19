@@ -1,0 +1,30 @@
+{
+  "purchase_orders": [
+    {
+      "po_number": "0100017",
+      "vendor_code": "V001",
+      "currency": "USD",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "description": "Desk organizer",
+          "ordered_quantity": "5",
+          "unit_price": "9.00"
+        }
+      ]
+    }
+  ],
+  "goods_receipts": [
+    {
+      "gr_number": "5000017",
+      "po_number": "0100017",
+      "receipt_date": "2026-12-08",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "received_quantity": "5"
+        }
+      ]
+    }
+  ]
+}

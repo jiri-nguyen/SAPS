@@ -1,0 +1,30 @@
+{
+  "purchase_orders": [
+    {
+      "po_number": "0100016",
+      "vendor_code": "V001",
+      "currency": "USD",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "description": "Laptop bag",
+          "ordered_quantity": "8",
+          "unit_price": "45.00"
+        }
+      ]
+    }
+  ],
+  "goods_receipts": [
+    {
+      "gr_number": "5000016",
+      "po_number": "0100016",
+      "receipt_date": "2026-12-08",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "received_quantity": "8"
+        }
+      ]
+    }
+  ]
+}

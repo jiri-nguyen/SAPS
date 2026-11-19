@@ -1,0 +1,30 @@
+{
+  "purchase_orders": [
+    {
+      "po_number": "0100003",
+      "vendor_code": "V001",
+      "currency": "USD",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "description": "Office chair",
+          "ordered_quantity": "5",
+          "unit_price": "90.00"
+        }
+      ]
+    }
+  ],
+  "goods_receipts": [
+    {
+      "gr_number": "5000003",
+      "po_number": "0100003",
+      "receipt_date": "2026-12-02",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "received_quantity": "5"
+        }
+      ]
+    }
+  ]
+}

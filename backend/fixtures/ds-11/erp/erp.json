@@ -1,0 +1,43 @@
+{
+  "purchase_orders": [
+    {
+      "po_number": "0100011",
+      "vendor_code": "V001",
+      "currency": "USD",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "description": "Filing cabinet",
+          "ordered_quantity": "1",
+          "unit_price": "120.00"
+        }
+      ]
+    },
+    {
+      "po_number": "1100011",
+      "vendor_code": "V001",
+      "currency": "USD",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "description": "Furniture assembly service",
+          "ordered_quantity": "1",
+          "unit_price": "60.00"
+        }
+      ]
+    }
+  ],
+  "goods_receipts": [
+    {
+      "gr_number": "5000011",
+      "po_number": "0100011",
+      "receipt_date": "2026-12-06",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "received_quantity": "1"
+        }
+      ]
+    }
+  ]
+}

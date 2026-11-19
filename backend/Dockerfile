@@ -16,6 +16,7 @@ WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
 COPY alembic.ini ./
 COPY migrations ./migrations
+COPY fixtures ./fixtures
 ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1
 USER saps
 EXPOSE 8000
