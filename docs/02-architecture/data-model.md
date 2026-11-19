@@ -3,7 +3,7 @@ title: Data Model
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
-last_updated: 2026-12-14
+last_updated: 2026-12-15
 related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-021, SAPS-31]
 ---
 
@@ -261,6 +261,8 @@ One line of an invoice and its matching result.
 | match_status | enum | No | — | Internal | `NOT_MATCHED`, `MATCHED`, `MISMATCH`, `NOT_APPLICABLE` (non-PO) |
 | po_unit_price | decimal(18,4) | Yes | — | Confidential | PO unit price seen in the last matching run |
 | expected_quantity | decimal(18,3) | Yes | — | Confidential | Received-not-invoiced quantity (3-way) or PO quantity not yet invoiced (2-way) in the last run |
+
+Unique: (`invoice_id`, `line_number`). Index: (`tenant_id`, `po_number`, `po_line_number`) for the already invoiced quantity ([SAPS-19](../03-features/SAPS-19-invoice-matching.md) BR-10).
 
 ### InvoiceException
 An exception raised for an invoice; an invoice can have several, at most one open per code and line.

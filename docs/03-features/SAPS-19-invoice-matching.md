@@ -175,6 +175,7 @@ SAPS Message Broker ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-
 |---|---|---|---|
 | MatchingSettings (per tenant, database) | Price tolerance, approval threshold | 0.5 USD, 300 USD | — |
 | `ERP_ADAPTER` | ERP Data Port implementation | `dummy` | PoC only |
+| `backend/fixtures/<scenario>/erp/erp.json` | Purchase orders and goods receipts of the Dummy ERP Adapter; format in `backend/fixtures/README.md`; validated when loaded | — | PoC only |
 
 ### 3.9 Observability
 - Logs: `matching_completed` (invoice_id, tenant_id, invoice_type, result status, exception codes, duration_ms) and `matching_skipped`.
@@ -223,7 +224,7 @@ SAPS Message Broker ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-
 | Q4 | After the PoC: what happens to an invoice when the ERP Data Port still fails after the last retry? | Solution Architect / Tech Lead | after PoC | open |
 
 ## 8. Documentation Checklist
-- [ ] Data model updated (InvoiceLine index)
-- [ ] Glossary checked (no new terms)
-- [ ] Demo scenario fixtures added for the scenarios in TS-11
+- [x] Data model updated (InvoiceLine index)
+- [x] Glossary checked (no new terms)
+- [x] Demo scenario fixtures added for the scenarios in TS-11 (ERP data; invoice samples come with [SAPS-18](https://linear.app/jiringuyen/issue/SAPS-18))
 - [ ] Release notes entry prepared
