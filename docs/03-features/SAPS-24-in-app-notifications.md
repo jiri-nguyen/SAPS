@@ -119,7 +119,7 @@ Contract: [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) 
 ### 3.6 Data Model Changes
 | Entity | Change | Migration | Backward compatible |
 |---|---|---|---|
-| [Notification](../02-architecture/data-model.md#notification) | Index (`recipient_id`, `read_at`, `created_at`) | `add_notification_recipient_index` | Yes |
+| [Notification](../02-architecture/data-model.md#notification) | Index (`recipient_id`, `read_at`, `created_at`) | none — created by `0003_core_invoice_schema` ([SAPS-36](https://linear.app/jiringuyen/issue/SAPS-36)) | Yes |
 
 ### 3.7 Security & Permissions
 - Every operation returns or changes only the caller's own notifications; tenant from the session ([ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md), [ADR-0008](../02-architecture/adr/0008-use-session-cookies-for-authentication.md)).
@@ -134,7 +134,7 @@ Contract: [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) 
 - Logs: `notifications_created` (invoice_id, type, recipient_count), `notification_no_recipient`.
 
 ## 4. Rollout & Rollback
-1. Merge the OpenAPI change (0.4.0) with the implementation; migration `add_notification_recipient_index`.
+1. Merge the OpenAPI change (0.4.0) with the implementation; the index comes from `0003_core_invoice_schema` ([SAPS-36](https://linear.app/jiringuyen/issue/SAPS-36)).
 2. Deploy all containers with `docker compose up -d --build`.
 
 **Rollback:** revert the pull request and recreate the local stack.

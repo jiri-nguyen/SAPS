@@ -113,7 +113,7 @@ Sends `process_invoice(invoice_id)` ([ADR-0004](../02-architecture/adr/0004-proc
 ### 3.6 Data Model Changes
 | Entity | Change | Migration | Backward compatible |
 |---|---|---|---|
-| [Invoice](../02-architecture/data-model.md#invoice) | New attribute `idempotency_key` string(64), not null; unique (`tenant_id`, `idempotency_key`) | `add_invoice_idempotency_key` | Yes (no data in the PoC yet) |
+| [Invoice](../02-architecture/data-model.md#invoice) | Attribute `idempotency_key` string(64), not null; unique (`tenant_id`, `idempotency_key`) | none — created by `0003_core_invoice_schema` ([SAPS-36](https://linear.app/jiringuyen/issue/SAPS-36)) | Yes |
 
 ### 3.7 Security & Permissions
 - Roles: Accounting Member only (`x-roles`); tenant from the session's user ([ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md)).
@@ -130,7 +130,7 @@ Sends `process_invoice(invoice_id)` ([ADR-0004](../02-architecture/adr/0004-proc
 - Logs: `invoice_uploaded` (invoice_id, tenant_id, size, content type, duration_ms), `upload_rejected` (reason). No file content.
 
 ## 4. Rollout & Rollback
-1. Migration `add_invoice_idempotency_key`.
+1. No migration of its own; the schema comes from `0003_core_invoice_schema` ([SAPS-36](https://linear.app/jiringuyen/issue/SAPS-36)).
 2. Deploy SAPS API and SAPS Web App with `docker compose up -d --build`.
 
 **Rollback:** revert the pull request and recreate the local stack.

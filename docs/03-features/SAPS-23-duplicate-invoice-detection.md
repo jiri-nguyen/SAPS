@@ -88,7 +88,7 @@ None. EX9 is visible through `getInvoice` ([saps-api.openapi.yaml](../02-archite
 ### 3.6 Data Model Changes
 | Entity | Change | Migration | Backward compatible |
 |---|---|---|---|
-| [Invoice](../02-architecture/data-model.md#invoice) | Add `invoice_number_normalized` string(50), set from `invoice_number` on every save, and replace the duplicate index with (`tenant_id`, `vendor_code`, `invoice_number_normalized`) | `add_invoice_number_normalized` | Yes |
+| [Invoice](../02-architecture/data-model.md#invoice) | `invoice_number_normalized` string(50), set from `invoice_number` on every save; index (`tenant_id`, `vendor_code`, `invoice_number_normalized`) | none — created by `0003_core_invoice_schema` ([SAPS-36](https://linear.app/jiringuyen/issue/SAPS-36)) | Yes |
 
 ### 3.7 Security & Permissions
 - Runs as `system`; queries are limited to the invoice's tenant ([ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md)).
@@ -98,7 +98,7 @@ None. EX9 is visible through `getInvoice` ([saps-api.openapi.yaml](../02-archite
 - Logs: `duplicate_found` (invoice_id, other_invoice_id), `duplicate_cleared`.
 
 ## 4. Rollout & Rollback
-1. Migration `add_invoice_number_normalized` (fills the column for existing rows).
+1. No migration of its own; the column and index come from `0003_core_invoice_schema` ([SAPS-36](https://linear.app/jiringuyen/issue/SAPS-36)).
 2. Deploy SAPS Worker with `docker compose up -d --build`.
 
 **Rollback:** revert the pull request and recreate the local stack.
