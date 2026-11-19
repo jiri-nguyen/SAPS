@@ -19,5 +19,6 @@ COPY migrations ./migrations
 ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1
 USER saps
 EXPOSE 8000
-# SAPS API: migrate, then serve. The SAPS Worker overrides the command in compose.yaml.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn saps.api.main:app --host 0.0.0.0 --port 8000"]
+# SAPS API: migrate, seed demo data (skipped without SEED_USER_PASSWORD), then serve.
+# The SAPS Worker overrides the command in compose.yaml.
+CMD ["sh", "-c", "alembic upgrade head && python -m saps.seed && uvicorn saps.api.main:app --host 0.0.0.0 --port 8000"]

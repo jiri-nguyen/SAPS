@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     session_absolute_timeout_hours: int = Field(default=8, gt=0)
     session_cookie_secure: bool = True
 
+    # Demo users (SAPS-27); empty → seed skipped
+    seed_user_password: SecretStr | None = None
+
     # Upload (SAPS-17)
     max_upload_size_mb: int = Field(default=10, gt=0)
 

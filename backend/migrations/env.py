@@ -6,6 +6,7 @@ from alembic import context
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
+import saps.adapters.persistence.models  # noqa: F401  (registers the tables on Base.metadata)
 from saps.adapters.persistence.db import Base
 from saps.config import get_settings
 
