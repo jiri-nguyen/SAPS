@@ -1,0 +1,54 @@
+{
+  "purchase_orders": [
+    {
+      "po_number": "0100005",
+      "vendor_code": "V001",
+      "currency": "USD",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "description": "Whiteboard markers, pack",
+          "ordered_quantity": "10",
+          "unit_price": "4.50"
+        }
+      ]
+    },
+    {
+      "po_number": "0100006",
+      "vendor_code": "V001",
+      "currency": "USD",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "description": "Sticky notes, pack",
+          "ordered_quantity": "20",
+          "unit_price": "2.00"
+        }
+      ]
+    }
+  ],
+  "goods_receipts": [
+    {
+      "gr_number": "5000006",
+      "po_number": "0100005",
+      "receipt_date": "2026-12-04",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "received_quantity": "10"
+        }
+      ]
+    },
+    {
+      "gr_number": "5000007",
+      "po_number": "0100006",
+      "receipt_date": "2026-12-04",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "received_quantity": "20"
+        }
+      ]
+    }
+  ]
+}

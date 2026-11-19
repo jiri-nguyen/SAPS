@@ -1,0 +1,18 @@
+{
+  "purchase_orders": [
+    {
+      "po_number": "0100014",
+      "vendor_code": "V001",
+      "currency": "USD",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "description": "Network cable, 5 m",
+          "ordered_quantity": "12",
+          "unit_price": "3.50"
+        }
+      ]
+    }
+  ],
+  "goods_receipts": []
+}

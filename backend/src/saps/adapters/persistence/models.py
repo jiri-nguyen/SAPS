@@ -146,6 +146,7 @@ class InvoiceLine(AuditMixin, Base):
     __tablename__ = "invoice_line"
     __table_args__ = (
         UniqueConstraint("invoice_id", "line_number", name="uq_invoice_line_invoice_id_line_number"),
+        Index("ix_invoice_line_po_line", "tenant_id", "po_number", "po_line_number"),  # SAPS-19 BR-10
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)

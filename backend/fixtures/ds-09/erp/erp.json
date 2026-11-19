@@ -1,0 +1,30 @@
+{
+  "purchase_orders": [
+    {
+      "po_number": "0100009",
+      "vendor_code": "V001",
+      "currency": "USD",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "description": "Printer paper, A3",
+          "ordered_quantity": "3",
+          "unit_price": "30.00"
+        }
+      ]
+    }
+  ],
+  "goods_receipts": [
+    {
+      "gr_number": "5000009",
+      "po_number": "0100009",
+      "receipt_date": "2026-12-05",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "received_quantity": "3"
+        }
+      ]
+    }
+  ]
+}

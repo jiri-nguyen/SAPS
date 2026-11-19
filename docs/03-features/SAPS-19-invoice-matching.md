@@ -4,7 +4,7 @@ title: "SAPS-19 — Invoice matching"
 status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
-last_updated: 2026-12-08
+last_updated: 2026-12-15
 related: [UC-02, UC-03, SCP-IN-03, DEC-005, DEC-006, DEC-007, DEC-010, DEC-015, DEC-021, DEC-023, DEC-024, DEC-031, DEC-032, DEC-033, DEC-034, NFR-SCAL-001, ADR-0001, ADR-0004, ADR-0005, ADR-0007]
 ---
 
@@ -87,7 +87,7 @@ sequenceDiagram
         Worker->>Worker: Derive invoice type and validate PO numbers (BR-01 to BR-03)
         alt NON_PO invoice
             Worker->>Worker: Raise EX2 (BR-04)
-        else PO invoice without EX3 or EX5
+        else PO invoice without EX5
             Worker->>Worker: Get POs and goods receipt lines via ERP Data Port (dummy)
             Worker->>DB: Advisory lock per PO line, read already invoiced quantities (BR-10) [SQL]
             Worker->>Worker: Check each line: PO line exists, vendor, unit price, quantity (BR-05 to BR-09, BR-15)
@@ -131,6 +131,14 @@ flowchart TD
 
 A line with EX6 is still checked for quantity, so the Accounting Member sees all problems at once.
 
+Notification messages (BR-13, [SAPS-24](SAPS-24-in-app-notifications.md) BR-04); the invoice is named by "Invoice {number} from {vendor name}", "Invoice {number}", or "Invoice file {file name}" when no number is known:
+
+| Type | Message |
+|---|---|
+| `EXCEPTION_RAISED` | "Invoice INV-1 from Alpha Supplies has exceptions: EX6, EX7." (all open codes) |
+| `APPROVAL_REQUESTED` | "Invoice INV-1 from Alpha Supplies needs approval." |
+| `REVIEW_REQUESTED` | "Invoice INV-1 from Alpha Supplies is ready for final review." |
+
 ### 3.3 Edge Cases & Error Handling
 | ID | Case | Expected behavior | Response / signal |
 |---|---|---|---|
@@ -142,7 +150,10 @@ A line with EX6 is still checked for quantity, so the Accounting Member sees all
 | EC-06 | Invoice without lines | EX1 (extraction result not usable) | InvoiceException EX1 |
 | EC-07 | Unit price difference exactly equal to the tolerance (e.g. 0.50 USD) | Passes (inclusive bound, BR-06) | Line MATCHED |
 | EC-08 | Settings changed by the Accounting Manager between upload and re-match | Re-match uses the current settings and stores the new snapshot (BR-11) | — |
-| EC-09 | ERP Data Port fails (not possible with dummy data; relevant after the PoC) | Actor raises; Dramatiq retries with back-off ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S4). Handling after the last retry: Q4 | Error log |
+| EC-09 | ERP Data Port fails (not possible with dummy data; relevant after the PoC) | Actor raises; Dramatiq retries with back-off ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S4; Dramatiq defaults: 20 retries, exponential back-off). Handling after the last retry: Q4 | Error log |
+| EC-10 | Some lines raise EX3, others have a valid PO number | The lines with a valid PO number are still checked against the ERP data (all problems at once); only EX5 stops the line checks | EX3 plus any other line exceptions |
+| EC-11 | A line without unit price or quantity, or an invoice without total amount | No unit price → EX6; no quantity → EX7; no total amount → treated as above the approval threshold (`requiresApproval` true) | InvoiceException / PendingApproval |
+| EC-12 | Re-match after EX1 (lines entered manually, [SAPS-20](SAPS-20-exception-handling.md) EC-06) | Matching resolves EX1 like its other codes when it no longer occurs; EX9 is left to the duplicate check ([SAPS-23](SAPS-23-duplicate-invoice-detection.md)) | EX1 resolved |
 
 All arithmetic uses decimals (no floating point).
 
@@ -175,6 +186,7 @@ SAPS Message Broker ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-
 |---|---|---|---|
 | MatchingSettings (per tenant, database) | Price tolerance, approval threshold | 0.5 USD, 300 USD | — |
 | `ERP_ADAPTER` | ERP Data Port implementation | `dummy` | PoC only |
+| `backend/fixtures/<scenario>/erp/erp.json` | Purchase orders and goods receipts of the Dummy ERP Adapter; format in `backend/fixtures/README.md`; validated when loaded | — | PoC only |
 
 ### 3.9 Observability
 - Logs: `matching_completed` (invoice_id, tenant_id, invoice_type, result status, exception codes, duration_ms) and `matching_skipped`.
@@ -212,6 +224,8 @@ SAPS Message Broker ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-
 | EX10 skips the price and quantity checks of that line | The PO probably belongs to another vendor; comparing prices and quantities with it would only add noise | — |
 | Quantities of lines on the same PO line are added up | Prevents splitting an over-invoiced quantity across lines | — |
 | Advisory lock per (tenant, PO number, PO line number) | PO lines are ERP data, not database rows, so there is no row to lock; prevents two in-flight invoices consuming the same quantity (DEC-023) | — |
+| Lines with a valid PO number are checked even when other lines raise EX3 (EC-10) | All problems at once; only EX5 leaves no invoice type to check against | — |
+| Missing total amount is treated as above the threshold (EC-11) | The safe side: the Accounting Manager decides | — |
 | Read ERP data once per invoice (batch per PO number) | Fewer port calls; ready for slower MuleSoft calls after the PoC (NFR-SCAL-001) | [ADR-0001](../02-architecture/adr/0001-isolate-extraction-and-erp-behind-ports.md) |
 
 ## 7. Open Questions
@@ -221,9 +235,10 @@ SAPS Message Broker ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-
 | Q2 | Quantity rule: must the invoice quantity **equal** the expected quantity (DEC-006 "match exactly"), or only **not exceed** it (DEC-007 "above it → exception", which allows invoicing part of a delivery)? Proposal: must not exceed. | Product Owner (Customer) | next meeting | answered → [MTG-20261208](../01-requirements/meetings/2026-12-08-matching-rules.md) R2 |
 | Q3 | Vendor on the invoice differs from the vendor on the PO: is this an exception? Proposal: yes, EX4 (PO not found for this vendor). | Product Owner (Customer) | next meeting | answered → [MTG-20261208](../01-requirements/meetings/2026-12-08-matching-rules.md) R3 |
 | Q4 | After the PoC: what happens to an invoice when the ERP Data Port still fails after the last retry? | Solution Architect / Tech Lead | after PoC | open |
+| Q5 | Clarifications found while coding: EC-10 (EX3 does not stop other lines), EC-11 (missing values), EC-12 (re-match resolves EX1), notification messages (§3.2) | Solution Architect / Tech Lead | before merge | answered: all agreed (2026-12-15) |
 
 ## 8. Documentation Checklist
-- [ ] Data model updated (InvoiceLine index)
-- [ ] Glossary checked (no new terms)
-- [ ] Demo scenario fixtures added for the scenarios in TS-11
+- [x] Data model updated (InvoiceLine index)
+- [x] Glossary checked (no new terms)
+- [x] Demo scenario fixtures added for the scenarios in TS-11 (ERP data; invoice samples come with [SAPS-18](https://linear.app/jiringuyen/issue/SAPS-18))
 - [ ] Release notes entry prepared
