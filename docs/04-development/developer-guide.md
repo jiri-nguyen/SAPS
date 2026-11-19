@@ -93,7 +93,9 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   `docker compose exec api python -c "from saps.worker.actors import ping; ping.send('check')"`, then
   `docker compose logs worker` shows `ping_received` with `correlation_id` `check`.
 - `cd backend && uv run pytest` and `cd frontend && npm test` — all tests pass.
-- After [SAPS-17](https://linear.app/jiringuyen/issue/SAPS-17): sign in as `member1` and upload a sample invoice (DS-01).
+- Upload ([SAPS-17](https://linear.app/jiringuyen/issue/SAPS-17)): as `member1`, open **Upload invoices** and drop one or more PDF / JPEG / PNG files;
+  each row shows the progress, then the status Uploaded. `docker compose logs worker` shows `process_invoice_received`
+  (extraction and matching run after [SAPS-18](https://linear.app/jiringuyen/issue/SAPS-18)).
 
 ## 3. Project Structure
 ```
@@ -279,6 +281,8 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 | Invoice stays in Uploaded | SAPS Worker not running, or message lost | `docker compose logs worker`; the sweeper re-sends after `SWEEPER_STUCK_AFTER_SECONDS` |
 | `MissingGreenlet` / lazy-load error | Lazy loading in async SQLAlchemy code | Load relationships explicitly (`selectinload`) |
 | Presigned URL returns 403 | Wrong S3 credentials or clock skew | Check `S3_*` settings; restart the stack |
+| `docker compose up --wait` takes about 40 s | SAPS File Storage becomes healthy only when SeaweedFS can store files (`/dir/assign`); the SAPS API waits for it | Expected; without the wait the first upload would hang 7–20 s |
+| Upload answers 413 / 415 / 400 | File above `MAX_UPLOAD_SIZE_MB`, not PDF / JPEG / PNG by content, or empty | Use a supported file; the type is checked by content, not by name |
 | Sign-in always fails with "Invalid username or password" | `SEED_USER_PASSWORD` was empty when the SAPS API started (log `seed_skipped`) | Set it in `.env`, then `docker compose up -d --wait api` |
 | State-changing request returns 403 "The request origin is not allowed." | `Origin` header missing or different from `WEB_APP_ORIGIN` | Call the SAPS API through the SAPS Web App origin (`http://localhost:5173`); with curl add `-H "Origin: http://localhost:5173"` |
 
