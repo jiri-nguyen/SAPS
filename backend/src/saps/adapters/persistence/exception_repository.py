@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
 from saps.adapters.persistence.models import (
+    Approval,
     Invoice,
     InvoiceEvent,
     InvoiceException,
@@ -21,7 +22,7 @@ from saps.adapters.persistence.models import (
 from saps.adapters.persistence.notification_repository import SqlNotifications
 from saps.domain.duplicates import normalize_invoice_number
 from saps.domain.exception_handling import InvoiceChange, InvoiceData, LineData, change_details
-from saps.domain.invoices import ExceptionStatus, InvoiceStatus, MatchStatus
+from saps.domain.invoices import ApprovalDecision, ExceptionStatus, InvoiceStatus, MatchStatus
 from saps.ports.exception_handling import InvoiceForHandling
 from saps.ports.matching import OpenException
 
@@ -30,6 +31,7 @@ RELEASE_ACTION = "RELEASE"
 UPDATE_ACTION = "UPDATE_FIELDS"
 RESOLVE_ACTION = "RESOLVE"
 REJECT_ACTION = "REJECT"
+APPROVE_ACTION = "APPROVE"
 
 
 class SqlExceptionRepository(SqlNotifications):
@@ -147,6 +149,38 @@ class SqlExceptionRepository(SqlNotifications):
             invoice.id, actor, status=InvoiceStatus.REJECTED, rejected_reason=reason, assigned_to=None
         )
         self._add_event(invoice, InvoiceStatus.REJECTED, REJECT_ACTION, actor, now, {"reason": reason})
+        await self._session.flush()
+
+    async def record_decision(
+        self,
+        invoice: InvoiceForHandling,
+        decision: ApprovalDecision,
+        comment: str | None,
+        *,
+        status: InvoiceStatus,
+        user_id: UUID,
+        actor: str,
+        now: datetime,
+    ) -> None:
+        self._session.add(
+            Approval(
+                tenant_id=invoice.tenant_id,
+                invoice_id=invoice.id,
+                decided_by=user_id,
+                decision=decision,
+                comment=comment,
+                decided_at=now,
+                created_by=actor,
+                updated_by=actor,
+            )
+        )
+        values: dict[str, Any] = {"status": status}
+        if decision is ApprovalDecision.REJECTED:
+            values["rejected_reason"] = comment
+        await self._update_invoice(invoice.id, actor, **values)
+        action = APPROVE_ACTION if decision is ApprovalDecision.APPROVED else REJECT_ACTION
+        details = {"decision": decision.value, "comment": comment}
+        self._add_event(invoice, status, action, actor, now, details)
         await self._session.flush()
 
     # --- helpers -----------------------------------------------------------------------------------

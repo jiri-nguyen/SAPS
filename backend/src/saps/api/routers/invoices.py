@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 
 from saps.api.deps import (
     User,
+    approval_service,
     exception_service,
     file_storage,
     invoice_reader,
@@ -19,6 +20,7 @@ from saps.api.deps import (
     upload_service,
 )
 from saps.api.schemas import (
+    ApprovalCreate,
     Invoice,
     InvoiceEvent,
     InvoiceEventPage,
@@ -27,6 +29,7 @@ from saps.api.schemas import (
     InvoiceUpdate,
     RejectionCreate,
 )
+from saps.application.approval import ApprovalService
 from saps.application.exception_handling import (
     ConflictError,
     ExceptionHandlingService,
@@ -52,7 +55,7 @@ from saps.domain.invoice_files import (
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
-from saps.domain.invoices import InvoiceStatus, InvoiceType
+from saps.domain.invoices import ApprovalDecision, InvoiceStatus, InvoiceType
 from saps.domain.users import CurrentUser, Role
 from saps.ports.file_storage import FileStoragePort
 from saps.ports.invoices import InvalidPageTokenError, InvoiceFilter, InvoiceReader, InvoiceView
@@ -68,6 +71,7 @@ _REJECTION_STATUS: dict[type[FileRejectedError], int] = {
 }
 
 Member = Annotated[CurrentUser, Depends(require_roles(Role.ACCOUNTING_MEMBER))]
+Manager = Annotated[CurrentUser, Depends(require_roles(Role.ACCOUNTING_MANAGER))]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=64)]
 
 
@@ -147,6 +151,7 @@ _HANDLING_STATUS: dict[type[HandlingError], int] = {
     UnprocessableError: status.HTTP_422_UNPROCESSABLE_CONTENT,
 }
 Service = Annotated[ExceptionHandlingService, Depends(exception_service)]
+Approvals = Annotated[ApprovalService, Depends(approval_service)]
 IfMatch = Annotated[str | None, Header(alias="If-Match")]
 
 
@@ -277,6 +282,21 @@ async def reject_invoice(
     except (InvoiceNotFoundError, HandlingError) as exc:
         raise _problem(exc) from exc
     log.info("invoice_rejected", extra={"invoice_id": str(invoice_id), "user_id": str(user.user_id)})
+    return _invoice_response(response, view)
+
+
+@router.post("/{invoice_id}/approval", operation_id="decideInvoiceApproval", response_model_by_alias=True)
+async def decide_invoice_approval(
+    invoice_id: UUID, body: ApprovalCreate, response: Response, user: Manager, service: Approvals
+) -> Invoice:
+    try:
+        view = await service.decide(user, invoice_id, body.decision, body.comment)
+    except (InvoiceNotFoundError, HandlingError) as exc:
+        raise _problem(exc) from exc
+    event = (
+        "invoice_approved" if body.decision is ApprovalDecision.APPROVED else "invoice_rejected_by_manager"
+    )
+    log.info(event, extra={"invoice_id": str(invoice_id), "user_id": str(user.user_id)})
     return _invoice_response(response, view)
 
 
