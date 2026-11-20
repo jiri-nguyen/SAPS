@@ -10,8 +10,12 @@ import { InvoiceEditForm } from "./InvoiceEditForm";
 
 type Mode = "view" | "edit" | "reject";
 
-export type Queue = "exceptions" | "approvals";
-const QUEUE_LABEL: Record<Queue, string> = { exceptions: "Exception queue", approvals: "Approval queue" };
+export type Queue = "exceptions" | "approvals" | "review";
+const QUEUE_LABEL: Record<Queue, string> = {
+  exceptions: "Exception queue",
+  approvals: "Approval queue",
+  review: "Review queue",
+};
 
 /**
  * One invoice: file, data, exceptions, history and the actions of the user's role: a member's exception handling
@@ -79,6 +83,7 @@ export function InvoiceDetailPage({
   const inException = invoice.status === "EXCEPTION";
   const manager = user.role === "ACCOUNTING_MANAGER";
   const waiting = invoice.status === "PENDING_APPROVAL"; // SAPS-22
+  const reviewing = invoice.status === "PENDING_REVIEW"; // SAPS-21
   const openCodes = invoice.exceptions.filter((e) => e.status === "OPEN").map((e) => e.code);
   const refused = refusedCodes(openCodes);
 
@@ -114,6 +119,11 @@ export function InvoiceDetailPage({
         result && "rematch" in result && result.rematch
           ? "Saved. Matching runs again with the corrected data."
           : "Saved.",
+    );
+  const confirm = () =>
+    void run(
+      () => api.confirm(invoiceId),
+      () => "Confirmed. The invoice is completed and ready for posting.",
     );
   const approve = () =>
     void run(
@@ -178,10 +188,21 @@ export function InvoiceDetailPage({
             : "This invoice waits for approval by an Accounting Manager."}
         </p>
       )}
-      {!inException && !matching && !waiting && (
+      {reviewing && (
         <p className="banner info" role="status">
-          This invoice is {STATUS_LABEL[invoice.status]};{" "}
-          {queue === "approvals" ? "the approval" : "exception handling"} is finished.
+          {member
+            ? "This invoice waits for your final review: confirm or reject the result."
+            : "This invoice waits for the final review by an Accounting Member."}
+        </p>
+      )}
+      {invoice.status === "COMPLETED" && (
+        <p className="banner info" role="status">
+          This invoice is Completed: ready for posting.
+        </p>
+      )}
+      {invoice.status === "REJECTED" && (
+        <p className="banner info" role="status">
+          This invoice is Rejected{invoice.rejectedReason ? `: ${invoice.rejectedReason}` : "."}
         </p>
       )}
       {notice !== null && (
@@ -193,6 +214,17 @@ export function InvoiceDetailPage({
         <p className="banner error" role="alert">
           {error}
         </p>
+      )}
+
+      {reviewing && member && mode === "view" && (
+        <div className="actions" aria-label="Final review">
+          <button type="button" className="primary" disabled={busy} onClick={confirm}>
+            Confirm
+          </button>
+          <button type="button" className="danger" disabled={busy} onClick={() => setMode("reject")}>
+            Reject
+          </button>
+        </div>
       )}
 
       {waiting && manager && mode === "view" && (

@@ -78,6 +78,15 @@ describe("exception API", () => {
     expect(JSON.parse(call(fetchImpl, 1).init.body as string)).toEqual({ reason: "Not ours." });
   });
 
+  it("confirms the final result (SAPS-21)", async () => {
+    const { api, fetchImpl } = setup(reply(200, INVOICE, { ETag: 'W/"9"' }));
+    await expect(api.confirm("inv-1")).resolves.toEqual({ invoice: INVOICE, etag: 'W/"9"' });
+    expect([call(fetchImpl).init.method, call(fetchImpl).url]).toEqual([
+      "POST",
+      "/v1/invoices/inv-1/confirmation",
+    ]);
+  });
+
   it("decides an approval with and without a comment (SAPS-22)", async () => {
     const { api, fetchImpl } = setup(reply(200, INVOICE), reply(200, INVOICE));
     await api.decide("inv-1", "APPROVED");

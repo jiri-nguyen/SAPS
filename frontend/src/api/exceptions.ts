@@ -35,6 +35,8 @@ export interface ExceptionApi {
   update(invoiceId: string, body: InvoiceUpdate, etag: string): Promise<UpdateResult>;
   resolve(invoiceId: string, etag: string): Promise<Versioned>;
   reject(invoiceId: string, reason: string): Promise<Versioned>;
+  /** `confirmInvoice` (SAPS-21): Pending review → Completed. */
+  confirm(invoiceId: string): Promise<Versioned>;
   /** `decideInvoiceApproval` (SAPS-22): a comment is required when rejecting. */
   decide(invoiceId: string, decision: "APPROVED" | "REJECTED", comment?: string): Promise<Versioned>;
   /** The whole audit trail, oldest first. */
@@ -87,6 +89,9 @@ export function createExceptionApi(fetchImpl: typeof fetch = fetch): ExceptionAp
       return versioned(
         await call(path(invoiceId, "/rejection"), { method: "POST", body: JSON.stringify({ reason }) }),
       );
+    },
+    async confirm(invoiceId) {
+      return versioned(await call(path(invoiceId, "/confirmation"), { method: "POST" }));
     },
     async decide(invoiceId, decision, comment) {
       const body: components["schemas"]["ApprovalCreate"] = comment ? { decision, comment } : { decision };
