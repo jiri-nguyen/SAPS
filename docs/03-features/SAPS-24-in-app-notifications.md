@@ -4,7 +4,7 @@ title: "SAPS-24 — In-app notifications"
 status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
-last_updated: 2026-12-11
+last_updated: 2026-12-15
 related: [UC-08, SCP-IN-08, DEC-021, DEC-037, DEC-040, ADR-0004, ADR-0007, ADR-0008, SAPS-19, SAPS-20, SAPS-21, SAPS-22]
 ---
 
@@ -108,7 +108,13 @@ sequenceDiagram
 | EC-06 | Session expired while polling | Polling stops; the Web App shows the sign-in page | `401` |
 
 ### 3.4 API Changes
-Contract: [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) (version 0.4.0 with this spec).
+Contract: [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) (version 0.4.0 with this spec; no contract change when implementing).
+
+Implementation notes:
+- All three operations run in the request's transaction and are scoped to the caller's tenant and user (check order: role → value checks → 404 for a notification that is not the caller's).
+- `listNotifications` pages by keyset (`created_at`, `id`, newest first, the page token of `listInvoices`); `unreadCount` counts all unread notifications of the caller, not only the page. A malformed `pageToken` is `400`.
+- `markNotificationRead` keeps the first read time: marking a read notification again changes nothing (`204`).
+- The Web App picks the screen of a clicked notification by type: `EXCEPTION_RAISED` → `#/exceptions/{id}`, `APPROVAL_REQUESTED` → `#/approvals/{id}`, `REVIEW_REQUESTED` → `#/review/{id}` (the detail page shows the current status, BR-05). A role that cannot open that screen sees its first screen.
 
 | operationId | Method & path | Change | Breaking | Spec |
 |---|---|---|---|---|
@@ -128,7 +134,7 @@ Contract: [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) 
 ### 3.8 Configuration & Feature Flags
 | Key | Purpose | Default | Per environment |
 |---|---|---|---|
-| `VITE_NOTIFICATION_POLL_SECONDS` | Polling interval of the SAPS Web App | 15 | PoC only |
+| `VITE_NOTIFICATION_POLL_SECONDS` | Polling interval of the SAPS Web App; a build-time value (Vite), read when the image is built | 15 | PoC only |
 
 ### 3.9 Observability
 - Logs: `notifications_created` (invoice_id, type, recipient_count), `notification_no_recipient`.
@@ -162,6 +168,6 @@ Contract: [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) 
 None. Recipients follow DEC-021, DEC-037 and DEC-040.
 
 ## 8. Documentation Checklist
-- [ ] API spec updated (`unreadCount`, `markAllNotificationsRead`; version 0.4.0)
-- [ ] Data model updated (Notification index)
+- [x] API spec updated (`unreadCount`, `markAllNotificationsRead`; version 0.4.0)
+- [x] Data model updated (Notification index)
 - [ ] Release notes entry prepared
