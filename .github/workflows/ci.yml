@@ -125,7 +125,7 @@ jobs:
           curl -fsS -b jar "$base" | grep -q '"displayName":"Accounting Member 1"'
           test "$(code -b jar -c jar -X DELETE -H "$origin" "$base")" = 204
           test "$(code -b jar "$base")" = 401
-      - name: Upload, extraction, duplicate check and matching (SAPS-17, SAPS-18, SAPS-19, SAPS-23)
+      - name: Upload, extraction, duplicate check, matching and exception handling (SAPS-17 … SAPS-23)
         run: |
           base=http://localhost:5173/v1
           origin="Origin: http://localhost:5173"
@@ -158,6 +158,13 @@ jobs:
           wait_for "$ds01" PENDING_REVIEW ""
           ds15="$(upload backend/fixtures/ds-15/invoices/ds-15-duplicate-scan.png "ci-ds15-$GITHUB_RUN_ID")"
           wait_for "$ds15" EXCEPTION EX7,EX9   # duplicate of DS-01 (SAPS-23), quantity already invoiced
+          ds12="$(upload backend/fixtures/ds-12/invoices/ds-12-price-outside-tolerance.pdf "ci-ds12-$GITHUB_RUN_ID")"
+          wait_for "$ds12" EXCEPTION EX6
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b upload-jar -H "$origin" -X POST "$base/invoices/$ds12/claim")" = 200
+          etag="$(curl -fsS -b upload-jar -D - -o /dev/null "$base/invoices/$ds12" | tr -d '\r' | awk -F': ' 'tolower($1)=="etag" {print $2}')"
+          fix='{"lines":[{"lineNumber":1,"description":"USB keyboard","poNumber":"0100012","poLineNumber":1,"quantity":"4","unitPrice":"20.00","lineAmount":"80.00"}]}'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b upload-jar -H "$origin" -H "If-Match: $etag" -H 'Content-Type: application/json' -X PATCH -d "$fix" "$base/invoices/$ds12")" = 202
+          wait_for "$ds12" PENDING_REVIEW ""   # SAPS-20: claim, correct the price, the worker re-matches
       - name: SAPS API → SAPS Message Broker → SAPS Worker
         run: |
           docker compose exec -T api python -c "from saps.worker.actors import ping; ping.send('ci-smoke')"
