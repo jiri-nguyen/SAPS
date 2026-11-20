@@ -104,6 +104,10 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   and `ds-08-non-po.pdf`, open **Exception queue**, **Claim** DS-12, **Correct data** (unit price `20.00`), **Save**: the page
   shows "Re-matching in progress", then Pending review. Claim DS-08 and **Accept as is**: Pending approval. As `manager1`, the
   Exception queue is read-only; open a claimed invoice and **Release claim**.
+- Approval ([SAPS-22](https://linear.app/jiringuyen/issue/SAPS-22)): as `manager1`, open **Approval queue** (DS-08 after it was accepted, or
+  `ds-03-above-threshold.pdf` uploaded by `member1`), open the invoice (the accepted EX2 shows who accepted it and when) and
+  **Approve** (Pending review, members are notified) or **Reject** with a comment (Rejected, no notification). A member sees that the
+  invoice waits for a manager and has no decision buttons.
 
 ## 3. Project Structure
 ```

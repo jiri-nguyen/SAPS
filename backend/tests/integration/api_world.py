@@ -13,10 +13,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from saps.adapters.persistence.db import dispose_engines, session_factory
-from saps.adapters.persistence.models import Invoice
+from saps.adapters.persistence.models import Invoice, Notification, UserAccount
 from saps.api.deps import current_user, file_storage, job_queue
 from saps.api.main import create_app
 from saps.config import get_settings
+from saps.domain.invoices import NotificationType
 from saps.domain.users import CurrentUser
 from tests.fakes import MemoryQueue, MemoryStorage
 from tests.integration.pipeline import FIXTURES, World, new_world, process, rematch, uploaded
@@ -81,6 +82,28 @@ class Api:
             who, "POST", f"/v1/invoices/{invoice_id}/rejection", json={"reason": reason}
         )
 
+    async def decide(
+        self, who: str, invoice_id: uuid.UUID, decision: str, comment: str | None = None
+    ) -> Response:
+        body: dict[str, Any] = {"decision": decision}
+        if comment is not None:
+            body["comment"] = comment
+        return await self.request(who, "POST", f"/v1/invoices/{invoice_id}/approval", json=body)
+
+    async def notifications(self, invoice_id: uuid.UUID) -> dict[str, list[NotificationType]]:
+        """Notification types per recipient (display name), oldest first."""
+        async with session_factory(self.engine)() as session:
+            rows = await session.execute(
+                select(UserAccount.display_name, Notification.type)
+                .join(UserAccount, UserAccount.id == Notification.recipient_id)
+                .where(Notification.invoice_id == invoice_id)
+                .order_by(Notification.created_at)
+            )
+        result: dict[str, list[NotificationType]] = {}
+        for name, kind in rows:
+            result.setdefault(name, []).append(kind)
+        return result
+
     async def storage_key(self, invoice_id: uuid.UUID) -> str:
         async with session_factory(self.engine)() as session:
             key = await session.scalar(select(Invoice.file_storage_key).where(Invoice.id == invoice_id))
@@ -100,7 +123,12 @@ async def make_api(
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test", headers={"Origin": ORIGIN}) as client:
         api = Api(client, app, engine, world, MemoryStorage(), MemoryQueue())
-        api.users = {"alice": world.alice, "bob": world.bob, "manager": world.manager}
+        api.users = {
+            "alice": world.alice,
+            "bob": world.bob,
+            "manager": world.manager,
+            "manager2": world.manager2,
+        }
 
         async def user_of_request(request: Request) -> CurrentUser:
             return api.users[request.headers[USER_HEADER]]  # per request, so claims can race

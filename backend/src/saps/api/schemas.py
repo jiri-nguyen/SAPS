@@ -218,3 +218,12 @@ class RejectionCreate(CamelModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
 
     reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
+class ApprovalCreate(CamelModel):
+    """The manager's decision (SAPS-22); a comment is required when rejecting (checked by the service)."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
+
+    decision: ApprovalDecision
+    comment: str | None = Field(default=None, max_length=1000)

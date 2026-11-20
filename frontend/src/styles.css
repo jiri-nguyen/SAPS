@@ -347,8 +347,7 @@ ul.banner {
 }
 
 .exceptions li.resolved {
-  color: var(--muted);
-  text-decoration: line-through;
+  color: var(--muted); /* readable: the manager needs who accepted it and when (SAPS-22 BR-07) */
 }
 
 /* Sign-in and upload (SAPS-27, SAPS-17) ---------------------------------------------------------- */

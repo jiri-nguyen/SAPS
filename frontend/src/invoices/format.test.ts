@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { decimal, refusedCodes, text, timestamp } from "./format";
+import { decimal, exceptionText, refusedCodes, text, timestamp } from "./format";
 
 describe("format", () => {
   it("names the codes that cannot be accepted as is, once and in order", () => {
@@ -25,5 +25,14 @@ describe("format", () => {
     expect(text(null)).toBe("—");
     expect(text("")).toBe("—");
     expect(text(3)).toBe("3");
+  });
+
+  it("does not repeat the exception title when the message starts with it", () => {
+    expect(exceptionText("EX2", "Non-PO invoice: manual review is required.")).toBe(
+      "Non-PO invoice: manual review is required.",
+    );
+    expect(exceptionText("EX6", "Line 1: unit price 20.6 USD differs.")).toBe(
+      "Unit price outside tolerance: Line 1: unit price 20.6 USD differs.",
+    );
   });
 });

@@ -78,6 +78,19 @@ describe("exception API", () => {
     expect(JSON.parse(call(fetchImpl, 1).init.body as string)).toEqual({ reason: "Not ours." });
   });
 
+  it("decides an approval with and without a comment (SAPS-22)", async () => {
+    const { api, fetchImpl } = setup(reply(200, INVOICE), reply(200, INVOICE));
+    await api.decide("inv-1", "APPROVED");
+    await api.decide("inv-1", "REJECTED", "Price is not agreed.");
+    expect(call(fetchImpl).url).toBe("/v1/invoices/inv-1/approval");
+    expect(call(fetchImpl).init.method).toBe("POST");
+    expect(JSON.parse(call(fetchImpl).init.body as string)).toEqual({ decision: "APPROVED" });
+    expect(JSON.parse(call(fetchImpl, 1).init.body as string)).toEqual({
+      decision: "REJECTED",
+      comment: "Price is not agreed.",
+    });
+  });
+
   it("reads every page of the history", async () => {
     const { api, fetchImpl } = setup(
       reply(200, { items: [{ id: "e1" }], nextPageToken: "n1" }),

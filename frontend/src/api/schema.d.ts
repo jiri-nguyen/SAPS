@@ -1111,6 +1111,7 @@ export interface operations {
             /** @description Decision saved */
             200: {
                 headers: {
+                    ETag: components["headers"]["ETag"];
                     [name: string]: unknown;
                 };
                 content: {

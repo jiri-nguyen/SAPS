@@ -89,6 +89,7 @@ class World:
     alice: CurrentUser
     bob: CurrentUser
     manager: CurrentUser
+    manager2: CurrentUser
 
 
 async def new_world(engine: AsyncEngine) -> World:
@@ -98,7 +99,11 @@ async def new_world(engine: AsyncEngine) -> World:
             tenant_id=tenant_id, username=f"b-{uuid.uuid4().hex[:10]}", display_name="Bob",
             password_hash=NO_LOGIN, role=Role.ACCOUNTING_MEMBER,
         )  # fmt: skip
-        session.add(bob)
+        manager2 = UserAccount(
+            tenant_id=tenant_id, username=f"h-{uuid.uuid4().hex[:10]}", display_name="Second Manager",
+            password_hash=NO_LOGIN, role=Role.ACCOUNTING_MANAGER,
+        )  # fmt: skip
+        session.add_all([bob, manager2])
         await session.flush()
         users = (
             (await session.execute(select(UserAccount).where(UserAccount.tenant_id == tenant_id)))
@@ -110,5 +115,11 @@ async def new_world(engine: AsyncEngine) -> World:
     def current(user: UserAccount) -> CurrentUser:
         return CurrentUser(user.id, tenant_id, user.username, user.display_name, user.role)
 
-    manager = next(u for u in users if u.role is Role.ACCOUNTING_MANAGER)
-    return World((tenant_id, alice_id), current(by_id[alice_id]), current(bob), current(manager))
+    managers = {u.display_name: u for u in users if u.role is Role.ACCOUNTING_MANAGER}
+    return World(
+        (tenant_id, alice_id),
+        current(by_id[alice_id]),
+        current(bob),
+        current(managers["Manager"]),
+        current(managers["Second Manager"]),
+    )

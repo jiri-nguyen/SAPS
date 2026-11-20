@@ -9,7 +9,7 @@ from typing import Protocol
 from uuid import UUID
 
 from saps.domain.exception_handling import InvoiceChange, InvoiceData
-from saps.domain.invoices import ExceptionCode, InvoiceStatus
+from saps.domain.invoices import ApprovalDecision, ExceptionCode, InvoiceStatus
 from saps.ports.matching import OpenException
 from saps.ports.notifications import NotificationPort
 
@@ -81,6 +81,28 @@ class ExceptionRepository(NotificationPort, Protocol):
         """Status Rejected with the reason, clear the claim, record `REJECT`."""
         ...
 
+
+class ApprovalRepository(NotificationPort, Protocol):
+    """SAPS-22: the decision of an Accounting Manager on an invoice in PendingApproval."""
+
+    async def lock_invoice(self, tenant_id: UUID, invoice_id: UUID) -> InvoiceForHandling | None: ...
+
+    async def record_decision(
+        self,
+        invoice: InvoiceForHandling,
+        decision: ApprovalDecision,
+        comment: str | None,
+        *,
+        status: InvoiceStatus,
+        user_id: UUID,
+        actor: str,
+        now: datetime,
+    ) -> None:
+        """Approval row, the new status (`rejected_reason` = comment if rejected), event APPROVE / REJECT."""
+        ...
+
+
+ApprovalUnitOfWork = Callable[[], AbstractAsyncContextManager[ApprovalRepository]]
 
 ExceptionUnitOfWork = Callable[[], AbstractAsyncContextManager[ExceptionRepository]]
 """Starts a transaction and gives its repository; commits when the block ends, rolls back on an error."""

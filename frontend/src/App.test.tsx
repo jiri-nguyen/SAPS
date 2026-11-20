@@ -6,7 +6,7 @@ import { App } from "./App";
 import { ApiError, UNAUTHORIZED, unauthorizedEvents } from "./api/client";
 import type { SessionApi, UserAccount } from "./api/session";
 import { useSession } from "./auth/session-context";
-import { fakeExceptionApi } from "./test/invoices";
+import { fakeExceptionApi, summary } from "./test/invoices";
 
 const MEMBER: UserAccount = {
   id: "1",
@@ -116,6 +116,39 @@ describe("App", () => {
     );
     expect(screen.getByRole("link", { name: "Exception queue" })).toHaveAttribute("aria-current", "page");
     expect(exceptionApi.getVersioned).toHaveBeenCalledWith("inv-12");
+  });
+
+  it("shows the approval queue and an invoice to approve to a manager (SAPS-22)", async () => {
+    const exceptionApi = fakeExceptionApi({
+      list: vi.fn().mockResolvedValue({
+        items: [{ ...summary(), status: "PENDING_APPROVAL", openExceptionCodes: [] }],
+        nextPageToken: null,
+      }),
+    });
+    render(
+      <App
+        sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MANAGER) })}
+        checkHealth={pending}
+        exceptionApi={exceptionApi}
+      />,
+    );
+    expect(await screen.findByRole("heading", { name: "Approval queue" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "AOS-2026-1013" })).toHaveAttribute(
+      "href",
+      "#/approvals/inv-12",
+    );
+    expect(exceptionApi.list).toHaveBeenCalledWith({ status: ["PENDING_APPROVAL"] });
+    await userEvent.setup().click(screen.getByRole("link", { name: "AOS-2026-1013" }));
+    expect(await screen.findByRole("link", { name: "← Approval queue" })).toBeInTheDocument();
+    expect(exceptionApi.getVersioned).toHaveBeenCalledWith("inv-12");
+  });
+
+  it("does not open the approval queue for a member", async () => {
+    window.location.hash = "#/approvals/inv-12";
+    render(
+      <App sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MEMBER) })} checkHealth={pending} />,
+    );
+    expect(await screen.findByRole("heading", { name: "Upload invoices" })).toBeInTheDocument();
   });
 
   it("opens the first screen for a route the role may not use", async () => {

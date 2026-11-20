@@ -27,6 +27,12 @@ export const EXCEPTION_TITLE: Record<ExceptionCode, string> = {
   EX10: "Vendor does not match the PO",
 };
 
+/** "Title: message", without repeating the title when the message already starts with it. */
+export function exceptionText(code: ExceptionCode, message: string): string {
+  const title = EXCEPTION_TITLE[code];
+  return message.toLowerCase().startsWith(title.toLowerCase()) ? message : `${title}: ${message}`;
+}
+
 /** SAPS-20 BR-06 (DEC-035): the others need corrected data or a rejection. */
 const ACCEPTABLE_AS_IS: ReadonlySet<ExceptionCode> = new Set(["EX2", "EX6", "EX7", "EX9"]);
 

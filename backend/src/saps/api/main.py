@@ -34,7 +34,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="SAPS API", version="0.4.1", lifespan=lifespan)
+    app = FastAPI(title="SAPS API", version="0.4.2", lifespan=lifespan)
     # The last middleware added runs first: Origin check, then the upload size guard.
     app.add_middleware(
         UploadSizeLimitMiddleware,

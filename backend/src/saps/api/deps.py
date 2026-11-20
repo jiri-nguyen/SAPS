@@ -15,6 +15,7 @@ from saps.adapters.persistence.user_repository import SqlUserRepository
 from saps.adapters.queue.dramatiq_queue import DramatiqJobQueue
 from saps.adapters.security.argon2_hasher import Argon2PasswordHasher
 from saps.adapters.storage.s3_storage import S3FileStorage
+from saps.application.approval import ApprovalService
 from saps.application.auth import AuthService
 from saps.application.exception_handling import ExceptionHandlingService
 from saps.application.upload import UploadInvoiceService
@@ -138,3 +139,11 @@ async def exception_service(
     """SAPS-20: one transaction per operation, with its own sessions (the row lock ends with it)."""
     sessions = session_factory(get_engine(get_settings().database_url))
     return ExceptionHandlingService(SqlExceptionUnitOfWork(sessions), repository, queue, utc_now)
+
+
+async def approval_service(
+    repository: Annotated[SqlInvoiceRepository, Depends(invoice_repository)],
+) -> ApprovalService:
+    """SAPS-22: one transaction per decision; the invoice row lock makes the first decision win."""
+    sessions = session_factory(get_engine(get_settings().database_url))
+    return ApprovalService(SqlExceptionUnitOfWork(sessions), repository, utc_now)
