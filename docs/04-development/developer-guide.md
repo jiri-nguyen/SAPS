@@ -117,6 +117,11 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   `ds-18/invoices/ds-18-settings-tolerance.pdf` (50.80 against the PO price 50.00): Pending review instead of Exception (EX6).
   Invoices processed earlier keep the tolerance they were processed with. A negative value or a tolerance with more than 4
   decimals (threshold: 2) is refused. Set 0.50 again afterwards; uploading DS-18 twice raises EX9.
+- Notifications ([SAPS-24](https://linear.app/jiringuyen/issue/SAPS-24)): as `member1`, upload `ds-12-price-outside-tolerance.pdf`
+  and `ds-03-above-threshold.pdf`. Within 15 s the bell in the top bar shows 1 unread (the exception of DS-12). Open the bell: the
+  panel lists the notification (unread ones are highlighted); click it to open the invoice and mark it read, or **Mark all as read**.
+  As `manager1`, the bell shows the approval request of DS-03; clicking it opens the approval screen. Members are told about
+  exceptions and final reviews, managers about approvals; rejecting and completing an invoice notify nobody.
 
 ## 3. Project Structure
 ```

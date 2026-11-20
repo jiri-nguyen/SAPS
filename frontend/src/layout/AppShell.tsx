@@ -2,6 +2,7 @@ import { type ReactNode, useMemo } from "react";
 
 import { type ExceptionApi, createExceptionApi } from "../api/exceptions";
 import { type InvoiceApi, createInvoiceApi } from "../api/invoices";
+import { type NotificationApi, createNotificationApi } from "../api/notifications";
 import { type SettingsApi, createSettingsApi } from "../api/settings";
 import type { UserAccount } from "../api/session";
 import { MENU_BY_ROLE, ROLE_LABEL } from "../auth/roles";
@@ -10,6 +11,7 @@ import { ExceptionQueuePage } from "../invoices/ExceptionQueuePage";
 import { InvoiceDetailPage, type Queue } from "../invoices/InvoiceDetailPage";
 import { StatusQueuePage } from "../invoices/StatusQueuePage";
 import { UploadPage } from "../invoices/UploadPage";
+import { NotificationBell } from "../notifications/NotificationBell";
 import { href, useRoute } from "../routing";
 import { MatchingSettingsPage } from "../settings/MatchingSettingsPage";
 
@@ -19,17 +21,20 @@ export function AppShell({
   invoiceApi,
   exceptionApi,
   settingsApi,
+  notificationApi,
 }: {
   user: UserAccount;
   footer?: ReactNode;
   invoiceApi?: InvoiceApi;
   exceptionApi?: ExceptionApi;
   settingsApi?: SettingsApi;
+  notificationApi?: NotificationApi;
 }) {
   const { signOut } = useSession();
   const invoices = useMemo(() => invoiceApi ?? createInvoiceApi(), [invoiceApi]);
   const exceptions = useMemo(() => exceptionApi ?? createExceptionApi(), [exceptionApi]);
   const settings = useMemo(() => settingsApi ?? createSettingsApi(), [settingsApi]);
+  const notifications = useMemo(() => notificationApi ?? createNotificationApi(), [notificationApi]);
   const menu = MENU_BY_ROLE[user.role];
   const route = useRoute();
   // A route the role may not open (or none) shows the role's first screen (SAPS-27 BR-10).
@@ -76,6 +81,7 @@ export function AppShell({
     <div className="shell">
       <header className="topbar">
         <strong>Smart-AP-Suite</strong>
+        <NotificationBell api={notifications} />
         <span data-testid="signed-in-user">
           {user.displayName} ({ROLE_LABEL[user.role]})
         </span>

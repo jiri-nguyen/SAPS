@@ -7,6 +7,7 @@ import { ApiError, UNAUTHORIZED, unauthorizedEvents } from "./api/client";
 import type { SessionApi, UserAccount } from "./api/session";
 import { useSession } from "./auth/session-context";
 import { fakeExceptionApi, summary } from "./test/invoices";
+import { fakeNotificationApi, notificationFixture, notificationPage } from "./test/notifications";
 import { fakeSettingsApi } from "./test/settings";
 
 const MEMBER: UserAccount = {
@@ -210,6 +211,41 @@ describe("App", () => {
     expect(await screen.findByRole("form", { name: "Change matching settings" })).toBeInTheDocument();
     expect(settingsApi.get).toHaveBeenCalledOnce();
   });
+
+  it.each([
+    ["a member", MEMBER],
+    ["a manager", MANAGER],
+  ])(
+    "shows %s the notification bell and opens the invoice of a notification (SAPS-24)",
+    async (_label, user) => {
+      const list = vi
+        .fn()
+        .mockImplementation(({ pageSize }: { pageSize?: number }) =>
+          Promise.resolve(
+            notificationPage(
+              pageSize === 1
+                ? []
+                : [notificationFixture({ type: "APPROVAL_REQUESTED", message: "Invoice X needs approval." })],
+              1,
+            ),
+          ),
+        );
+      const notificationApi = fakeNotificationApi({ list });
+      render(
+        <App
+          sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(user) })}
+          checkHealth={pending}
+          notificationApi={notificationApi}
+          exceptionApi={fakeExceptionApi()}
+        />,
+      );
+      const person = userEvent.setup();
+      await person.click(await screen.findByRole("button", { name: "Notifications, 1 unread" }));
+      await person.click(await screen.findByText("Invoice X needs approval."));
+      expect(window.location.hash).toBe("#/approvals/inv-12");
+      expect(notificationApi.markRead).toHaveBeenCalledWith("n-1");
+    },
+  );
 
   it("shows one message for a wrong username or password", async () => {
     const signIn = vi.fn().mockRejectedValue(new ApiError(401));

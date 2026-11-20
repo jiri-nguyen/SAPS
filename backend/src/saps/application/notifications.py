@@ -1,12 +1,16 @@
 """Notifications when an invoice reaches a status (DEC-021; SAPS-19 BR-13, SAPS-18 BR-03, SAPS-20 BR-10)."""
 
-from collections.abc import Sequence
+import logging
+from collections.abc import Callable, Sequence
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
 from saps.domain.invoices import ExceptionCode, InvoiceStatus, NotificationType
-from saps.domain.users import Role
-from saps.ports.notifications import NotificationPort
+from saps.domain.users import CurrentUser, Role
+from saps.ports.notifications import NotificationInbox, NotificationPage, NotificationPort
+
+log = logging.getLogger("saps.notifications")
 
 
 class NamedInvoice(Protocol):
@@ -54,5 +58,36 @@ async def notify_status(
         kind = NotificationType.REVIEW_REQUESTED
         message = f"{name} is ready for final review."
         recipients = await port.active_user_ids(invoice.tenant_id, Role.ACCOUNTING_MEMBER)
-    if recipients:
-        await port.add_notifications(invoice.tenant_id, invoice.id, recipients, kind, message)
+    if not recipients:  # EC-04
+        log.warning("notification_no_recipient", extra={"invoice_id": str(invoice.id), "type": kind.value})
+        return
+    await port.add_notifications(invoice.tenant_id, invoice.id, recipients, kind, message)
+    # The message names the invoice (Confidential), so it is not logged (SAPS-24 §3.7).
+    log.info(
+        "notifications_created",
+        extra={"invoice_id": str(invoice.id), "type": kind.value, "recipient_count": len(recipients)},
+    )
+
+
+class NotificationNotFoundError(Exception):
+    """The notification does not exist for the caller (answers 404, EC-02)."""
+
+
+class NotificationInboxService:
+    """The caller's own notifications: list with the unread count, mark one or all as read (SAPS-24 BR-06)."""
+
+    def __init__(self, inbox: NotificationInbox, clock: Callable[[], datetime]) -> None:
+        self._inbox = inbox
+        self._clock = clock
+
+    async def list(
+        self, user: CurrentUser, unread_only: bool, page_size: int, page_token: str | None
+    ) -> NotificationPage:
+        return await self._inbox.list(user.tenant_id, user.user_id, unread_only, page_size, page_token)
+
+    async def mark_read(self, user: CurrentUser, notification_id: UUID) -> None:
+        if not await self._inbox.mark_read(user.tenant_id, user.user_id, notification_id, self._clock()):
+            raise NotificationNotFoundError(notification_id)
+
+    async def mark_all_read(self, user: CurrentUser) -> None:
+        await self._inbox.mark_all_read(user.tenant_id, user.user_id, self._clock())

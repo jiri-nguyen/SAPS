@@ -69,6 +69,103 @@ a {
   margin-right: auto;
 }
 
+/* Notification bell and panel (SAPS-24) ---------------------------------------------------------- */
+.bell {
+  position: relative;
+}
+
+.topbar .bell-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  color: #fff;
+  background: transparent;
+  border-color: rgb(255 255 255 / 50%);
+}
+
+.badge-count {
+  position: absolute;
+  top: -0.45rem;
+  right: -0.45rem;
+  min-width: 1.1rem;
+  padding: 0 0.25rem;
+  box-sizing: border-box;
+  border-radius: 0.6rem;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.72rem;
+  line-height: 1.1rem;
+  text-align: center;
+}
+
+.notification-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 10;
+  width: min(28rem, 90vw);
+  max-height: 70vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 0.7rem;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 18%);
+}
+
+.notification-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.notification-panel .muted {
+  margin: 0.3rem 0;
+  font-size: 0.85rem;
+}
+
+.notification-list {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+}
+
+.notification-list li + li {
+  margin-top: 0.3rem;
+}
+
+.topbar .notification-panel button.secondary {
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+button.notification {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  text-align: left;
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+button.notification.unread {
+  background: var(--info-bg);
+  border-left: 4px solid var(--brand);
+  font-weight: 600;
+}
+
+button.notification.read {
+  background: var(--paper);
+  font-weight: 400;
+}
+
 .menu {
   background: var(--paper);
   border-right: 1px solid var(--line);
