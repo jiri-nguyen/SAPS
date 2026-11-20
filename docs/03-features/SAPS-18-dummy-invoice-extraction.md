@@ -4,8 +4,8 @@ title: "SAPS-18 — Dummy invoice extraction"
 status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
-last_updated: 2026-12-11
-related: [UC-02, SCP-IN-02, DEC-004, DEC-012, DEC-033, ADR-0001, ADR-0004, ADR-0007, SAPS-17, SAPS-19, SAPS-23, SAPS-32]
+last_updated: 2026-12-15
+related: [UC-02, SCP-IN-02, DEC-004, DEC-012, DEC-033, ADR-0001, ADR-0004, ADR-0007, SAPS-17, SAPS-19, SAPS-23, SAPS-32, TD-04]
 ---
 
 # SAPS-18 — Dummy invoice extraction
@@ -109,8 +109,10 @@ None. Fills Invoice and InvoiceLine; ExtractedInvoice is defined in [data model 
 | `FIXTURES_DIR` | Root of the sample set | `backend/fixtures` |
 | `backend/fixtures/<scenario>/invoices/<name>.json` | Extraction result (source of truth for a sample) | — |
 | `backend/fixtures/<scenario>/invoices/<name>.pdf` (or `.png`) | Generated from the JSON by `make fixtures` | — |
-| `backend/fixtures/manifest.json` | SHA-256 → JSON path; generated | — |
-| `backend/fixtures/schema/extracted-invoice.schema.json` | JSON schema of an extraction result | — |
+| `backend/fixtures/manifest.json` | `samples`: SHA-256, sample file and JSON path per sample; generated | — |
+| `backend/fixtures/<scenario>/unregistered/<name>.json` (+ file) | Rendered like a sample but never listed: an unknown file (DS-07 → EX1) | — |
+| `backend/fixtures/schema/extracted-invoice.schema.json` | JSON schema of an extraction result; generated from the adapter's Pydantic model, which validates every result | — |
+| `backend/tools/generate_fixtures.py`, `make fixtures` | Generator (ReportLab for PDF, Pillow for PNG / JPEG; dev dependencies only); deterministic output | — |
 
 `<scenario>` is the demo scenario ID in lower case, e.g. `ds-07`. The generator renders a simple, readable invoice
 layout (vendor, invoice number and date, PO numbers, lines, totals) so the demo audience sees the same values the system uses.
@@ -142,10 +144,13 @@ At least one sample per supported type (PDF, PNG, JPEG) exists.
 | Sample PDFs are generated from the JSON, not drawn by hand | The demo file and the extraction result can never disagree | — |
 | Lookup by SHA-256 of the content | A renamed file is still found; a changed file is not (data model Q4, answered) | — |
 | Fixtures validated at worker start-up and in CI | Broken demo data is found before the demo | — |
+| The JSON schema is generated from the Pydantic model that validates the results | One definition; no `jsonschema` runtime dependency; a test fails when the committed schema is out of date | — |
+| No EX1 after the last retry yet (ADR-0004 S4) | The dummy lookup cannot fail; needed with real extraction | [TD-04](../02-architecture/arc42/11-risks-and-technical-debt.md#td-04) |
+| Dev-only dependencies ReportLab, Pillow, pypdf (generator and TS-06) | Generated files are committed; nothing extra in the Docker image (approved by the SA, 2026-12-15) | — |
 
 ## 7. Open Questions
 None.
 
 ## 8. Documentation Checklist
-- [ ] Test Strategy §4 links the fixture layout
+- [x] Test Strategy §4 links the fixture layout
 - [ ] Release notes entry prepared
