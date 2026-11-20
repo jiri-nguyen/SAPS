@@ -727,7 +727,10 @@ export interface components {
         IfMatch: string;
     };
     requestBodies: never;
-    headers: never;
+    headers: {
+        /** @description Version of the invoice; send it in `If-Match` when updating or resolving */
+        ETag: string;
+    };
     pathItems: never;
 }
 export type $defs = Record<string, never>;
@@ -928,8 +931,7 @@ export interface operations {
             /** @description The invoice */
             200: {
                 headers: {
-                    /** @description Version of the invoice; send it in `If-Match` when updating */
-                    ETag?: string;
+                    ETag: components["headers"]["ETag"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -965,6 +967,7 @@ export interface operations {
             /** @description Saved; no matching field changed */
             200: {
                 headers: {
+                    ETag: components["headers"]["ETag"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -974,6 +977,7 @@ export interface operations {
             /** @description Saved; a matching field changed and re-matching is queued */
             202: {
                 headers: {
+                    ETag: components["headers"]["ETag"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -1005,9 +1009,10 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Claimed */
+            /** @description Claimed (also when the caller had already claimed it) */
             200: {
                 headers: {
+                    ETag: components["headers"]["ETag"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -1068,6 +1073,7 @@ export interface operations {
             /** @description Exceptions resolved; next status set */
             200: {
                 headers: {
+                    ETag: components["headers"]["ETag"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -1171,6 +1177,7 @@ export interface operations {
             /** @description Rejected */
             200: {
                 headers: {
+                    ETag: components["headers"]["ETag"];
                     [name: string]: unknown;
                 };
                 content: {
