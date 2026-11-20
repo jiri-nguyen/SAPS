@@ -91,12 +91,14 @@ sequenceDiagram
 | EC-06 | Tolerance raised while an invoice is in Exception with EX6 | The invoice stays in Exception; the new tolerance applies when it is matched again after a correction (BR-04) | — |
 
 ### 3.4 API Changes
-No contract change; implements operations of [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) 0.4.3:
+Contract 0.4.4: the description of `updateMatchingSettings` states the value rules of [DEC-045](../01-requirements/decision-log.md#dec-045) and the saved-twice rule (no schema change). Implements operations of [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml):
 
 | operationId | Method & path | Change | Breaking | Spec |
 |---|---|---|---|---|
 | `getMatchingSettings` | GET /v1/matching-settings | implemented | No | [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
-| `updateMatchingSettings` | PUT /v1/matching-settings | implemented; `422` for values outside the range of BR-03 | No | ″ |
+| `updateMatchingSettings` | PUT /v1/matching-settings | implemented; `400` malformed value, `422` negative value (BR-03); description only | No | ″ |
+
+Check order of `updateMatchingSettings`: role `403` → schema `400` (strings with the patterns of `UnitPrice` and `Amount`; a JSON number or `1e3` is refused) → negative value `422` with `errors[{field, message}]` → row lock → same values: no write → save. The Web App checks the same rules before sending and shows the server's field errors.
 
 `updatedBy` is shown as the user's display name (`system` for the defaults created by the seed), like the actor of invoice events.
 
@@ -143,7 +145,7 @@ None. Uses [MatchingSettings](../02-architecture/data-model.md#matchingsettings)
 | Q2 | Must earlier changes of the settings be kept as a history? | Product Owner (Customer) | 2026-12-15 | answered: the last change only, [DEC-046](../01-requirements/decision-log.md#dec-046) ([MTG-20261215](../01-requirements/meetings/2026-12-15-matching-settings-rules.md)) |
 
 ## 8. Documentation Checklist
-- [ ] API spec updated (no change expected; `422` rule described)
+- [x] API spec updated (0.4.4, description of `updateMatchingSettings`)
 - [x] Data model checked (no change, DEC-046)
-- [ ] Developer Guide §2.4 settings walk-through
+- [x] Developer Guide §2.4 settings walk-through
 - [ ] Release notes entry prepared

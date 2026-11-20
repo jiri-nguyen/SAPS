@@ -111,6 +111,12 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
 - Final review ([SAPS-21](https://linear.app/jiringuyen/issue/SAPS-21)): as `member2`, open **Review queue**, open DS-01 and **Confirm**
   (Completed: ready for posting), or DS-17 and **Reject** with a reason. The whole demo chain: `member1` uploads DS-03 →
   `manager1` approves → `member2` confirms (the review screen shows the approval).
+- Matching settings ([SAPS-28](https://linear.app/jiringuyen/issue/SAPS-28), DS-18): as `member1`, the menu has no **Matching settings**.
+  As `manager1`, open **Matching settings**: it shows 0.50 and 300.00 and who changed them last (`system` at first). Enter a price
+  tolerance of `1.00` and **Save settings**: "Saved. The new values apply to the next matching runs." Then, as `member1`, upload
+  `ds-18/invoices/ds-18-settings-tolerance.pdf` (50.80 against the PO price 50.00): Pending review instead of Exception (EX6).
+  Invoices processed earlier keep the tolerance they were processed with. A negative value or a tolerance with more than 4
+  decimals (threshold: 2) is refused. Set 0.50 again afterwards; uploading DS-18 twice raises EX9.
 
 ## 3. Project Structure
 ```

@@ -333,6 +333,11 @@ export interface paths {
          * Change the price tolerance and the approval threshold
          * @description Only the Accounting Manager (DEC-015). New values apply to matching runs and approval decisions that start
          *     after the change; invoices keep the values they were processed with (`priceToleranceApplied`, `approvalThresholdApplied`).
+         *
+         *     Both values are sent together and are 0 or more with no upper limit (DEC-045). A value that is missing, not a
+         *     decimal string or has too many decimals is a `400`; a negative value is a `422` whose `errors` name the field.
+         *     Saving the same values changes nothing: `updatedAt` and `updatedBy` keep showing the last real change (DEC-046).
+         *     `updatedBy` is the display name of the user, or `system` for the defaults created with the tenant.
          */
         put: operations["updateMatchingSettings"];
         post?: never;
