@@ -100,10 +100,10 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   `ds-12-price-outside-tolerance.pdf` ends in Exception (EX6); any file outside the sample set,
   e.g. `ds-07/unregistered/ds-07-unknown-invoice.pdf`, ends in Exception (EX1). `docker compose logs worker` shows
   `extraction_completed` and `matching_completed`.
-- Exception handling ([SAPS-20](https://linear.app/jiringuyen/issue/SAPS-20)), API only until the screens exist: sign in as `member1` with curl
-  (cookie jar, `Origin: http://localhost:5173`), upload `ds-12-price-outside-tolerance.pdf`, then
-  `POST /v1/invoices/{id}/claim`, read the `ETag` of `GET /v1/invoices/{id}`, `PATCH` the line with `unitPrice` `20.00` and
-  `If-Match: <ETag>` (`202`, status Matching); the worker re-matches and the invoice ends in Pending review without a claim.
+- Exception handling ([SAPS-20](https://linear.app/jiringuyen/issue/SAPS-20)): as `member1`, upload `ds-12-price-outside-tolerance.pdf`
+  and `ds-08-non-po.pdf`, open **Exception queue**, **Claim** DS-12, **Correct data** (unit price `20.00`), **Save**: the page
+  shows "Re-matching in progress", then Pending review. Claim DS-08 and **Accept as is**: Pending approval. As `manager1`, the
+  Exception queue is read-only; open a claimed invoice and **Release claim**.
 
 ## 3. Project Structure
 ```
