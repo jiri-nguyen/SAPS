@@ -5,7 +5,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2026-12-15
-related: [UC-07, SCP-IN-13, DEC-006, DEC-009, DEC-015, NFR-SEC-001, NFR-USAB-001, ADR-0007, ADR-0008, SAPS-19, SAPS-20, SAPS-22, SAPS-27]
+related: [UC-07, SCP-IN-13, DEC-006, DEC-009, DEC-015, DEC-045, DEC-046, MTG-20261215, NFR-SEC-001, NFR-USAB-001, ADR-0007, ADR-0008, SAPS-19, SAPS-20, SAPS-22, SAPS-27]
 ---
 
 # SAPS-28 — Matching settings
@@ -30,9 +30,9 @@ processed keep the values they were processed with. This covers demo scenario DS
 |---|---|---|
 | BR-01 | Only an Accounting Manager can read and change the matching settings. Accounting Members do not see the screen and the SAPS API refuses them. | [DEC-015](../01-requirements/decision-log.md#dec-015), [NFR-SEC-001](../01-requirements/nfr.md#nfr-sec-001) |
 | BR-02 | There is one set of matching settings per tenant, created with the tenant with the defaults 0.5 USD and 300 USD ([SAPS-27](SAPS-27-user-roles-sign-in.md) seed). | [DEC-015](../01-requirements/decision-log.md#dec-015), [data model](../02-architecture/data-model.md#matchingsettings) |
-| BR-03 | Both values are saved together. The allowed values are defined by Q1 (proposal: price tolerance ≥ 0 with up to 4 decimals, approval threshold ≥ 0 with up to 2 decimals, no upper limit). | Q1 |
+| BR-03 | Both values are saved together. Price tolerance: 0 USD or more, up to 4 decimals (0 = the unit price must equal the PO price). Approval threshold: 0 USD or more, up to 2 decimals (0 = every invoice with a positive total needs approval). No upper limit for either. | [DEC-045](../01-requirements/decision-log.md#dec-045) |
 | BR-04 | New values apply to matching runs that start after the change (first matching and re-matching, [SAPS-19](SAPS-19-invoice-matching.md) BR-11) and to acceptance decisions of invoices without a stored threshold ([SAPS-20](SAPS-20-exception-handling.md) BR-06). Invoices keep the values they were processed with (`priceToleranceApplied`, `approvalThresholdApplied`); invoices already waiting for approval are not re-evaluated ([SAPS-22](SAPS-22-invoice-approval.md) BR-09). | [DEC-015](../01-requirements/decision-log.md#dec-015), [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) `updateMatchingSettings` |
-| BR-05 | Each save records who changed the settings and when (`updated_by`, `updated_at`); the screen shows them. Whether earlier changes must be kept as a history is Q2. | [data model](../02-architecture/data-model.md#matchingsettings), Q2 |
+| BR-05 | Each save records who changed the settings and when (`updated_by`, `updated_at`); the screen shows them. Only the last change is kept: no history of changes and no history screen in the PoC. The log `matching_settings_updated` records the old and new values. | [DEC-046](../01-requirements/decision-log.md#dec-046), [data model](../02-architecture/data-model.md#matchingsettings) |
 
 ### 2.2 Affected NFRs
 | NFR | How this feature is affected |
@@ -43,6 +43,7 @@ processed keep the values they were processed with. This covers demo scenario DS
 ### 2.3 Out of Scope
 - Re-matching invoices automatically after a change (an invoice in Exception is matched again only after a correction, [SAPS-20](SAPS-20-exception-handling.md)).
 - Other settings (per vendor, per currency, quantity tolerance); several approval levels.
+- A history of changes and a history screen ([DEC-046](../01-requirements/decision-log.md#dec-046)).
 - Settings per legal entity or company (one tenant = one set, [ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md)).
 
 ## 3. Design
@@ -83,8 +84,8 @@ sequenceDiagram
 | ID | Case | Expected behavior | Response / signal |
 |---|---|---|---|
 | EC-01 | Accounting Member calls `getMatchingSettings` or `updateMatchingSettings` | Refused (role); the menu item is not shown to members | `403` (DS-18) |
-| EC-02 | Missing value, not a number, too many decimals | Refused by the schema | `400` |
-| EC-03 | Value outside the allowed range (Q1, e.g. a negative tolerance) | Refused | `422` naming the field |
+| EC-02 | Missing value, not a number, too many decimals (BR-03) | Refused by the schema | `400` |
+| EC-03 | Negative value (BR-03) | Refused | `422` naming the field |
 | EC-04 | Two managers save at the same time | The last save wins; each save is complete (both values) | `200` |
 | EC-05 | Save with the same values | Nothing changes; `updated_by` and `updated_at` stay | `200` |
 | EC-06 | Tolerance raised while an invoice is in Exception with EX6 | The invoice stays in Exception; the new tolerance applies when it is matched again after a correction (BR-04) | — |
@@ -100,7 +101,7 @@ No contract change; implements operations of [saps-api.openapi.yaml](../02-archi
 `updatedBy` is shown as the user's display name (`system` for the defaults created by the seed), like the actor of invoice events.
 
 ### 3.6 Data Model Changes
-None. Uses [MatchingSettings](../02-architecture/data-model.md#matchingsettings) (`price_tolerance_usd`, `approval_threshold_usd`, `updated_by`, `updated_at`). If Q2 asks for a history of changes, a new entity is needed and this section changes.
+None. Uses [MatchingSettings](../02-architecture/data-model.md#matchingsettings) (`price_tolerance_usd` decimal(18,4), `approval_threshold_usd` decimal(18,2), `updated_by`, `updated_at`). No history entity ([DEC-046](../01-requirements/decision-log.md#dec-046)).
 
 ### 3.7 Security & Permissions
 - Roles: Accounting Manager reads and changes; Accounting Member has no access (BR-01).
@@ -138,11 +139,11 @@ None. Uses [MatchingSettings](../02-architecture/data-model.md#matchingsettings)
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | Which values are allowed? Proposal: price tolerance 0 or more (0 = the unit price must equal the PO price), up to 4 decimals; approval threshold 0 or more (0 = every invoice with a positive total needs approval), up to 2 decimals; no upper limit for either. | Product Owner (Customer) | next meeting | open |
-| Q2 | Must earlier changes of the settings be kept as a history (who, when, old and new values), or is the last change enough? Proposal: the last change is enough in the PoC; the log keeps old and new values. | Product Owner (Customer) | next meeting | open |
+| Q1 | Which values are allowed? | Product Owner (Customer) | 2026-12-15 | answered: proposal accepted, [DEC-045](../01-requirements/decision-log.md#dec-045) ([MTG-20261215](../01-requirements/meetings/2026-12-15-matching-settings-rules.md)) |
+| Q2 | Must earlier changes of the settings be kept as a history? | Product Owner (Customer) | 2026-12-15 | answered: the last change only, [DEC-046](../01-requirements/decision-log.md#dec-046) ([MTG-20261215](../01-requirements/meetings/2026-12-15-matching-settings-rules.md)) |
 
 ## 8. Documentation Checklist
 - [ ] API spec updated (no change expected; `422` rule described)
-- [ ] Data model checked (no change unless Q2 asks for a history)
+- [x] Data model checked (no change, DEC-046)
 - [ ] Developer Guide §2.4 settings walk-through
 - [ ] Release notes entry prepared
