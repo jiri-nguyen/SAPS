@@ -176,6 +176,35 @@ jobs:
           curl -fsS -b upload-jar -H "$origin" -X POST "$base/invoices/$ds03/confirmation" | grep -q '"status":"COMPLETED"'   # SAPS-21
           curl -fsS -b upload-jar -H "$origin" -X POST "$base/invoices/$ds01/confirmation" | grep -q '"status":"COMPLETED"'
           test "$(curl -s -o /dev/null -w '%{http_code}' -b upload-jar -H "$origin" -X POST "$base/invoices/$ds01/confirmation")" = 409
+      - name: Matching settings change the next matching run (SAPS-28, DS-18)
+        run: |
+          base=http://localhost:5173/v1
+          origin="Origin: http://localhost:5173"
+          password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
+          code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+          for who in member1:settings-member manager1:settings-manager; do
+            curl -fsS -c "${who#*:}-jar" -H "$origin" -H 'Content-Type: application/json' \
+              -d "{\"username\":\"${who%%:*}\",\"password\":\"$password\"}" "$base/session" > /dev/null
+          done
+          put() { curl -s -o /dev/null -w '%{http_code}' -b settings-manager-jar -H "$origin" -H 'Content-Type: application/json' -X PUT \
+            -d "{\"priceToleranceUsd\":\"$1\",\"approvalThresholdUsd\":\"$2\"}" "$base/matching-settings"; }
+          test "$(code -b settings-member-jar "$base/matching-settings")" = 403   # members have no access
+          test "$(code -b settings-member-jar -H "$origin" -H 'Content-Type: application/json' -X PUT -d '{"priceToleranceUsd":"1.00","approvalThresholdUsd":"300"}' "$base/matching-settings")" = 403
+          curl -fsS -b settings-manager-jar "$base/matching-settings" | grep -q '"updatedBy":"system"'
+          test "$(put -1 300)" = 422
+          test "$(put 0.12345 300)" = 400
+          test "$(put 1.00 300)" = 200
+          curl -fsS -b settings-manager-jar "$base/matching-settings" | grep -q '"updatedBy":"Accounting Manager 1"'
+          ds18="$(curl -fsS -b settings-member-jar -H "$origin" -H "Idempotency-Key: ci-ds18-$GITHUB_RUN_ID" \
+            -F "file=@backend/fixtures/ds-18/invoices/ds-18-settings-tolerance.pdf;type=application/pdf" "$base/invoices" \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])')"
+          for i in $(seq 1 30); do   # 50.80 against 50.00 matches with the tolerance 1.00
+            state="$(curl -fsS -b settings-member-jar "$base/invoices/$ds18" | python3 -c 'import json, sys; print(json.load(sys.stdin)["status"])')"
+            [ "$state" = PENDING_REVIEW ] && break
+            sleep 1
+          done
+          test "$state" = PENDING_REVIEW || { echo "DS-18 is '$state', expected PENDING_REVIEW"; docker compose logs worker; exit 1; }
+          test "$(put 0.5 300)" = 200   # back to the defaults
       - name: SAPS API → SAPS Message Broker → SAPS Worker
         run: |
           docker compose exec -T api python -c "from saps.worker.actors import ping; ping.send('ci-smoke')"
