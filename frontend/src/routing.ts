@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 
-/** A screen of the Web App, addressed by the URL hash: `#/exceptions`, `#/invoices/{id}`. */
+/** A screen of the Web App, addressed by the URL hash: `#/exceptions`, `#/approvals/{id}`. */
 export interface Route {
   page: string;
   invoiceId?: string;
 }
 
+/** Queues that open an invoice: `#/{queue}/{invoiceId}` (`#/invoices/{id}` is the old link to the exception queue). */
+const DETAIL_QUEUES: ReadonlySet<string> = new Set(["exceptions", "approvals"]);
+
 export function parseHash(hash: string): Route {
   const [first = "", second] = hash.replace(/^#\/?/, "").split("/");
-  if (first === "invoices" && second) return { page: "invoice", invoiceId: decodeURIComponent(second) };
+  if (second && DETAIL_QUEUES.has(first)) return { page: first, invoiceId: decodeURIComponent(second) };
+  if (second && first === "invoices") return { page: "exceptions", invoiceId: decodeURIComponent(second) };
   return { page: first };
 }
 
@@ -20,8 +24,8 @@ export function navigate(path: string): void {
   window.location.hash = href(path);
 }
 
-export function invoicePath(invoiceId: string): string {
-  return `invoices/${encodeURIComponent(invoiceId)}`;
+export function detailPath(queue: string, invoiceId: string): string {
+  return `${queue}/${encodeURIComponent(invoiceId)}`;
 }
 
 /** The current route; follows browser Back / Forward and links. */

@@ -35,6 +35,8 @@ export interface ExceptionApi {
   update(invoiceId: string, body: InvoiceUpdate, etag: string): Promise<UpdateResult>;
   resolve(invoiceId: string, etag: string): Promise<Versioned>;
   reject(invoiceId: string, reason: string): Promise<Versioned>;
+  /** `decideInvoiceApproval` (SAPS-22): a comment is required when rejecting. */
+  decide(invoiceId: string, decision: "APPROVED" | "REJECTED", comment?: string): Promise<Versioned>;
   /** The whole audit trail, oldest first. */
   events(invoiceId: string): Promise<InvoiceEvent[]>;
   /** `downloadInvoiceFile`, for an iframe or image on the same origin. */
@@ -84,6 +86,12 @@ export function createExceptionApi(fetchImpl: typeof fetch = fetch): ExceptionAp
     async reject(invoiceId, reason) {
       return versioned(
         await call(path(invoiceId, "/rejection"), { method: "POST", body: JSON.stringify({ reason }) }),
+      );
+    },
+    async decide(invoiceId, decision, comment) {
+      const body: components["schemas"]["ApprovalCreate"] = comment ? { decision, comment } : { decision };
+      return versioned(
+        await call(path(invoiceId, "/approval"), { method: "POST", body: JSON.stringify(body) }),
       );
     },
     async events(invoiceId) {

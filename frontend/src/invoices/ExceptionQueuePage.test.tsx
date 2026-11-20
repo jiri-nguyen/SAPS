@@ -23,7 +23,7 @@ describe("ExceptionQueuePage", () => {
     expect(within(row).getByText("EX6")).toHaveAttribute("title", "Unit price outside tolerance");
     expect(within(row).getByRole("link", { name: "AOS-2026-1013" })).toHaveAttribute(
       "href",
-      "#/invoices/inv-12",
+      "#/exceptions/inv-12",
     );
     expect(list).toHaveBeenLastCalledWith({ status: ["EXCEPTION"], assignee: "unassigned" });
 
@@ -44,7 +44,7 @@ describe("ExceptionQueuePage", () => {
     );
     await userEvent.setup().click(await screen.findByRole("button", { name: "Claim" }));
     expect(claim).toHaveBeenCalledWith("inv-12");
-    await waitFor(() => expect(window.location.hash).toBe("#/invoices/inv-12"));
+    await waitFor(() => expect(window.location.hash).toBe("#/exceptions/inv-12"));
   });
 
   it("explains a lost claim race and refreshes the list", async () => {

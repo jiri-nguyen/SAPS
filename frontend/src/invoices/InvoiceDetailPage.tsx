@@ -10,16 +10,24 @@ import { InvoiceEditForm } from "./InvoiceEditForm";
 
 type Mode = "view" | "edit" | "reject";
 
-/** One invoice in exception handling (SAPS-20): file, data, exceptions, history and the member's actions. */
+export type Queue = "exceptions" | "approvals";
+const QUEUE_LABEL: Record<Queue, string> = { exceptions: "Exception queue", approvals: "Approval queue" };
+
+/**
+ * One invoice: file, data, exceptions, history and the actions of the user's role: a member's exception handling
+ * (SAPS-20) or an Accounting Manager's approval (SAPS-22). `queue` is where the user came from.
+ */
 export function InvoiceDetailPage({
   api,
   invoiceId,
   user,
+  queue = "exceptions",
   pollMs = 2000,
 }: {
   api: ExceptionApi;
   invoiceId: string;
   user: UserAccount;
+  queue?: Queue;
   pollMs?: number;
 }) {
   const [loaded, setLoaded] = useState<Versioned | null>(null);
@@ -69,6 +77,8 @@ export function InvoiceDetailPage({
   const member = canHandleExceptions(user.role);
   const claimant = invoice.assignedTo?.id === user.id;
   const inException = invoice.status === "EXCEPTION";
+  const manager = user.role === "ACCOUNTING_MANAGER";
+  const waiting = invoice.status === "PENDING_APPROVAL"; // SAPS-22
   const openCodes = invoice.exceptions.filter((e) => e.status === "OPEN").map((e) => e.code);
   const refused = refusedCodes(openCodes);
 
@@ -105,6 +115,11 @@ export function InvoiceDetailPage({
           ? "Saved. Matching runs again with the corrected data."
           : "Saved.",
     );
+  const approve = () =>
+    void run(
+      () => api.decide(invoiceId, "APPROVED"),
+      (result) => (result ? `Approved. Next step: ${STATUS_LABEL[result.invoice.status]}.` : null),
+    );
   const accept = () =>
     void run(
       () => api.resolve(invoiceId, etag),
@@ -130,14 +145,16 @@ export function InvoiceDetailPage({
       return;
     }
     void run(
-      () => api.reject(invoiceId, reason.trim()),
+      // A manager rejects through the approval, a member in exception handling (SAPS-22 BR-05, SAPS-20 BR-08).
+      () =>
+        waiting ? api.decide(invoiceId, "REJECTED", reason.trim()) : api.reject(invoiceId, reason.trim()),
       () => "The invoice was rejected.",
     );
   }
 
   return (
     <article className="stack" aria-label="Invoice">
-      <a href={href("exceptions")}>← Exception queue</a>
+      <a href={href(queue)}>← {QUEUE_LABEL[queue]}</a>
       <header className="invoice-head">
         <h2>
           {text(invoice.invoiceNumber)} <span className="muted">{text(invoice.vendorName)}</span>
@@ -152,9 +169,17 @@ export function InvoiceDetailPage({
           Re-matching in progress…
         </p>
       )}
-      {!inException && !matching && (
+      {waiting && (
         <p className="banner info" role="status">
-          This invoice is {STATUS_LABEL[invoice.status]}; exception handling is finished.
+          {manager
+            ? "This invoice waits for your decision."
+            : "This invoice waits for approval by an Accounting Manager."}
+        </p>
+      )}
+      {!inException && !matching && !waiting && (
+        <p className="banner info" role="status">
+          This invoice is {STATUS_LABEL[invoice.status]};{" "}
+          {queue === "approvals" ? "the approval" : "exception handling"} is finished.
         </p>
       )}
       {notice !== null && (
@@ -166,6 +191,17 @@ export function InvoiceDetailPage({
         <p className="banner error" role="alert">
           {error}
         </p>
+      )}
+
+      {waiting && manager && mode === "view" && (
+        <div className="actions" aria-label="Approval">
+          <button type="button" className="primary" disabled={busy} onClick={approve}>
+            Approve
+          </button>
+          <button type="button" className="danger" disabled={busy} onClick={() => setMode("reject")}>
+            Reject
+          </button>
+        </div>
       )}
 
       {inException && mode === "view" && (
@@ -251,6 +287,16 @@ export function InvoiceDetailPage({
             </dd>
             <dt>File</dt>
             <dd>{invoice.file.name}</dd>
+            {invoice.approval != null && (
+              <>
+                <dt>Approval</dt>
+                <dd>
+                  {invoice.approval.decision === "APPROVED" ? "Approved" : "Rejected"} by{" "}
+                  {invoice.approval.decidedBy.displayName} on {timestamp(invoice.approval.decidedAt)}
+                  {invoice.approval.comment ? `: ${invoice.approval.comment}` : ""}
+                </dd>
+              </>
+            )}
           </dl>
 
           <h3>Exceptions</h3>
@@ -262,7 +308,8 @@ export function InvoiceDetailPage({
                 {exception.status === "RESOLVED" && (
                   <span className="muted">
                     {" "}
-                    (resolved{exception.resolvedBy ? ` by ${exception.resolvedBy.displayName}` : ""})
+                    (resolved{exception.resolvedBy ? ` by ${exception.resolvedBy.displayName}` : ""}
+                    {exception.resolvedAt ? ` on ${timestamp(exception.resolvedAt)}` : ""})
                   </span>
                 )}
               </li>

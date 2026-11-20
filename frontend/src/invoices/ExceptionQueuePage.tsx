@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { ExceptionApi, InvoiceSummary } from "../api/exceptions";
 import type { Role } from "../api/session";
 import { canHandleExceptions } from "../auth/roles";
-import { href, invoicePath, navigate } from "../routing";
+import { detailPath, href, navigate } from "../routing";
 import { errorMessage } from "./errors";
 import { EXCEPTION_TITLE, decimal, text, timestamp } from "./format";
 
@@ -71,7 +71,7 @@ export function ExceptionQueuePage({ api, role }: { api: ExceptionApi; role: Rol
     setError(null);
     try {
       await api.claim(invoiceId);
-      navigate(invoicePath(invoiceId));
+      navigate(detailPath("exceptions", invoiceId));
     } catch (caught) {
       reload();
       setError(errorMessage(caught)); // after reload(), which clears it: e.g. claimed by another member (409)
@@ -128,7 +128,7 @@ export function ExceptionQueuePage({ api, role }: { api: ExceptionApi; role: Rol
               <tr key={item.id} data-testid="queue-row">
                 <td>{text(item.vendorName)}</td>
                 <td>
-                  <a href={href(invoicePath(item.id))}>{text(item.invoiceNumber)}</a>
+                  <a href={href(detailPath("exceptions", item.id))}>{text(item.invoiceNumber)}</a>
                 </td>
                 <td className="num">{decimal(item.totalAmount)}</td>
                 <td>

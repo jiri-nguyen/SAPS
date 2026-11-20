@@ -5,8 +5,9 @@ import { type InvoiceApi, createInvoiceApi } from "../api/invoices";
 import type { UserAccount } from "../api/session";
 import { MENU_BY_ROLE, ROLE_LABEL } from "../auth/roles";
 import { useSession } from "../auth/session-context";
+import { ApprovalQueuePage } from "../invoices/ApprovalQueuePage";
 import { ExceptionQueuePage } from "../invoices/ExceptionQueuePage";
-import { InvoiceDetailPage } from "../invoices/InvoiceDetailPage";
+import { InvoiceDetailPage, type Queue } from "../invoices/InvoiceDetailPage";
 import { UploadPage } from "../invoices/UploadPage";
 import { href, useRoute } from "../routing";
 
@@ -26,26 +27,23 @@ export function AppShell({
   const exceptions = useMemo(() => exceptionApi ?? createExceptionApi(), [exceptionApi]);
   const menu = MENU_BY_ROLE[user.role];
   const route = useRoute();
-  const canOpenInvoices = menu.some((item) => item.id === "exceptions");
-  const detail = route.page === "invoice" && route.invoiceId !== undefined && canOpenInvoices;
-  const pageId = detail ? "exceptions" : route.page;
   // A route the role may not open (or none) shows the role's first screen (SAPS-27 BR-10).
-  const current = menu.find((item) => item.id === pageId) ?? menu[0];
+  const current = menu.find((item) => item.id === route.page) ?? menu[0];
+  const queue: Queue | null = current.id === "exceptions" || current.id === "approvals" ? current.id : null;
+  const invoiceId = route.page === current.id ? route.invoiceId : undefined;
+  const detail = queue !== null && invoiceId !== undefined;
 
   let page: ReactNode;
   if (detail) {
     page = (
-      <InvoiceDetailPage
-        key={route.invoiceId}
-        api={exceptions}
-        invoiceId={route.invoiceId ?? ""}
-        user={user}
-      />
+      <InvoiceDetailPage key={invoiceId} api={exceptions} invoiceId={invoiceId} user={user} queue={queue} />
     );
   } else if (current.id === "upload") {
     page = <UploadPage api={invoices} />;
   } else if (current.id === "exceptions") {
     page = <ExceptionQueuePage api={exceptions} role={user.role} />;
+  } else if (current.id === "approvals") {
+    page = <ApprovalQueuePage api={exceptions} />;
   } else {
     page = <p>This screen is not available yet.</p>;
   }
