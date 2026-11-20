@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select, text, tuple_, update
@@ -153,18 +154,17 @@ class SqlMatchingRepository(SqlNotifications):
             )
             for new in update_.opened
         )
-        await session.execute(
-            update(Invoice)
-            .where(Invoice.id == invoice.id)
-            .values(
-                status=update_.status,
-                invoice_type=update_.invoice_type,
-                requires_approval=update_.requires_approval,
-                price_tolerance_applied=update_.rules.price_tolerance,
-                approval_threshold_applied=update_.rules.approval_threshold,
-                updated_by=actor,
-            )
-        )
+        values: dict[str, Any] = {
+            "status": update_.status,
+            "invoice_type": update_.invoice_type,
+            "requires_approval": update_.requires_approval,
+            "price_tolerance_applied": update_.rules.price_tolerance,
+            "approval_threshold_applied": update_.rules.approval_threshold,
+            "updated_by": actor,
+        }
+        if update_.status is not InvoiceStatus.EXCEPTION:
+            values["assigned_to"] = None  # SAPS-20 BR-09: the claim ends when the invoice leaves Exception
+        await session.execute(update(Invoice).where(Invoice.id == invoice.id).values(**values))
         session.add(
             InvoiceEvent(
                 tenant_id=invoice.tenant_id,

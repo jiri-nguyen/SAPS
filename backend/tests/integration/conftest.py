@@ -11,6 +11,8 @@ from pathlib import Path
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+from tests.integration.api_world import Api, make_api
+
 BACKEND = Path(__file__).parents[2]
 
 
@@ -49,3 +51,9 @@ async def engine(database_url: str) -> AsyncIterator[AsyncEngine]:
         yield engine
     finally:
         await engine.dispose()
+
+
+@pytest.fixture
+async def api(engine: AsyncEngine, database_url: str, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[Api]:
+    async with make_api(engine, database_url, monkeypatch) as api_:
+        yield api_

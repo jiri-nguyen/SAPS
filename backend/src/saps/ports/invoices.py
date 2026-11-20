@@ -106,6 +106,56 @@ class NewUpload:
     uploaded_at: datetime
 
 
+@dataclass(frozen=True)
+class InvoiceSummaryView:
+    id: UUID
+    status: InvoiceStatus
+    invoice_type: InvoiceType | None
+    vendor_name: str | None
+    invoice_number: str | None
+    total_amount: Decimal | None
+    currency: str
+    open_exception_codes: Sequence[ExceptionCode]
+    assigned_to: UserRef | None
+    updated_at: datetime
+
+
+@dataclass(frozen=True)
+class InvoiceEventView:
+    id: UUID
+    status_from: InvoiceStatus | None
+    status_to: InvoiceStatus
+    action: str
+    actor: str
+    details: dict[str, object] | None
+    occurred_at: datetime
+
+
+@dataclass(frozen=True)
+class StoredInvoiceFile:
+    storage_key: str
+    content_type: str
+    name: str
+
+
+@dataclass(frozen=True)
+class Page[T]:
+    items: Sequence[T]
+    next_page_token: str | None
+
+
+@dataclass(frozen=True)
+class InvoiceFilter:
+    statuses: Sequence[InvoiceStatus] = ()
+    invoice_type: InvoiceType | None = None
+    assignee: str | None = None  # "me" or "unassigned"
+    user_id: UUID | None = None  # the caller, for assignee "me"
+
+
+class InvalidPageTokenError(ValueError):
+    """The page token is not one this API issued (answers 400)."""
+
+
 class DuplicateIdempotencyKeyError(Exception):
     """Another request with the same key and tenant created its invoice first (SAPS-17 EC-04)."""
 
@@ -125,3 +175,17 @@ class InvoiceReader(Protocol):
     async def get(self, tenant_id: UUID, invoice_id: UUID) -> InvoiceView | None:
         """The invoice of this tenant with lines, exceptions, approval and user names (ADR-0007)."""
         ...
+
+    async def list_invoices(
+        self, tenant_id: UUID, flt: InvoiceFilter, page_size: int, page_token: str | None
+    ) -> Page[InvoiceSummaryView]:
+        """Newest first; the token is opaque (keyset paging)."""
+        ...
+
+    async def list_events(
+        self, tenant_id: UUID, invoice_id: UUID, page_size: int, page_token: str | None
+    ) -> Page[InvoiceEventView] | None:
+        """Oldest first; None when the invoice does not exist in the tenant."""
+        ...
+
+    async def file_of(self, tenant_id: UUID, invoice_id: UUID) -> StoredInvoiceFile | None: ...

@@ -3,15 +3,48 @@
 import hashlib
 import logging
 import time
-from typing import Annotated
+from typing import Annotated, Literal
+from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, UploadFile, status
+from fastapi.responses import StreamingResponse
 
-from saps.api.deps import User, invoice_reader, require_roles, upload_service
-from saps.api.schemas import Invoice
-from saps.application.invoices import InvoiceNotFoundError, get_invoice
+from saps.api.deps import (
+    User,
+    exception_service,
+    file_storage,
+    invoice_reader,
+    require_roles,
+    upload_service,
+)
+from saps.api.schemas import (
+    Invoice,
+    InvoiceEvent,
+    InvoiceEventPage,
+    InvoiceSummary,
+    InvoiceSummaryPage,
+    InvoiceUpdate,
+    RejectionCreate,
+)
+from saps.application.exception_handling import (
+    ConflictError,
+    ExceptionHandlingService,
+    ForbiddenError,
+    HandlingError,
+    PreconditionFailedError,
+    UnprocessableError,
+)
+from saps.application.invoices import (
+    InvoiceNotFoundError,
+    etag_of,
+    get_invoice,
+    list_invoice_events,
+    list_invoices,
+    open_invoice_file,
+)
 from saps.application.upload import IncomingFile, UploadInvoiceService
+from saps.domain.exception_handling import LineData
 from saps.domain.invoice_files import (
     HEADER_BYTES,
     EmptyFileError,
@@ -19,8 +52,10 @@ from saps.domain.invoice_files import (
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
+from saps.domain.invoices import InvoiceStatus, InvoiceType
 from saps.domain.users import CurrentUser, Role
-from saps.ports.invoices import InvoiceReader
+from saps.ports.file_storage import FileStoragePort
+from saps.ports.invoices import InvalidPageTokenError, InvoiceFilter, InvoiceReader, InvoiceView
 
 router = APIRouter(prefix="/v1/invoices", tags=["Invoices"])
 log = logging.getLogger("saps.api.invoices")
@@ -100,6 +135,184 @@ async def get_invoice_operation(
         view = await get_invoice(reader, user, invoice_id)
     except InvoiceNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found.") from exc
-    # Weak ETag from the last change of the invoice row; If-Match handling comes with updateInvoice (SAPS-20).
-    response.headers["ETag"] = f'W/"{int(view.updated_at.timestamp() * 1_000_000)}"'
+    return _invoice_response(response, view)
+
+
+# --- exception handling (SAPS-20) ---------------------------------------------------------------------
+
+_HANDLING_STATUS: dict[type[HandlingError], int] = {
+    ConflictError: status.HTTP_409_CONFLICT,
+    ForbiddenError: status.HTTP_403_FORBIDDEN,
+    PreconditionFailedError: status.HTTP_412_PRECONDITION_FAILED,
+    UnprocessableError: status.HTTP_422_UNPROCESSABLE_CONTENT,
+}
+Service = Annotated[ExceptionHandlingService, Depends(exception_service)]
+IfMatch = Annotated[str | None, Header(alias="If-Match")]
+
+
+def _invoice_response(response: Response, view: InvoiceView) -> Invoice:
+    """The current version travels as ETag; clients send it back as If-Match (EC-02)."""
+    response.headers["ETag"] = etag_of(view.updated_at)
     return Invoice.from_view(view)
+
+
+def _problem(exc: Exception) -> HTTPException:
+    if isinstance(exc, InvoiceNotFoundError):
+        return HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found.")
+    assert isinstance(exc, HandlingError)
+    return HTTPException(_HANDLING_STATUS[type(exc)], exc.detail)
+
+
+def _require_if_match(if_match: str | None) -> str:
+    if not if_match:
+        raise HTTPException(status.HTTP_428_PRECONDITION_REQUIRED, "The If-Match header is required.")
+    return if_match
+
+
+@router.get("", operation_id="listInvoices", response_model_by_alias=True)
+async def list_invoices_operation(
+    user: User,
+    reader: Annotated[InvoiceReader, Depends(invoice_reader)],
+    statuses: Annotated[list[InvoiceStatus] | None, Query(alias="status")] = None,
+    invoice_type: Annotated[InvoiceType | None, Query(alias="invoiceType")] = None,
+    assignee: Literal["me", "unassigned"] | None = None,
+    page_size: Annotated[int, Query(alias="pageSize", ge=1, le=100)] = 20,
+    page_token: Annotated[str | None, Query(alias="pageToken")] = None,
+) -> InvoiceSummaryPage:
+    flt = InvoiceFilter(tuple(statuses or ()), invoice_type, assignee, user.user_id)
+    try:
+        page = await list_invoices(reader, user, flt, page_size, page_token)
+    except InvalidPageTokenError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The page token is not valid.") from exc
+    return InvoiceSummaryPage(
+        items=[InvoiceSummary.from_view(v) for v in page.items], next_page_token=page.next_page_token
+    )
+
+
+@router.post("/{invoice_id}/claim", operation_id="claimInvoice", response_model_by_alias=True)
+async def claim_invoice(invoice_id: UUID, response: Response, user: Member, service: Service) -> Invoice:
+    try:
+        view = await service.claim(user, invoice_id)
+    except (InvoiceNotFoundError, HandlingError) as exc:
+        raise _problem(exc) from exc
+    log.info("invoice_claimed", extra={"invoice_id": str(invoice_id), "user_id": str(user.user_id)})
+    return _invoice_response(response, view)
+
+
+@router.delete(
+    "/{invoice_id}/claim",
+    operation_id="releaseInvoiceClaim",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def release_invoice_claim(
+    invoice_id: UUID,
+    user: Annotated[CurrentUser, Depends(require_roles(Role.ACCOUNTING_MEMBER, Role.ACCOUNTING_MANAGER))],
+    service: Service,
+) -> Response:
+    try:
+        await service.release(user, invoice_id)
+    except (InvoiceNotFoundError, HandlingError) as exc:
+        raise _problem(exc) from exc
+    log.info("invoice_claim_released", extra={"invoice_id": str(invoice_id), "user_id": str(user.user_id)})
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch("/{invoice_id}", operation_id="updateInvoice", response_model_by_alias=True)
+async def update_invoice(
+    invoice_id: UUID,
+    body: InvoiceUpdate,
+    response: Response,
+    user: Member,
+    service: Service,
+    if_match: IfMatch = None,
+) -> Invoice:
+    etag = _require_if_match(if_match)
+    lines = (
+        [
+            LineData(
+                ln.line_number,
+                ln.description,
+                ln.po_number,
+                ln.po_line_number,
+                ln.quantity,
+                ln.unit_price,
+                ln.line_amount,
+            )
+            for ln in body.lines
+        ]
+        if body.lines is not None
+        else None
+    )
+    try:
+        result = await service.update(user, invoice_id, etag, body.header(), lines)
+    except (InvoiceNotFoundError, HandlingError) as exc:
+        raise _problem(exc) from exc
+    log.info("invoice_updated", extra={"invoice_id": str(invoice_id), "rematch": result.rematch})
+    if result.rematch:
+        response.status_code = status.HTTP_202_ACCEPTED
+    return _invoice_response(response, result.invoice)
+
+
+@router.post(
+    "/{invoice_id}/resolution", operation_id="resolveInvoiceExceptions", response_model_by_alias=True
+)
+async def resolve_invoice_exceptions(
+    invoice_id: UUID, response: Response, user: Member, service: Service, if_match: IfMatch = None
+) -> Invoice:
+    etag = _require_if_match(if_match)
+    try:
+        view = await service.resolve(user, invoice_id, etag)
+    except (InvoiceNotFoundError, HandlingError) as exc:
+        raise _problem(exc) from exc
+    log.info("exceptions_resolved", extra={"invoice_id": str(invoice_id), "status": view.status.value})
+    return _invoice_response(response, view)
+
+
+@router.post("/{invoice_id}/rejection", operation_id="rejectInvoice", response_model_by_alias=True)
+async def reject_invoice(
+    invoice_id: UUID, body: RejectionCreate, response: Response, user: Member, service: Service
+) -> Invoice:
+    try:
+        view = await service.reject(user, invoice_id, body.reason)
+    except (InvoiceNotFoundError, HandlingError) as exc:
+        raise _problem(exc) from exc
+    log.info("invoice_rejected", extra={"invoice_id": str(invoice_id), "user_id": str(user.user_id)})
+    return _invoice_response(response, view)
+
+
+@router.get("/{invoice_id}/file", operation_id="downloadInvoiceFile")
+async def download_invoice_file(
+    invoice_id: UUID,
+    user: User,
+    reader: Annotated[InvoiceReader, Depends(invoice_reader)],
+    storage: Annotated[FileStoragePort, Depends(file_storage)],
+) -> StreamingResponse:
+    try:
+        info, chunks = await open_invoice_file(reader, storage, user, invoice_id)
+    except InvoiceNotFoundError as exc:
+        raise _problem(exc) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "The invoice file is not available.") from exc
+    disposition = f"inline; filename*=UTF-8''{quote(info.name)}"
+    return StreamingResponse(
+        chunks, media_type=info.content_type, headers={"Content-Disposition": disposition}
+    )
+
+
+@router.get("/{invoice_id}/events", operation_id="listInvoiceEvents", response_model_by_alias=True)
+async def list_invoice_events_operation(
+    invoice_id: UUID,
+    user: User,
+    reader: Annotated[InvoiceReader, Depends(invoice_reader)],
+    page_size: Annotated[int, Query(alias="pageSize", ge=1, le=100)] = 20,
+    page_token: Annotated[str | None, Query(alias="pageToken")] = None,
+) -> InvoiceEventPage:
+    try:
+        page = await list_invoice_events(reader, user, invoice_id, page_size, page_token)
+    except InvoiceNotFoundError as exc:
+        raise _problem(exc) from exc
+    except InvalidPageTokenError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The page token is not valid.") from exc
+    return InvoiceEventPage(
+        items=[InvoiceEvent.from_view(v) for v in page.items], next_page_token=page.next_page_token
+    )

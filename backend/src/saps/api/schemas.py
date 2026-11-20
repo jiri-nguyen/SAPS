@@ -2,9 +2,10 @@
 
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Annotated, Any, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 from pydantic.alias_generators import to_camel
 
 from saps.domain.invoices import (
@@ -16,7 +17,7 @@ from saps.domain.invoices import (
     MatchStatus,
 )
 from saps.domain.users import CurrentUser, Role
-from saps.ports.invoices import InvoiceView
+from saps.ports.invoices import InvoiceEventView, InvoiceSummaryView, InvoiceView
 
 
 class CamelModel(BaseModel):
@@ -120,3 +121,100 @@ class Invoice(_ReadModel):
     @classmethod
     def from_view(cls, view: InvoiceView) -> Invoice:
         return cls.model_validate(view)
+
+
+class InvoiceSummary(_ReadModel):
+    """OpenAPI `InvoiceSummary` (queue rows)."""
+
+    id: UUID
+    status: InvoiceStatus
+    invoice_type: InvoiceType | None
+    vendor_name: str | None
+    invoice_number: str | None
+    total_amount: Decimal | None
+    currency: str
+    open_exception_codes: list[ExceptionCode]
+    assigned_to: UserAccountRef | None
+    updated_at: datetime
+
+    @classmethod
+    def from_view(cls, view: InvoiceSummaryView) -> InvoiceSummary:
+        return cls.model_validate(view)
+
+
+class InvoiceSummaryPage(CamelModel):
+    items: list[InvoiceSummary]
+    next_page_token: str | None
+
+
+class InvoiceEvent(_ReadModel):
+    id: UUID
+    status_from: InvoiceStatus | None
+    status_to: InvoiceStatus
+    action: str
+    actor: str
+    details: dict[str, Any] | None
+    occurred_at: datetime
+
+    @classmethod
+    def from_view(cls, view: InvoiceEventView) -> InvoiceEvent:
+        return cls.model_validate(view)
+
+
+class InvoiceEventPage(CamelModel):
+    items: list[InvoiceEvent]
+    next_page_token: str | None
+
+
+# --- requests of exception handling (SAPS-20) ----------------------------------------------------------
+
+PoNumberText = Annotated[str, Field(pattern=r"^[0-9]{7}$")]
+Money = Annotated[Decimal, Field(max_digits=18, decimal_places=2)]
+UnitPrice = Annotated[Decimal, Field(max_digits=18, decimal_places=4)]
+Quantity = Annotated[Decimal, Field(ge=0, max_digits=18, decimal_places=3)]
+
+
+class InvoiceLineUpdate(CamelModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
+
+    line_number: int = Field(ge=1)
+    description: str | None = Field(default=None, max_length=500)
+    po_number: PoNumberText | None = None
+    po_line_number: int | None = Field(default=None, ge=1)
+    quantity: Quantity | None = None
+    unit_price: UnitPrice | None = None
+    line_amount: Money | None = None
+
+
+class InvoiceUpdate(CamelModel):
+    """Corrections: fields not sent stay unchanged; `lines`, when sent, replaces all lines (SAPS-20 BR-04)."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
+
+    vendor_code: Annotated[str, Field(min_length=1, max_length=20)] | None = None
+    vendor_name: Annotated[str, Field(min_length=1, max_length=200)] | None = None
+    invoice_number: Annotated[str, Field(min_length=1, max_length=50)] | None = None
+    invoice_date: date | None = None
+    subtotal_amount: Money | None = None
+    tax_amount: Money | None = None
+    total_amount: Money | None = None
+    lines: list[InvoiceLineUpdate] | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def _not_empty_and_not_null(self) -> Self:
+        if not self.model_fields_set:
+            raise ValueError("Send at least one field to change.")
+        nulls = [name for name in self.model_fields_set if getattr(self, name) is None]
+        if nulls:
+            raise ValueError(f"These fields cannot be null: {', '.join(sorted(nulls))}.")
+        return self
+
+    def header(self) -> dict[str, Any]:
+        """Only the header fields that were sent."""
+        return {name: getattr(self, name) for name in self.model_fields_set if name != "lines"}
+
+
+class RejectionCreate(CamelModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
+
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]

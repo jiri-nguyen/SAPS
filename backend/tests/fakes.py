@@ -1,5 +1,6 @@
 """In-memory ports for tests: File Storage, Job Queue, invoice repository and reader."""
 
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import BinaryIO
 from uuid import UUID
@@ -24,16 +25,29 @@ class MemoryStorage:
             raise OSError("SAPS File Storage unavailable")
         self.objects[key] = (data.read(), content_type)
 
+    async def get(self, key: str) -> AsyncIterator[bytes]:
+        if key not in self.objects:
+            raise FileNotFoundError(key)
+        content = self.objects[key][0]
+        for start in range(0, len(content), 8):  # small chunks, like a real stream
+            yield content[start : start + 8]
+
 
 class MemoryQueue:
     def __init__(self, fail: bool = False) -> None:
         self.sent: list[UUID] = []
+        self.rematch: list[UUID] = []
         self.fail = fail
 
     async def send_process_invoice(self, invoice_id: UUID) -> None:
         if self.fail:
             raise ConnectionError("SAPS Message Broker unavailable")
         self.sent.append(invoice_id)
+
+    async def send_rematch_invoice(self, invoice_id: UUID) -> None:
+        if self.fail:
+            raise ConnectionError("SAPS Message Broker unavailable")
+        self.rematch.append(invoice_id)
 
 
 class MemoryInvoices:

@@ -27,3 +27,13 @@ async def test_process_invoice_actor_runs_the_job(monkeypatch) -> None:
     invoice_id = uuid4()
     await actors.process_invoice.fn.__wrapped__(str(invoice_id))
     assert called == [invoice_id]
+
+
+async def test_rematch_invoice_message_carries_only_the_invoice_id() -> None:  # SAPS-20 §3.5
+    broker = StubBroker()
+    broker.declare_queue(QUEUE)
+    invoice_id = uuid4()
+    await DramatiqJobQueue(broker).send_rematch_invoice(invoice_id)
+    message = broker.queues[QUEUE].get_nowait()
+    assert b'"actor_name":"rematch_invoice"' in message
+    assert f'"args":["{invoice_id}"]'.encode() in message

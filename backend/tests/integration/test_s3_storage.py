@@ -66,3 +66,21 @@ async def test_storage_errors_are_raised(endpoint: str) -> None:
     )
     with pytest.raises(Exception, match=r"SignatureDoesNotMatch|AccessDenied|InvalidAccessKeyId|403"):
         await storage.put("invoices/1/c", io.BytesIO(b"%PDF-x"), "application/pdf")
+
+
+async def test_get_streams_the_object_in_chunks(endpoint: str) -> None:  # SAPS-20 downloadInvoiceFile
+    storage = S3FileStorage(
+        endpoint_url=endpoint, bucket="invoices-test", access_key=ACCESS, secret_key=SECRET
+    )
+    content = b"%PDF-" + b"0123456789" * 60_000  # about 600 KB: more than one 256 KB chunk
+    await storage.put("invoices/2/big", io.BytesIO(content), "application/pdf")
+    chunks = [chunk async for chunk in storage.get("invoices/2/big")]
+    assert len(chunks) > 1 and b"".join(chunks) == content
+
+
+async def test_get_reports_a_missing_object(endpoint: str) -> None:
+    storage = S3FileStorage(
+        endpoint_url=endpoint, bucket="invoices-test", access_key=ACCESS, secret_key=SECRET
+    )
+    with pytest.raises(FileNotFoundError):
+        [chunk async for chunk in storage.get("invoices/2/does-not-exist")]
