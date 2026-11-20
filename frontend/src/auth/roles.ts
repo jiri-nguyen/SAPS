@@ -19,6 +19,12 @@ export const MENU_BY_ROLE: Record<Role, readonly [MenuItem, ...MenuItem[]]> = {
   ],
   ACCOUNTING_MANAGER: [
     { id: "approvals", label: "Approval queue" },
+    { id: "exceptions", label: "Exception queue" }, // read-only; a manager may release any claim (DEC-036)
     { id: "matching-settings", label: "Matching settings" },
   ],
 };
+
+/** Only Accounting Members claim, correct, accept or reject invoices in the exception queue (SAPS-20 BR-02). */
+export function canHandleExceptions(role: Role): boolean {
+  return role === "ACCOUNTING_MEMBER";
+}

@@ -1,0 +1,381 @@
+/* Smart-AP-Suite Web App: one small stylesheet, no UI library (SAPS-20). */
+:root {
+  --ink: #1f2933;
+  --muted: #616e7c;
+  --line: #d9e2ec;
+  --paper: #ffffff;
+  --page: #f5f7fa;
+  --brand: #1168bd;
+  --brand-dark: #0b4f91;
+  --danger: #c62828;
+  --ok: #2e7d32;
+  --warn: #b26a00;
+  --info-bg: #e8f1fb;
+  --ok-bg: #e8f5e9;
+  --error-bg: #fdecea;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--page);
+}
+
+body {
+  margin: 0;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0 0 1rem;
+}
+
+h2 {
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+h3 {
+  font-size: 1rem;
+  margin: 1rem 0 0.4rem;
+}
+
+a {
+  color: var(--brand);
+}
+
+/* Layout ---------------------------------------------------------------------------------------- */
+.shell {
+  display: grid;
+  grid-template-columns: 13rem 1fr;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+}
+
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1.2rem;
+  background: var(--brand-dark);
+  color: #fff;
+}
+
+.topbar strong {
+  margin-right: auto;
+}
+
+.menu {
+  background: var(--paper);
+  border-right: 1px solid var(--line);
+  padding: 1rem 0;
+}
+
+.menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.menu a {
+  display: block;
+  padding: 0.5rem 1.2rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.menu a[aria-current="page"] {
+  background: var(--info-bg);
+  border-left: 3px solid var(--brand);
+  font-weight: 600;
+}
+
+.content {
+  padding: 1.2rem 1.6rem;
+  min-width: 0;
+}
+
+footer {
+  grid-column: 1 / -1;
+  padding: 0.4rem 1.2rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stack > * + * {
+  margin-top: 0.8rem;
+}
+
+.toolbar,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(20rem, 1fr) minmax(24rem, 1.2fr);
+  gap: 1.2rem;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.viewer iframe,
+.viewer img {
+  width: 100%;
+  height: 75vh;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  object-fit: contain;
+}
+
+/* Controls -------------------------------------------------------------------------------------- */
+button {
+  font: inherit;
+  padding: 0.35rem 0.9rem;
+  border-radius: 4px;
+  border: 1px solid var(--brand);
+  background: var(--paper);
+  color: var(--brand);
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--brand);
+  color: #fff;
+}
+
+button.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+button.secondary {
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.topbar button.secondary {
+  color: #fff;
+  background: transparent;
+  border-color: rgb(255 255 255 / 50%);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tab {
+  border-radius: 4px 4px 0 0;
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.tab.active {
+  border-color: var(--brand);
+  background: var(--info-bg);
+  font-weight: 600;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+input,
+textarea {
+  font: inherit;
+  color: var(--ink);
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+textarea {
+  min-height: 4rem;
+}
+
+fieldset {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+}
+
+fieldset.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.6rem;
+}
+
+.edit-lines input {
+  width: 100%;
+  min-width: 4rem;
+  box-sizing: border-box;
+}
+
+/* Tables, badges, banners ------------------------------------------------------------------------ */
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--paper);
+}
+
+table.data th,
+table.data td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+table.data th {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.05rem 0.45rem;
+  margin-right: 0.25rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.badge.code {
+  background: #fff4e5;
+  color: var(--warn);
+}
+
+.badge.status {
+  background: var(--info-bg);
+  color: var(--brand-dark);
+}
+
+.badge.status.exception,
+.badge.status.rejected {
+  background: var(--error-bg);
+  color: var(--danger);
+}
+
+.badge.status.pending_review,
+.badge.status.pending_approval,
+.badge.status.completed {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.banner {
+  padding: 0.6rem 0.9rem;
+  border-radius: 4px;
+  margin: 0;
+}
+
+.banner.info {
+  background: var(--info-bg);
+}
+
+.banner.success {
+  background: var(--ok-bg);
+}
+
+.banner.error {
+  background: var(--error-bg);
+  color: var(--danger);
+}
+
+ul.banner {
+  padding-left: 2rem;
+}
+
+.invoice-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.muted,
+.hint,
+.empty {
+  color: var(--muted);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.3rem 1rem;
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.exceptions,
+.history {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.exceptions li + li,
+.history li + li {
+  margin-top: 0.3rem;
+}
+
+.exceptions li.resolved {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+/* Sign-in and upload (SAPS-27, SAPS-17) ---------------------------------------------------------- */
+.sign-in {
+  max-width: 22rem;
+  margin: 10vh auto;
+  padding: 2rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sign-in form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.drop-zone {
+  padding: 2rem;
+  border: 2px dashed var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  text-align: center;
+}
+
+.drop-zone.dragging {
+  border-color: var(--brand);
+  background: var(--info-bg);
+}

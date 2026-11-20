@@ -39,6 +39,7 @@ describe("UploadPage", () => {
   it("polls while the invoice is processed and stops afterwards", async () => {
     const get = vi
       .fn()
+      .mockResolvedValue(invoice("inv-1", "EXCEPTION")) // a late tick before the interval stops gets an answer too
       .mockResolvedValueOnce(invoice("inv-1", "MATCHING"))
       .mockRejectedValueOnce(new Error("offline"))
       .mockResolvedValueOnce(invoice("inv-1", "EXCEPTION"));

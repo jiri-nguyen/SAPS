@@ -6,6 +6,7 @@ import { App } from "./App";
 import { ApiError, UNAUTHORIZED, unauthorizedEvents } from "./api/client";
 import type { SessionApi, UserAccount } from "./api/session";
 import { useSession } from "./auth/session-context";
+import { fakeExceptionApi } from "./test/invoices";
 
 const MEMBER: UserAccount = {
   id: "1",
@@ -87,14 +88,54 @@ describe("App", () => {
     expect(screen.getByLabelText("Choose files")).toBeInTheDocument();
   });
 
+  it("routes to the exception queue and to an invoice (SAPS-20)", async () => {
+    const exceptionApi = fakeExceptionApi();
+    window.location.hash = "#/exceptions";
+    const { unmount } = render(
+      <App
+        sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MEMBER) })}
+        checkHealth={pending}
+        exceptionApi={exceptionApi}
+      />,
+    );
+    expect(await screen.findByRole("heading", { name: "Exception queue" })).toBeInTheDocument();
+    expect(await screen.findByText("No invoices in this queue.")).toBeInTheDocument();
+    unmount();
+    window.location.hash = "#/invoices/inv-12";
+    render(
+      <App
+        sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MEMBER) })}
+        checkHealth={pending}
+        exceptionApi={exceptionApi}
+      />,
+    );
+    expect(await screen.findByRole("heading", { name: "Invoice" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "← Exception queue" })).toHaveAttribute(
+      "href",
+      "#/exceptions",
+    );
+    expect(screen.getByRole("link", { name: "Exception queue" })).toHaveAttribute("aria-current", "page");
+    expect(exceptionApi.getVersioned).toHaveBeenCalledWith("inv-12");
+  });
+
+  it("opens the first screen for a route the role may not use", async () => {
+    window.location.hash = "#/upload";
+    render(
+      <App sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MANAGER) })} checkHealth={pending} />,
+    );
+    expect(await screen.findByRole("heading", { name: "Approval queue" })).toBeInTheDocument();
+  });
+
   it("shows only the manager menu for a manager and switches screens", async () => {
     renderApp(fakeApi({ getSession: vi.fn().mockResolvedValue(MANAGER) }));
     const menu = await screen.findByRole("navigation", { name: "Main menu" });
     expect(menu).not.toHaveTextContent("Upload invoices");
+    expect(menu).toHaveTextContent("Exception queue"); // read-only for managers (SAPS-20, DEC-036)
     expect(screen.getByRole("heading", { name: "Approval queue" })).toBeInTheDocument();
-    await userEvent.setup().click(screen.getByRole("button", { name: "Matching settings" }));
-    expect(screen.getByRole("heading", { name: "Matching settings" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Matching settings" })).toHaveAttribute("aria-current", "page");
+    await userEvent.setup().click(screen.getByRole("link", { name: "Matching settings" }));
+    expect(await screen.findByRole("heading", { name: "Matching settings" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Matching settings" })).toHaveAttribute("aria-current", "page");
+    expect(window.location.hash).toBe("#/matching-settings");
   });
 
   it("shows one message for a wrong username or password", async () => {

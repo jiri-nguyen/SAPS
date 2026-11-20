@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { type ApiHealth, fetchApiHealth } from "./api/health";
+import type { ExceptionApi } from "./api/exceptions";
 import type { InvoiceApi } from "./api/invoices";
 import { type SessionApi, createSessionApi } from "./api/session";
 import { SessionProvider } from "./auth/SessionProvider";
@@ -28,7 +29,15 @@ function HealthFooter({ checkHealth }: { checkHealth: () => Promise<ApiHealth> }
   );
 }
 
-function Screens({ footer, invoiceApi }: { footer: ReactNode; invoiceApi?: InvoiceApi }) {
+function Screens({
+  footer,
+  invoiceApi,
+  exceptionApi,
+}: {
+  footer: ReactNode;
+  invoiceApi?: InvoiceApi;
+  exceptionApi?: ExceptionApi;
+}) {
   const { user } = useSession();
   if (user === undefined) return <p>Loading…</p>;
   if (user === null)
@@ -38,22 +47,28 @@ function Screens({ footer, invoiceApi }: { footer: ReactNode; invoiceApi?: Invoi
         {footer}
       </>
     );
-  return <AppShell user={user} footer={footer} invoiceApi={invoiceApi} />;
+  return <AppShell user={user} footer={footer} invoiceApi={invoiceApi} exceptionApi={exceptionApi} />;
 }
 
 export function App({
   checkHealth = fetchApiHealth,
   sessionApi,
   invoiceApi,
+  exceptionApi,
 }: {
   checkHealth?: () => Promise<ApiHealth>;
   sessionApi?: SessionApi;
   invoiceApi?: InvoiceApi;
+  exceptionApi?: ExceptionApi;
 }) {
   const api = useMemo(() => sessionApi ?? createSessionApi(), [sessionApi]);
   return (
     <SessionProvider api={api}>
-      <Screens footer={<HealthFooter checkHealth={checkHealth} />} invoiceApi={invoiceApi} />
+      <Screens
+        footer={<HealthFooter checkHealth={checkHealth} />}
+        invoiceApi={invoiceApi}
+        exceptionApi={exceptionApi}
+      />
     </SessionProvider>
   );
 }

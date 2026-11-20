@@ -2,16 +2,7 @@ import { type ChangeEvent, type DragEvent, useEffect, useState } from "react";
 
 import { ApiError } from "../api/client";
 import type { Invoice, InvoiceApi, InvoiceStatus } from "../api/invoices";
-
-const STATUS_LABEL: Record<InvoiceStatus, string> = {
-  UPLOADED: "Uploaded",
-  MATCHING: "Matching",
-  EXCEPTION: "Exception",
-  PENDING_APPROVAL: "Pending approval",
-  PENDING_REVIEW: "Pending review",
-  COMPLETED: "Completed",
-  REJECTED: "Rejected",
-};
+import { STATUS_LABEL } from "./format";
 
 /** Statuses the SAPS Worker still changes; the page polls getInvoice while an invoice is in one (BR-08). */
 const PROCESSING: ReadonlySet<InvoiceStatus> = new Set(["UPLOADED", "MATCHING"]);
