@@ -262,3 +262,17 @@ async def test_worker_job_uses_the_dummy_erp_fixtures(
         get_settings.cache_clear()
     messages = [r.getMessage() for r in caplog.records]
     assert messages == ["matching_completed", "matching_skipped"]
+
+
+async def test_po_number_is_stored_as_on_the_invoice_and_raises_ex3(
+    engine: AsyncEngine,
+) -> None:  # SAPS-36 follow-up
+    erp = MemoryErp()
+    invoice_id = await _invoice(engine, "01000017-A")  # 10 characters: not a valid PO number
+    outcome = await _match(engine, erp, invoice_id)
+    assert outcome is not None and outcome.open_codes == (EX.EX3,)
+    async with session_factory(engine)() as session:
+        line = (
+            await session.execute(select(InvoiceLine).where(InvoiceLine.invoice_id == invoice_id))
+        ).scalar_one()
+    assert line.po_number == "01000017-A" and line.match_status is MatchStatus.MISMATCH

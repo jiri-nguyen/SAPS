@@ -154,7 +154,9 @@ class InvoiceLine(AuditMixin, Base):
     invoice_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("invoice.id"))
     line_number: Mapped[int] = mapped_column(Integer)
     description: Mapped[str | None] = mapped_column(String(500))
-    po_number: Mapped[str | None] = mapped_column(String(7))
+    po_number: Mapped[str | None] = mapped_column(
+        String(20)
+    )  # as on the invoice; matching validates it (EX3)
     po_line_number: Mapped[int | None] = mapped_column(Integer)
     quantity: Mapped[Decimal | None] = mapped_column(Numeric(18, 3))
     unit_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))

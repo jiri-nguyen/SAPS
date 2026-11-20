@@ -253,7 +253,7 @@ One line of an invoice and its matching result.
 | invoice_id | uuid | No | FK → Invoice | Internal | Parent invoice |
 | line_number | int | No | — | Internal | Line number on the invoice; unique per invoice |
 | description | string(500) | Yes | — | Confidential | Item or service description |
-| po_number | string(7) | Yes | — | Confidential | PO number; 7 digits ([DEC-005](../01-requirements/decision-log.md#dec-005)); null for non-PO invoices |
+| po_number | string(20) | Yes | — | Confidential | PO number as on the invoice; a valid one has 7 digits ([DEC-005](../01-requirements/decision-log.md#dec-005)), others raise EX3 in matching; null for non-PO invoices |
 | po_line_number | int | Yes | — | Confidential | PO line this invoice line refers to ([DEC-007](../01-requirements/decision-log.md#dec-007)) |
 | quantity | decimal(18,3) | Yes | — | Confidential | Invoiced quantity |
 | unit_price | decimal(18,4) | Yes | — | Confidential | Invoiced unit price (USD) |
