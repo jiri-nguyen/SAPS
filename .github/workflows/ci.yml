@@ -205,6 +205,35 @@ jobs:
           done
           test "$state" = PENDING_REVIEW || { echo "DS-18 is '$state', expected PENDING_REVIEW"; docker compose logs worker; exit 1; }
           test "$(put 0.5 300)" = 200   # back to the defaults
+      - name: Notifications for members and managers (SAPS-24)
+        run: |
+          base=http://localhost:5173/v1
+          origin="Origin: http://localhost:5173"
+          password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
+          code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+          for who in member1 manager1; do
+            curl -fsS -c "notify-$who-jar" -H "$origin" -H 'Content-Type: application/json' \
+              -d "{\"username\":\"$who\",\"password\":\"$password\"}" "$base/session" > /dev/null
+          done
+          field() { python3 -c 'import json, sys; d = json.load(sys.stdin); print(eval(sys.argv[1]))' "$1"; }
+          list() { curl -fsS -b "notify-$1-jar" "$base/notifications$2"; }
+          types() { list "$1" "" | field 'sorted({i["type"] for i in d["items"]})'; }
+          test "$(types member1)" = "['EXCEPTION_RAISED', 'REVIEW_REQUESTED']"   # the exceptions and the reviews of the flow above
+          test "$(types manager1)" = "['APPROVAL_REQUESTED']"   # DS-03 waited for approval
+          unread="$(list member1 '?unreadOnly=true' | field 'd["unreadCount"]')"
+          test "$unread" -gt 1
+          mine="$(list member1 '' | field 'd["items"][0]["id"]')"
+          managers="$(list manager1 '' | field 'd["items"][0]["id"]')"
+          test "$(code -b notify-member1-jar -H "$origin" -X POST "$base/notifications/$mine/read")" = 204
+          test "$(code -b notify-member1-jar -H "$origin" -X POST "$base/notifications/$mine/read")" = 204   # idempotent
+          test "$(list member1 '' | field 'd["unreadCount"]')" = "$((unread - 1))"
+          test "$(code -b notify-member1-jar -H "$origin" -X POST "$base/notifications/$managers/read")" = 404   # another user's
+          test "$(code -b notify-member1-jar -H "$origin" -X POST "$base/notifications/00000000-0000-4000-8000-000000000000/read")" = 404
+          test "$(code -b notify-member1-jar "$base/notifications?pageToken=nope")" = 400
+          test "$(code -b notify-member1-jar -H "$origin" -X POST "$base/notifications/read-all")" = 204
+          test "$(list member1 '' | field 'd["unreadCount"]')" = 0
+          test "$(list manager1 '' | field 'd["unreadCount"]')" -gt 0   # read state is per user
+          test "$(code "$base/notifications")" = 401
       - name: SAPS API → SAPS Message Broker → SAPS Worker
         run: |
           docker compose exec -T api python -c "from saps.worker.actors import ping; ping.send('ci-smoke')"
