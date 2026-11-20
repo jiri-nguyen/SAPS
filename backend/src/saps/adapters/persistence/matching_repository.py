@@ -16,6 +16,7 @@ from saps.adapters.persistence.models import (
     MatchingSettings,
 )
 from saps.adapters.persistence.notification_repository import SqlNotifications
+from saps.domain.duplicates import COMPARED_STATUSES, DuplicateCandidate
 from saps.domain.invoices import ExceptionStatus, InvoiceStatus
 from saps.domain.matching import InvoiceToMatch, LineToMatch, MatchingRules, PoLineKey
 from saps.ports.matching import InvoiceForMatching, MatchUpdate, OpenException
@@ -72,6 +73,28 @@ class SqlMatchingRepository(SqlNotifications):
                 text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
                 {"key": f"po-line:{tenant_id}:{po_number}:{po_line_number}"},
             )
+
+    async def lock_duplicate_key(self, tenant_id: UUID, vendor_code: str, invoice_number: str) -> None:
+        await self._session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+            {"key": f"dup:{tenant_id}:{vendor_code}:{invoice_number}"},
+        )
+
+    async def find_duplicates(
+        self, tenant_id: UUID, vendor_code: str, invoice_number: str, exclude_invoice_id: UUID
+    ) -> list[DuplicateCandidate]:
+        rows = await self._session.execute(
+            select(Invoice.id, Invoice.invoice_number, Invoice.status)
+            .where(
+                Invoice.tenant_id == tenant_id,
+                Invoice.vendor_code == vendor_code,
+                Invoice.invoice_number_normalized == invoice_number,
+                Invoice.status.in_(COMPARED_STATUSES),
+                Invoice.id != exclude_invoice_id,
+            )
+            .order_by(Invoice.created_at)
+        )
+        return [DuplicateCandidate(i, number, status) for i, number, status in rows]
 
     async def already_invoiced(
         self, tenant_id: UUID, keys: Sequence[PoLineKey], exclude_invoice_id: UUID

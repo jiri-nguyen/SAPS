@@ -15,6 +15,7 @@ from saps.adapters.persistence.processing_repository import SqlProcessingReposit
 from saps.application.matching import MatchingService, MatchOutcome
 from saps.application.processing import ProcessInvoiceService, ProcessOutcome
 from saps.config import Settings, get_settings
+from saps.domain.invoices import ExceptionCode
 from saps.ports.erp import ErpDataPort
 from saps.ports.extraction import ExtractionPort
 
@@ -49,6 +50,12 @@ def _utc_now() -> datetime:
 
 
 def _log_matching(outcome: MatchOutcome, started: float) -> None:
+    for other in outcome.duplicate_of:
+        log.info(
+            "duplicate_found", extra={"invoice_id": str(outcome.invoice_id), "other_invoice_id": str(other)}
+        )
+    if ExceptionCode.EX9 in outcome.resolved:
+        log.info("duplicate_cleared", extra={"invoice_id": str(outcome.invoice_id)})
     log.info(
         "matching_completed",
         extra={

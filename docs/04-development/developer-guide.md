@@ -95,7 +95,9 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
 - `cd backend && uv run pytest` and `cd frontend && npm test` — all tests pass.
 - Upload, extraction and matching ([SAPS-17](https://linear.app/jiringuyen/issue/SAPS-17), [SAPS-18](https://linear.app/jiringuyen/issue/SAPS-18), [SAPS-19](https://linear.app/jiringuyen/issue/SAPS-19)):
   as `member1`, open **Upload invoices** and drop `backend/fixtures/ds-01/invoices/ds-01-trade-po.pdf`; the row shows the
-  progress, then Pending review. `ds-12-price-outside-tolerance.pdf` ends in Exception (EX6); any file outside the sample set,
+  progress, then Pending review. Then upload `ds-15/invoices/ds-15-duplicate-scan.png` (same vendor and invoice number):
+  Exception with EX9 and EX7 ([SAPS-23](https://linear.app/jiringuyen/issue/SAPS-23)).
+  `ds-12-price-outside-tolerance.pdf` ends in Exception (EX6); any file outside the sample set,
   e.g. `ds-07/unregistered/ds-07-unknown-invoice.pdf`, ends in Exception (EX1). `docker compose logs worker` shows
   `extraction_completed` and `matching_completed`.
 

@@ -125,7 +125,7 @@ jobs:
           curl -fsS -b jar "$base" | grep -q '"displayName":"Accounting Member 1"'
           test "$(code -b jar -c jar -X DELETE -H "$origin" "$base")" = 204
           test "$(code -b jar "$base")" = 401
-      - name: Upload, extraction and matching (SAPS-17, SAPS-18, SAPS-19)
+      - name: Upload, extraction, duplicate check and matching (SAPS-17, SAPS-18, SAPS-19, SAPS-23)
         run: |
           base=http://localhost:5173/v1
           origin="Origin: http://localhost:5173"
@@ -141,7 +141,8 @@ jobs:
             for i in $(seq 1 30); do
               state="$(curl -fsS -b upload-jar "$base/invoices/$1" | python3 -c 'import json, sys
           i = json.load(sys.stdin)
-          print(i["status"], ",".join(e["code"] for e in i["exceptions"] if e["status"] == "OPEN"))')"
+          codes = sorted({e["code"] for e in i["exceptions"] if e["status"] == "OPEN"}, key=lambda c: int(c[2:]))
+          print(i["status"], ",".join(codes))')"
               [ "$state" = "$2 $3" ] && return 0
               sleep 1
             done
@@ -155,6 +156,8 @@ jobs:
           wait_for "$unknown" EXCEPTION EX1
           ds01="$(upload backend/fixtures/ds-01/invoices/ds-01-trade-po.pdf "ci-ds01-$GITHUB_RUN_ID")"
           wait_for "$ds01" PENDING_REVIEW ""
+          ds15="$(upload backend/fixtures/ds-15/invoices/ds-15-duplicate-scan.png "ci-ds15-$GITHUB_RUN_ID")"
+          wait_for "$ds15" EXCEPTION EX7,EX9   # duplicate of DS-01 (SAPS-23), quantity already invoiced
       - name: SAPS API → SAPS Message Broker → SAPS Worker
         run: |
           docker compose exec -T api python -c "from saps.worker.actors import ping; ping.send('ci-smoke')"
