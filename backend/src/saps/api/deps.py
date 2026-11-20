@@ -9,12 +9,14 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from saps.adapters.persistence.db import get_engine, session_factory
+from saps.adapters.persistence.exception_repository import SqlExceptionUnitOfWork
 from saps.adapters.persistence.invoice_repository import SqlInvoiceRepository
 from saps.adapters.persistence.user_repository import SqlUserRepository
 from saps.adapters.queue.dramatiq_queue import DramatiqJobQueue
 from saps.adapters.security.argon2_hasher import Argon2PasswordHasher
 from saps.adapters.storage.s3_storage import S3FileStorage
 from saps.application.auth import AuthService
+from saps.application.exception_handling import ExceptionHandlingService
 from saps.application.upload import UploadInvoiceService
 from saps.config import get_settings
 from saps.domain.users import AccessDeniedError, CurrentUser, Role, SessionPolicy, ensure_role
@@ -127,3 +129,12 @@ async def upload_service(
 ) -> UploadInvoiceService:
     max_size_bytes = get_settings().max_upload_size_mb * 1024 * 1024
     return UploadInvoiceService(repository, repository, storage, queue, utc_now, max_size_bytes)
+
+
+async def exception_service(
+    repository: Annotated[SqlInvoiceRepository, Depends(invoice_repository)],
+    queue: Annotated[JobQueuePort, Depends(job_queue)],
+) -> ExceptionHandlingService:
+    """SAPS-20: one transaction per operation, with its own sessions (the row lock ends with it)."""
+    sessions = session_factory(get_engine(get_settings().database_url))
+    return ExceptionHandlingService(SqlExceptionUnitOfWork(sessions), repository, queue, utc_now)

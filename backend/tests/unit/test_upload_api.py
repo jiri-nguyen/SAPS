@@ -182,3 +182,17 @@ def test_real_storage_and_queue_are_built_from_settings() -> None:
     job_queue.cache_clear()
     assert isinstance(file_storage(), S3FileStorage)
     assert isinstance(job_queue(), DramatiqJobQueue)
+
+
+async def test_an_empty_stored_file_is_streamed_as_no_content() -> None:  # downloadInvoiceFile
+    from saps.application.invoices import open_invoice_file
+    from saps.ports.invoices import StoredInvoiceFile
+
+    class Reader:
+        async def file_of(self, tenant_id: object, invoice_id: object) -> StoredInvoiceFile:
+            return StoredInvoiceFile("invoices/x", "application/pdf", "empty.pdf")
+
+    storage = MemoryStorage()
+    storage.objects["invoices/x"] = (b"", "application/pdf")
+    info, chunks = await open_invoice_file(Reader(), storage, MEMBER, uuid4())  # type: ignore[arg-type]
+    assert info.name == "empty.pdf" and [c async for c in chunks] == []

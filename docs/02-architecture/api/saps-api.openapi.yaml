@@ -3,7 +3,7 @@
 openapi: 3.1.0
 info:
   title: SAPS API
-  version: "0.4.0"
+  version: "0.4.1"
   description: |
     HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload, the exception queue,
     approval, final review, notifications and matching settings.
@@ -21,6 +21,8 @@ info:
     - Authentication uses a server-side session in the HttpOnly cookie `saps_session` (ADR-0008). State-changing requests
       (POST, PUT, PATCH, DELETE) must carry an `Origin` header matching the SAPS Web App origin; otherwise `403` (CSRF protection).
     - `x-roles` lists the roles allowed to call an operation; other signed-in users get `403`.
+    - Every response with an `Invoice` carries its version as `ETag`; send it back as `If-Match` in `updateInvoice` and
+      `resolveInvoiceExceptions` (`428` when missing, `412` when the invoice changed since).
   contact:
     name: Solution Architect / Tech Lead
   license:
@@ -215,9 +217,7 @@ paths:
         "200":
           description: The invoice
           headers:
-            ETag:
-              description: Version of the invoice; send it in `If-Match` when updating
-              schema: { type: string }
+            ETag: { $ref: "#/components/headers/ETag" }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Invoice" }
@@ -247,11 +247,15 @@ paths:
       responses:
         "200":
           description: Saved; no matching field changed
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Invoice" }
         "202":
           description: Saved; a matching field changed and re-matching is queued
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Invoice" }
@@ -278,7 +282,9 @@ paths:
         - $ref: "#/components/parameters/CorrelationId"
       responses:
         "200":
-          description: Claimed
+          description: Claimed (also when the caller had already claimed it)
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Invoice" }
@@ -324,6 +330,8 @@ paths:
       responses:
         "200":
           description: Exceptions resolved; next status set
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Invoice" }
@@ -412,6 +420,8 @@ paths:
       responses:
         "200":
           description: Rejected
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Invoice" }
@@ -918,6 +928,11 @@ components:
             properties:
               field: { type: string }
               message: { type: string }
+
+  headers:
+    ETag:
+      description: Version of the invoice; send it in `If-Match` when updating or resolving
+      schema: { type: string }
 
   responses:
     BadRequest:

@@ -1,26 +1,49 @@
 """SQL adapters of the invoice ports (SAPS-17). Each call uses its own short transaction."""
 
+import base64
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
 from saps.adapters.persistence.models import Approval, Invoice, InvoiceEvent, UserAccount
-from saps.domain.invoices import InvoiceStatus
+from saps.domain.invoices import ExceptionStatus, InvoiceStatus
 from saps.ports.invoices import (
     ApprovalView,
     DuplicateIdempotencyKeyError,
+    InvalidPageTokenError,
+    InvoiceEventView,
     InvoiceExceptionView,
     InvoiceFile,
+    InvoiceFilter,
     InvoiceLineView,
+    InvoiceSummaryView,
     InvoiceView,
     NewUpload,
+    Page,
+    StoredInvoiceFile,
     UserRef,
 )
 
 UPLOAD_ACTION = "UPLOAD"
+MAX_PAGE_SIZE = 100
+
+
+def encode_token(moment: datetime, row_id: UUID) -> str:
+    return base64.urlsafe_b64encode(f"{moment.isoformat()}|{row_id}".encode()).decode()
+
+
+def decode_token(token: str) -> tuple[datetime, UUID]:
+    try:
+        moment, row_id = base64.urlsafe_b64decode(token.encode()).decode().split("|")
+        return datetime.fromisoformat(moment), UUID(row_id)
+    except ValueError as exc:  # also covers bad base64, UnicodeDecodeError and wrong part count
+        raise InvalidPageTokenError(token) from exc
+
+
 _IDEMPOTENCY_CONSTRAINT = "uq_invoice_tenant_id_idempotency_key"
 
 
@@ -171,3 +194,110 @@ class SqlInvoiceRepository:
             created_at=invoice.created_at,
             updated_at=invoice.updated_at,
         )
+
+    async def list_invoices(
+        self, tenant_id: UUID, flt: InvoiceFilter, page_size: int, page_token: str | None
+    ) -> Page[InvoiceSummaryView]:
+        query = select(Invoice).where(Invoice.tenant_id == tenant_id)
+        if flt.statuses:
+            query = query.where(Invoice.status.in_(list(flt.statuses)))
+        if flt.invoice_type is not None:
+            query = query.where(Invoice.invoice_type == flt.invoice_type)
+        if flt.assignee == "unassigned":
+            query = query.where(Invoice.assigned_to.is_(None))
+        elif flt.assignee == "me":
+            query = query.where(Invoice.assigned_to == flt.user_id)
+        if page_token is not None:
+            after = decode_token(page_token)
+            query = query.where(tuple_(Invoice.created_at, Invoice.id) < tuple_(*after))
+        size = min(max(page_size, 1), MAX_PAGE_SIZE)
+        query = (
+            query.order_by(Invoice.created_at.desc(), Invoice.id.desc())
+            .limit(size + 1)
+            .options(selectinload(Invoice.exceptions))
+        )
+        async with self._sessions() as session:
+            rows = list((await session.execute(query)).scalars())
+            more = len(rows) > size
+            rows = rows[:size]
+            names = await self._display_names(session, {r.assigned_to for r in rows} - {None})
+        items = [
+            InvoiceSummaryView(
+                id=r.id,
+                status=r.status,
+                invoice_type=r.invoice_type,
+                vendor_name=r.vendor_name,
+                invoice_number=r.invoice_number,
+                total_amount=r.total_amount,
+                currency=r.currency,
+                open_exception_codes=sorted(
+                    {e.code for e in r.exceptions if e.status is ExceptionStatus.OPEN},
+                    key=lambda code: int(code.value[2:]),
+                ),
+                assigned_to=UserRef(r.assigned_to, names.get(r.assigned_to, "")) if r.assigned_to else None,
+                updated_at=r.updated_at,
+            )
+            for r in rows
+        ]
+        token = encode_token(rows[-1].created_at, rows[-1].id) if more else None
+        return Page(items, token)
+
+    async def list_events(
+        self, tenant_id: UUID, invoice_id: UUID, page_size: int, page_token: str | None
+    ) -> Page[InvoiceEventView] | None:
+        async with self._sessions() as session:
+            exists = await session.scalar(
+                select(Invoice.id).where(Invoice.id == invoice_id, Invoice.tenant_id == tenant_id)
+            )
+            if exists is None:
+                return None
+            query = select(InvoiceEvent).where(InvoiceEvent.invoice_id == invoice_id)
+            if page_token is not None:
+                after = decode_token(page_token)
+                query = query.where(tuple_(InvoiceEvent.occurred_at, InvoiceEvent.id) > tuple_(*after))
+            size = min(max(page_size, 1), MAX_PAGE_SIZE)
+            query = query.order_by(InvoiceEvent.occurred_at, InvoiceEvent.id).limit(size + 1)
+            rows = list((await session.execute(query)).scalars())
+            more = len(rows) > size
+            rows = rows[:size]
+            users = await session.execute(
+                select(UserAccount.username, UserAccount.display_name).where(
+                    UserAccount.tenant_id == tenant_id, UserAccount.username.in_({r.actor for r in rows})
+                )
+            )
+            display = {username: display_name for username, display_name in users}
+        items = [
+            InvoiceEventView(
+                e.id,
+                e.status_from,
+                e.status_to,
+                e.action,
+                display.get(e.actor, e.actor),
+                e.details,
+                e.occurred_at,
+            )
+            for e in rows
+        ]
+        token = encode_token(rows[-1].occurred_at, rows[-1].id) if more else None
+        return Page(items, token)
+
+    async def file_of(self, tenant_id: UUID, invoice_id: UUID) -> StoredInvoiceFile | None:
+        async with self._sessions() as session:
+            row = (
+                await session.execute(
+                    select(Invoice.file_storage_key, Invoice.file_content_type, Invoice.file_name).where(
+                        Invoice.id == invoice_id, Invoice.tenant_id == tenant_id
+                    )
+                )
+            ).one_or_none()
+        return StoredInvoiceFile(row[0], row[1], row[2]) if row else None
+
+    @staticmethod
+    async def _display_names(session: AsyncSession, user_ids: set[UUID | None]) -> dict[UUID, str]:
+        ids = [i for i in user_ids if i is not None]
+        if not ids:
+            return {}
+        rows = await session.execute(
+            select(UserAccount.id, UserAccount.display_name).where(UserAccount.id.in_(ids))
+        )
+        return {user_id: name for user_id, name in rows}

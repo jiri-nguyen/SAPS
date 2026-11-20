@@ -2,9 +2,11 @@
 
 import hashlib
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from saps.adapters.erp.dummy_erp import DummyErpAdapter
@@ -16,7 +18,7 @@ from saps.adapters.persistence.processing_repository import SqlProcessingReposit
 from saps.application.matching import MatchingService, MatchOutcome
 from saps.application.processing import ProcessInvoiceService, ProcessOutcome
 from saps.domain.invoices import InvoiceStatus
-from saps.domain.users import Role
+from saps.domain.users import CurrentUser, Role
 
 FIXTURES = Path(__file__).parents[2] / "fixtures"
 EXTRACTION = DummyExtractionAdapter(FIXTURES)
@@ -77,3 +79,36 @@ async def rematch(engine: AsyncEngine, invoice_id: uuid.UUID) -> MatchOutcome | 
     async with session_factory(engine)() as session, session.begin():
         clock = lambda: datetime.now(UTC)  # noqa: E731
         return await MatchingService(SqlMatchingRepository(session), ERP, clock).match(invoice_id)
+
+
+@dataclass(frozen=True)
+class World:
+    """One tenant with two Accounting Members and one Accounting Manager (SAPS-20 tests)."""
+
+    tenant: tuple[uuid.UUID, uuid.UUID]  # (tenant id, first member id), as `uploaded` expects
+    alice: CurrentUser
+    bob: CurrentUser
+    manager: CurrentUser
+
+
+async def new_world(engine: AsyncEngine) -> World:
+    tenant_id, alice_id = await new_tenant(engine)
+    async with session_factory(engine)() as session, session.begin():
+        bob = UserAccount(
+            tenant_id=tenant_id, username=f"b-{uuid.uuid4().hex[:10]}", display_name="Bob",
+            password_hash=NO_LOGIN, role=Role.ACCOUNTING_MEMBER,
+        )  # fmt: skip
+        session.add(bob)
+        await session.flush()
+        users = (
+            (await session.execute(select(UserAccount).where(UserAccount.tenant_id == tenant_id)))
+            .scalars()
+            .all()
+        )
+        by_id = {u.id: u for u in users}
+
+    def current(user: UserAccount) -> CurrentUser:
+        return CurrentUser(user.id, tenant_id, user.username, user.display_name, user.role)
+
+    manager = next(u for u in users if u.role is Role.ACCOUNTING_MANAGER)
+    return World((tenant_id, alice_id), current(by_id[alice_id]), current(bob), current(manager))
