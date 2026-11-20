@@ -125,7 +125,7 @@ jobs:
           curl -fsS -b jar "$base" | grep -q '"displayName":"Accounting Member 1"'
           test "$(code -b jar -c jar -X DELETE -H "$origin" "$base")" = 204
           test "$(code -b jar "$base")" = 401
-      - name: Upload, extraction, duplicate check, matching and exception handling (SAPS-17 … SAPS-23)
+      - name: Upload, extraction, matching, exception handling and approval (SAPS-17 … SAPS-23)
         run: |
           base=http://localhost:5173/v1
           origin="Origin: http://localhost:5173"
@@ -165,6 +165,13 @@ jobs:
           fix='{"lines":[{"lineNumber":1,"description":"USB keyboard","poNumber":"0100012","poLineNumber":1,"quantity":"4","unitPrice":"20.00","lineAmount":"80.00"}]}'
           test "$(curl -s -o /dev/null -w '%{http_code}' -b upload-jar -H "$origin" -H "If-Match: $etag" -H 'Content-Type: application/json' -X PATCH -d "$fix" "$base/invoices/$ds12")" = 202
           wait_for "$ds12" PENDING_REVIEW ""   # SAPS-20: claim, correct the price, the worker re-matches
+          ds03="$(upload backend/fixtures/ds-03/invoices/ds-03-above-threshold.pdf "ci-ds03-$GITHUB_RUN_ID")"
+          wait_for "$ds03" PENDING_APPROVAL ""   # above the approval threshold (SAPS-19)
+          curl -fsS -c manager-jar -H "$origin" -H 'Content-Type: application/json' \
+            -d "{\"username\":\"manager1\",\"password\":\"$password\"}" "$base/session" > /dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b upload-jar -H "$origin" -H 'Content-Type: application/json' -d '{"decision":"APPROVED"}' "$base/invoices/$ds03/approval")" = 403   # a member cannot decide
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b manager-jar -H "$origin" -H 'Content-Type: application/json' -d '{"decision":"REJECTED"}' "$base/invoices/$ds03/approval")" = 422
+          curl -fsS -b manager-jar -H "$origin" -H 'Content-Type: application/json' -d '{"decision":"APPROVED"}' "$base/invoices/$ds03/approval" | grep -q '"status":"PENDING_REVIEW"'   # SAPS-22
       - name: SAPS API → SAPS Message Broker → SAPS Worker
         run: |
           docker compose exec -T api python -c "from saps.worker.actors import ping; ping.send('ci-smoke')"
