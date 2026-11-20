@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V999",
+  "vendor_name": "Omega Unlisted Trading",
+  "invoice_number": "OUT-77",
+  "invoice_date": "2026-12-13",
+  "currency": "USD",
+  "subtotal_amount": "99.00",
+  "tax_amount": "9.90",
+  "total_amount": "108.90",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Unlisted goods",
+      "po_number": "0177777",
+      "po_line_number": 1,
+      "quantity": "1",
+      "unit_price": "99.00",
+      "line_amount": "99.00"
+    }
+  ]
+}

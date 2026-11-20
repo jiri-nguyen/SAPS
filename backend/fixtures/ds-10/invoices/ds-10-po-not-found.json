@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1010",
+  "invoice_date": "2026-12-08",
+  "currency": "USD",
+  "subtotal_amount": "70.00",
+  "tax_amount": "7.00",
+  "total_amount": "77.00",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Cable ties, pack",
+      "po_number": "0199999",
+      "po_line_number": 1,
+      "quantity": "2",
+      "unit_price": "35.00",
+      "line_amount": "70.00"
+    }
+  ]
+}

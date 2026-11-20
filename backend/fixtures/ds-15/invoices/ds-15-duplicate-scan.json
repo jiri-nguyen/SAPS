@@ -1,0 +1,30 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1001",
+  "invoice_date": "2026-12-02",
+  "currency": "USD",
+  "subtotal_amount": "190.00",
+  "tax_amount": "19.00",
+  "total_amount": "209.00",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "A4 copy paper, box",
+      "po_number": "0100001",
+      "po_line_number": 1,
+      "quantity": "4",
+      "unit_price": "25.00",
+      "line_amount": "100.00"
+    },
+    {
+      "line_number": 2,
+      "description": "Toner cartridge",
+      "po_number": "0100001",
+      "po_line_number": 2,
+      "quantity": "2",
+      "unit_price": "45.00",
+      "line_amount": "90.00"
+    }
+  ]
+}

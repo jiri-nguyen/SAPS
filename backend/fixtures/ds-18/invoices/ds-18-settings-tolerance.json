@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V002",
+  "vendor_name": "Beta Facility Services Ltd.",
+  "invoice_number": "BFS-26-0418",
+  "invoice_date": "2026-12-12",
+  "currency": "USD",
+  "subtotal_amount": "203.20",
+  "tax_amount": "20.32",
+  "total_amount": "223.52",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "IT support, hourly",
+      "po_number": "1100018",
+      "po_line_number": 1,
+      "quantity": "4",
+      "unit_price": "50.80",
+      "line_amount": "203.20"
+    }
+  ]
+}

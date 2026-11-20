@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1020",
+  "invoice_date": "2026-12-12",
+  "currency": "USD",
+  "subtotal_amount": "250.00",
+  "tax_amount": "25.00",
+  "total_amount": "275.00",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Projector",
+      "po_number": "0100020",
+      "po_line_number": 1,
+      "quantity": "1",
+      "unit_price": "250.00",
+      "line_amount": "250.00"
+    }
+  ]
+}

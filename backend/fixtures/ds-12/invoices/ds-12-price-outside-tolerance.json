@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1013",
+  "invoice_date": "2026-12-09",
+  "currency": "USD",
+  "subtotal_amount": "82.40",
+  "tax_amount": "8.24",
+  "total_amount": "90.64",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "USB keyboard",
+      "po_number": "0100012",
+      "po_line_number": 1,
+      "quantity": "4",
+      "unit_price": "20.60",
+      "line_amount": "82.40"
+    }
+  ]
+}

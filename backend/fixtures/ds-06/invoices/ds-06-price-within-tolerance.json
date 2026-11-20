@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1006",
+  "invoice_date": "2026-12-06",
+  "currency": "USD",
+  "subtotal_amount": "74.40",
+  "tax_amount": "7.44",
+  "total_amount": "81.84",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Stapler",
+      "po_number": "0100007",
+      "po_line_number": 1,
+      "quantity": "6",
+      "unit_price": "12.40",
+      "line_amount": "74.40"
+    }
+  ]
+}

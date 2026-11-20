@@ -1,0 +1,216 @@
+{
+  "$defs": {
+    "ExtractedLineFixture": {
+      "additionalProperties": false,
+      "properties": {
+        "line_number": {
+          "title": "Line Number",
+          "type": "integer"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "po_number": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Po Number"
+        },
+        "po_line_number": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Po Line Number"
+        },
+        "quantity": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quantity"
+        },
+        "unit_price": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit Price"
+        },
+        "line_amount": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Line Amount"
+        }
+      },
+      "required": [
+        "line_number"
+      ],
+      "title": "ExtractedLineFixture",
+      "type": "object"
+    }
+  },
+  "$id": "extracted-invoice",
+  "additionalProperties": false,
+  "description": "Schema of `<scenario>/invoices/<name>.json` (exported to `schema/extracted-invoice.schema.json`).\n\nDecimals are written as strings. Business limits (USD only, lines required) are domain rules (BR-04).",
+  "properties": {
+    "vendor_code": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Vendor Code"
+    },
+    "vendor_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Vendor Name"
+    },
+    "invoice_number": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Invoice Number"
+    },
+    "invoice_date": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Invoice Date"
+    },
+    "currency": {
+      "pattern": "^[A-Z]{3}$",
+      "title": "Currency",
+      "type": "string"
+    },
+    "subtotal_amount": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Subtotal Amount"
+    },
+    "tax_amount": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tax Amount"
+    },
+    "total_amount": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Total Amount"
+    },
+    "lines": {
+      "items": {
+        "$ref": "#/$defs/ExtractedLineFixture"
+      },
+      "title": "Lines",
+      "type": "array"
+    }
+  },
+  "required": [
+    "currency",
+    "lines"
+  ],
+  "title": "ExtractedInvoice",
+  "type": "object"
+}

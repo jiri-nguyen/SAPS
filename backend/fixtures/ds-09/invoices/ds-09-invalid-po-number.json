@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1009",
+  "invoice_date": "2026-12-07",
+  "currency": "USD",
+  "subtotal_amount": "90.00",
+  "tax_amount": "9.00",
+  "total_amount": "99.00",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Printer paper, A3",
+      "po_number": "2100009",
+      "po_line_number": 1,
+      "quantity": "3",
+      "unit_price": "30.00",
+      "line_amount": "90.00"
+    }
+  ]
+}

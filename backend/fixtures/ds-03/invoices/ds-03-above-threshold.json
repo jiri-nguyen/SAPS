@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1003",
+  "invoice_date": "2026-12-03",
+  "currency": "USD",
+  "subtotal_amount": "450.00",
+  "tax_amount": "45.00",
+  "total_amount": "495.00",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Office chair",
+      "po_number": "0100003",
+      "po_line_number": 1,
+      "quantity": "5",
+      "unit_price": "90.00",
+      "line_amount": "450.00"
+    }
+  ]
+}

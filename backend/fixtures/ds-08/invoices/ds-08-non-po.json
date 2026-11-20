@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V003",
+  "vendor_name": "Gamma Consulting LLC",
+  "invoice_number": "GC-0098",
+  "invoice_date": "2026-12-07",
+  "currency": "USD",
+  "subtotal_amount": "409.09",
+  "tax_amount": "40.91",
+  "total_amount": "450.00",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Process consulting, December",
+      "po_number": null,
+      "po_line_number": null,
+      "quantity": "1",
+      "unit_price": "409.09",
+      "line_amount": "409.09"
+    }
+  ]
+}
