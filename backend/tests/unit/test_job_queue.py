@@ -15,10 +15,15 @@ async def test_process_invoice_message_carries_only_the_invoice_id() -> None:
     assert f'"args":["{invoice_id}"]'.encode() in message
 
 
-async def test_placeholder_process_invoice_actor_logs_the_message(monkeypatch) -> None:
+async def test_process_invoice_actor_runs_the_job(monkeypatch) -> None:
     from saps.worker import actors
 
-    seen: list[tuple[str, dict[str, str]]] = []
-    monkeypatch.setattr(actors.log, "info", lambda msg, extra: seen.append((msg, extra)))
-    await actors.process_invoice.fn.__wrapped__("abc")
-    assert seen == [("process_invoice_received", {"invoice_id": "abc"})]
+    called: list[object] = []
+
+    async def fake_run(invoice_id: object) -> None:
+        called.append(invoice_id)
+
+    monkeypatch.setattr(actors, "run_processing", fake_run)
+    invoice_id = uuid4()
+    await actors.process_invoice.fn.__wrapped__(str(invoice_id))
+    assert called == [invoice_id]

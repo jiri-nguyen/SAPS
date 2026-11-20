@@ -5,15 +5,14 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
+from saps.application.notifications import notify_status
 from saps.domain.invoices import (
     ExceptionCode,
     InvoiceStatus,
     InvoiceType,
-    NotificationType,
     ensure_transition,
 )
 from saps.domain.matching import Finding, decide, derive_invoice_type, evaluate
-from saps.domain.users import Role
 from saps.ports.erp import ErpDataPort
 from saps.ports.matching import InvoiceForMatching, MatchingRepository, MatchUpdate, NewException
 
@@ -92,7 +91,7 @@ class MatchingService:
         await self._repo.save_match(
             invoice, update, actor=SYSTEM_ACTOR, action=MATCH_ACTION, now=self._clock()
         )
-        await self._notify(invoice, decision.status, open_codes)
+        await notify_status(self._repo, invoice, decision.status, open_codes)
         return MatchOutcome(
             invoice.id,
             invoice.tenant_id,
@@ -103,41 +102,9 @@ class MatchingService:
             tuple(resolved_codes),
         )
 
-    async def _notify(
-        self, invoice: InvoiceForMatching, status: InvoiceStatus, codes: list[ExceptionCode]
-    ) -> None:
-        """BR-13; a claimed invoice that is still in Exception notifies only the claimant (SAPS-20 BR-10)."""
-        name = _invoice_name(invoice)
-        if status is InvoiceStatus.EXCEPTION:
-            kind = NotificationType.EXCEPTION_RAISED
-            message = f"{name} has exceptions: {', '.join(c.value for c in codes)}."
-            if invoice.assigned_to is not None:
-                recipients = [invoice.assigned_to]
-            else:
-                recipients = await self._repo.active_user_ids(invoice.tenant_id, Role.ACCOUNTING_MEMBER)
-        elif status is InvoiceStatus.PENDING_APPROVAL:
-            kind = NotificationType.APPROVAL_REQUESTED
-            message = f"{name} needs approval."
-            recipients = await self._repo.active_user_ids(invoice.tenant_id, Role.ACCOUNTING_MANAGER)
-        else:
-            kind = NotificationType.REVIEW_REQUESTED
-            message = f"{name} is ready for final review."
-            recipients = await self._repo.active_user_ids(invoice.tenant_id, Role.ACCOUNTING_MEMBER)
-        if recipients:
-            await self._repo.add_notifications(invoice.tenant_id, invoice.id, recipients, kind, message)
-
 
 def _code_order(code: ExceptionCode) -> int:
     return int(code.value[2:])
-
-
-def _invoice_name(invoice: InvoiceForMatching) -> str:
-    """SAPS-24 BR-04: invoice number and vendor name, or the file name."""
-    if invoice.invoice_number and invoice.vendor_name:
-        return f"Invoice {invoice.invoice_number} from {invoice.vendor_name}"
-    if invoice.invoice_number:
-        return f"Invoice {invoice.invoice_number}"
-    return f"Invoice file {invoice.file_name}"
 
 
 def _reconcile(

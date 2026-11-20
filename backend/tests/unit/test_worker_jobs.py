@@ -6,9 +6,11 @@ import pytest
 from saps.worker import jobs
 
 
-def test_only_the_dummy_erp_adapter_exists() -> None:
+def test_only_the_dummy_adapters_exist() -> None:
     with pytest.raises(ValueError, match="Unknown ERP_ADAPTER: sap"):
         jobs.erp_adapter("sap", Path("fixtures"))
+    with pytest.raises(ValueError, match="Unknown EXTRACTION_ADAPTER: ocr"):
+        jobs.extraction_adapter("ocr", Path("fixtures"))
 
 
 async def test_rematch_actor_runs_matching(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,7 +1,7 @@
 """Dramatiq actors of the SAPS Worker.
 
-Start with: `dramatiq saps.worker.actors`. `rematch_invoice` runs matching (SAPS-19). `process_invoice` is a
-placeholder until extraction (SAPS-18); the sweeper has its own issue.
+Start with: `dramatiq saps.worker.actors`. `process_invoice` runs extraction and matching (SAPS-18, SAPS-19);
+`rematch_invoice` runs matching again (SAPS-19). The sweeper has its own issue (SAPS-37).
 `ping` checks the path SAPS API → SAPS Message Broker → SAPS Worker.
 Failing invoice actors are retried by Dramatiq with exponential back-off (ADR-0004 S4).
 """
@@ -14,11 +14,12 @@ import dramatiq
 from saps.config import get_settings
 from saps.logging_config import configure_logging
 from saps.worker.broker import install_broker
-from saps.worker.jobs import run_matching
+from saps.worker.jobs import load_adapters, run_matching, run_processing
 
 settings = get_settings()
 configure_logging(settings.log_level)
 broker = install_broker(settings)
+load_adapters(settings)  # broken fixtures stop the worker here, not during a demo (SAPS-18 EC-04)
 log = logging.getLogger("saps.worker")
 
 
@@ -36,5 +37,5 @@ async def rematch_invoice(invoice_id: str) -> None:
 
 @dramatiq.actor(time_limit=settings.actor_time_limit_ms)
 async def process_invoice(invoice_id: str) -> None:
-    """Placeholder until SAPS-18: receives the message sent by uploadInvoice; the invoice stays Uploaded."""
-    log.info("process_invoice_received", extra={"invoice_id": invoice_id})
+    """Sent by uploadInvoice (SAPS-17) and the sweeper (SAPS-37); expects status Uploaded."""
+    await run_processing(UUID(invoice_id))

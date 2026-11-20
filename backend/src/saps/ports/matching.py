@@ -7,9 +7,9 @@ from decimal import Decimal
 from typing import Any, Protocol
 from uuid import UUID
 
-from saps.domain.invoices import ExceptionCode, InvoiceStatus, InvoiceType, NotificationType
+from saps.domain.invoices import ExceptionCode, InvoiceStatus, InvoiceType
 from saps.domain.matching import InvoiceToMatch, LineResult, MatchingRules, PoLineKey
-from saps.domain.users import Role
+from saps.ports.notifications import NotificationPort
 
 
 @dataclass(frozen=True)
@@ -54,7 +54,7 @@ class MatchUpdate:
     event_details: Mapping[str, Any]
 
 
-class MatchingRepository(Protocol):
+class MatchingRepository(NotificationPort, Protocol):
     async def lock_invoice(self, invoice_id: UUID) -> InvoiceForMatching | None:
         """Read the invoice with its lines and open exceptions, locking the row (ADR-0004 S2)."""
         ...
@@ -76,14 +76,3 @@ class MatchingRepository(Protocol):
     ) -> None:
         """Write line results, exceptions, the invoice status and the InvoiceEvent."""
         ...
-
-    async def active_user_ids(self, tenant_id: UUID, role: Role) -> list[UUID]: ...
-
-    async def add_notifications(
-        self,
-        tenant_id: UUID,
-        invoice_id: UUID,
-        recipients: Sequence[UUID],
-        notification_type: NotificationType,
-        message: str,
-    ) -> None: ...
