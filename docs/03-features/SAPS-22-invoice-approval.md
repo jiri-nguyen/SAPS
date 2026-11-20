@@ -4,7 +4,7 @@ title: "SAPS-22 — Invoice approval"
 status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
-last_updated: 2026-12-11
+last_updated: 2026-12-15
 related: [UC-04, UC-05, SCP-IN-06, SCP-IN-14, DEC-009, DEC-013, DEC-014, DEC-015, DEC-021, DEC-035, DEC-038, DEC-039, DEC-040, NFR-SEC-001, ADR-0007, ADR-0008, SAPS-19, SAPS-20, SAPS-21]
 ---
 
@@ -54,7 +54,7 @@ rejected invoices end in status Rejected.
 ### 3.1 Affected Building Blocks
 | Container | Change | Description |
 |---|---|---|
-| SAPS Web App | new | Approval queue (`status=PENDING_APPROVAL`), invoice detail with accepted exceptions, approve / reject dialog |
+| SAPS Web App | new | Approval queue (`status=PENDING_APPROVAL`: vendor, invoice number, total, type), the invoice page with the exceptions accepted as is (who and when), the decision made, and Approve / Reject (comment required); routes `#/approvals`, `#/approvals/{id}` |
 | SAPS API | new | `decideInvoiceApproval`; role, tenant and status checks; next status; notifications |
 | SAPS Database | modified | Writes Approval, Invoice status, InvoiceEvent, Notification |
 
@@ -100,15 +100,19 @@ sequenceDiagram
 | EC-04 | Invoice not in PendingApproval | Refused | `409` |
 | EC-05 | Threshold changed after the invoice entered PendingApproval | Invoice still needs approval (BR-09) | — |
 | EC-06 | Non-PO invoice above the threshold after the Accounting Member accepted EX2 | Normal approval (BR-02) | DS-08 |
+| EC-07 | Approve without a comment | Allowed; the comment is optional when approving | `200` |
+| EC-08 | Comment longer than 1000 characters, unknown decision, unknown field | Refused by the schema | `400` |
+
+**Order of checks:** invoice exists in the caller's tenant (`404`) → status (`409`) → comment (`422`).
 
 ### 3.4 API Changes
-No change. Uses operations of [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) 0.3.0:
+Contract 0.4.2: the decision response carries the invoice's `ETag` like the other `Invoice` responses (additive). Uses operations of [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml):
 
 | operationId | Method & path | Change | Breaking | Spec |
 |---|---|---|---|---|
 | `listInvoices` | GET /v1/invoices?status=PENDING_APPROVAL | none | No | [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
 | `getInvoice`, `downloadInvoiceFile` | GET /v1/invoices/{invoiceId}, …/file | none | No | ″ |
-| `decideInvoiceApproval` | POST /v1/invoices/{invoiceId}/approval | none | No | ″ |
+| `decideInvoiceApproval` | POST /v1/invoices/{invoiceId}/approval | `ETag` header on `200` | No | ″ |
 
 ### 3.6 Data Model Changes
 None. Uses [Approval](../02-architecture/data-model.md#approval), Invoice `status` / `requires_approval` / `approval_threshold_applied`, InvoiceEvent, Notification.
@@ -121,6 +125,7 @@ None. Uses [Approval](../02-architecture/data-model.md#approval), Invoice `statu
 
 ### 3.9 Observability
 - Logs: `invoice_approved`, `invoice_rejected_by_manager` (IDs only).
+- Events: `APPROVE` and `REJECT` with `decision` and `comment` in the details; `actor` is shown by display name.
 
 ## 4. Rollout & Rollback
 1. Deploy SAPS API and SAPS Web App with `docker compose up -d --build`.
@@ -143,6 +148,9 @@ None. Uses [Approval](../02-architecture/data-model.md#approval), Invoice `statu
 |---|---|---|
 | No assignment of approvals to a specific manager | One shared approval queue, like the exception queue (DEC-016) | — |
 | Conditional status update instead of ETag for the decision | The decision does not change invoice data; only the status transition must be unique | — |
+| The status check runs under the invoice row lock | The second of two managers deciding at once waits, then sees the new status and gets `409` (EC-01); no extra column or retry | [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) |
+| A rejection stores the comment as the invoice's `rejected_reason` | The rejection reason is visible in the same field for every rejection, whoever rejects (DEC-014) | — |
+| The approval queue shows vendor, number, total and type; accepted exceptions are shown on the invoice page | Queue rows come from `listInvoices`, which lists open exceptions only; the accepted ones are resolved exceptions of the invoice | — |
 
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
