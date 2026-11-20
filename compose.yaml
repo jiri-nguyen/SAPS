@@ -37,6 +37,12 @@ services:
     volumes:
       - seaweed-data:/data
       - ./deploy/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:           # ready to store files: the master assigns file IDs (503 until a volume is writable)
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/dir/assign && wget -q -O /dev/null http://127.0.0.1:8333/healthz"]
+      start_period: 120s
+      start_interval: 2s
+      interval: 30s
+      retries: 3
 
   api:                     # SAPS API
     build: ./backend
@@ -46,7 +52,7 @@ services:
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
-      seaweedfs: { condition: service_started }
+      seaweedfs: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')"]
       interval: 5s

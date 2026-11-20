@@ -1,11 +1,22 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
+import { type InvoiceApi, createInvoiceApi } from "../api/invoices";
 import type { UserAccount } from "../api/session";
 import { MENU_BY_ROLE, ROLE_LABEL } from "../auth/roles";
 import { useSession } from "../auth/session-context";
+import { UploadPage } from "../invoices/UploadPage";
 
-export function AppShell({ user, footer }: { user: UserAccount; footer?: ReactNode }) {
+export function AppShell({
+  user,
+  footer,
+  invoiceApi,
+}: {
+  user: UserAccount;
+  footer?: ReactNode;
+  invoiceApi?: InvoiceApi;
+}) {
   const { signOut } = useSession();
+  const invoices = useMemo(() => invoiceApi ?? createInvoiceApi(), [invoiceApi]);
   const menu = MENU_BY_ROLE[user.role];
   const [selected, setSelected] = useState<string>();
   const current = menu.find((item) => item.id === selected) ?? menu[0];
@@ -38,7 +49,7 @@ export function AppShell({ user, footer }: { user: UserAccount; footer?: ReactNo
       </nav>
       <main>
         <h1>{current.label}</h1>
-        <p>This screen is not available yet.</p>
+        {current.id === "upload" ? <UploadPage api={invoices} /> : <p>This screen is not available yet.</p>}
       </main>
       {footer}
     </>

@@ -74,6 +74,19 @@ describe("App", () => {
     expect(menu).not.toHaveTextContent("Matching settings");
   });
 
+  it("opens the upload page from the member menu", async () => {
+    const invoiceApi = { upload: vi.fn(), get: vi.fn() };
+    render(
+      <App
+        sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MEMBER) })}
+        checkHealth={pending}
+        invoiceApi={invoiceApi}
+      />,
+    );
+    expect(await screen.findByRole("heading", { name: "Upload invoices" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Choose files")).toBeInTheDocument();
+  });
+
   it("shows only the manager menu for a manager and switches screens", async () => {
     renderApp(fakeApi({ getSession: vi.fn().mockResolvedValue(MANAGER) }));
     const menu = await screen.findByRole("navigation", { name: "Main menu" });

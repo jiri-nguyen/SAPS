@@ -4,7 +4,7 @@ title: "SAPS-17 — Invoice upload"
 status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
-last_updated: 2026-12-11
+last_updated: 2026-12-15
 related: [UC-02, SCP-IN-01, DEC-012, DEC-026, NFR-SEC-001, NFR-SCAL-001, ADR-0004, ADR-0006, ADR-0007, ADR-0008, SAPS-18]
 ---
 
@@ -58,6 +58,7 @@ in SAPS File Storage, creates the invoice with status Uploaded and queues proces
 | SAPS File Storage | modified | New objects under `invoices/{invoice_id}/{sha256}` |
 | SAPS Database | modified | Invoice row with file metadata and idempotency key; `UPLOAD` event |
 | SAPS Message Broker | modified | `process_invoice` message |
+| SAPS Worker | modified | Placeholder `process_invoice` actor that logs `process_invoice_received`; replaced by extraction ([SAPS-18](SAPS-18-dummy-invoice-extraction.md)) |
 
 ### 3.2 Main Flow
 ```mermaid
@@ -97,7 +98,7 @@ sequenceDiagram
 | EC-03 | Same `Idempotency-Key` sent twice (double click, network retry) | Second request returns the first invoice | `202`, same invoice id |
 | EC-04 | Two requests with the same key at the same time | Unique index (`tenant_id`, `idempotency_key`); the loser reads and returns the winner's invoice | `202` |
 | EC-05 | File stored, database commit fails | Orphan object stays; harmless in the PoC ([ADR-0006](../02-architecture/adr/0006-store-invoice-files-in-seaweedfs.md)) | `500`; client retries with the same key |
-| EC-06 | Commit succeeds, sending the message fails | Invoice stays Uploaded; the sweeper sends `process_invoice` later ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S1) | `202` already returned |
+| EC-06 | Commit succeeds, sending the message fails | Invoice stays Uploaded; the sweeper sends `process_invoice` later ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S1; sweeper: [SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37)) | `202` already returned; log `process_invoice_not_sent` |
 | EC-07 | SAPS File Storage unavailable | Nothing in the database | `500` problem+json |
 | EC-08 | Accounting Manager tries to upload | Refused | `403` |
 
@@ -105,7 +106,7 @@ sequenceDiagram
 | operationId | Method & path | Change | Breaking | Spec |
 |---|---|---|---|---|
 | `uploadInvoice` | POST /v1/invoices | description: maximum size is a setting, default 10 MB; content checked by magic bytes (API 0.3.1) | No | [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
-| `getInvoice` | GET /v1/invoices/{invoiceId} | none (polling) | No | ″ |
+| `getInvoice` | GET /v1/invoices/{invoiceId} | none — implemented here for polling (tenant-scoped; weak `ETag` from the invoice's last change; `If-Match` comes with `updateInvoice`, [SAPS-20](SAPS-20-exception-handling.md)) | No | ″ |
 
 ### 3.5 Event Changes
 Sends `process_invoice(invoice_id)` ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md)); consumed by [SAPS-18](SAPS-18-dummy-invoice-extraction.md).
@@ -127,7 +128,7 @@ Sends `process_invoice(invoice_id)` ([ADR-0004](../02-architecture/adr/0004-proc
 | `MAX_UPLOAD_SIZE_MB` | Maximum invoice file size | 10 | PoC only |
 
 ### 3.9 Observability
-- Logs: `invoice_uploaded` (invoice_id, tenant_id, size, content type, duration_ms), `upload_rejected` (reason). No file content.
+- Logs: `invoice_uploaded` (invoice_id, tenant_id, size, content type, duration_ms), `upload_replayed` (invoice_id), `upload_rejected` (reason), `process_invoice_not_sent` (invoice_id). No file content.
 
 ## 4. Rollout & Rollback
 1. No migration of its own; the schema comes from `0003_core_invoice_schema` ([SAPS-36](https://linear.app/jiringuyen/issue/SAPS-36)).
@@ -142,7 +143,7 @@ Sends `process_invoice(invoice_id)` ([ADR-0004](../02-architecture/adr/0004-proc
 | TS-02 | 10 MB + 1 byte → 413; empty → 400; `.pdf` name with text content → 415 | Integration | BR-03, EC-01, EC-02 |
 | TS-03 | Same Idempotency-Key twice, sequentially and in parallel → one invoice | Integration | BR-06, EC-03, EC-04 |
 | TS-04 | Same file with two keys → two invoices | Integration | BR-07 |
-| TS-05 | Message lost after commit → sweeper processes the invoice | Integration | EC-06 |
+| TS-05 | Message lost after commit → sweeper processes the invoice (tested in [SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37)); here: upload still answers `202` when sending fails | Integration | EC-06 |
 | TS-06 | Accounting Manager upload → 403; no `Origin` header → 403 | Integration | EC-08, §3.7 |
 | TS-07 | Upload several files in the Web App; statuses update by polling | E2E | BR-08 |
 | TS-08 | All demo scenarios DS-01 … DS-20 start with this upload | E2E | [Test Strategy §11](../05-testing/test-strategy.md#11-poc-demo-acceptance) |
@@ -154,12 +155,18 @@ Sends `process_invoice(invoice_id)` ([ADR-0004](../02-architecture/adr/0004-proc
 | Idempotency key stored on the invoice | Simplest store with a unique index; no separate table | — |
 | File type by content (magic bytes) | The declared content type and file name can be wrong | — |
 | Spool to a temporary file before storing | The object key contains the SHA-256, which is known only after the whole file is read | [ADR-0006](../02-architecture/adr/0006-store-invoice-files-in-seaweedfs.md) |
+| Size guard before parsing (declared `Content-Length`) and while receiving (counted body), exact check after parsing | A too large body is stopped early; the exact limit applies to the file, not to the multipart framing | — |
+| Placeholder `process_invoice` actor until SAPS-18 | The SAPS Worker would otherwise drop the message as an unknown actor | — |
+| SAPS File Storage is healthy only when the master assigns file IDs (`/dir/assign`) | After a start, SeaweedFS answers S3 requests but the first write waits 7–20 s until a volume is writable; the SAPS API now waits for it | [ADR-0006](../02-architecture/adr/0006-store-invoice-files-in-seaweedfs.md) |
+| The bucket is created by SeaweedFS on the first write | No bucket set-up step in the PoC; on AWS the bucket is provisioned with the infrastructure | [ADR-0006](../02-architecture/adr/0006-store-invoice-files-in-seaweedfs.md) |
 
 ## 7. Open Questions
-None.
+| # | Question | Asked to | Due | Status |
+|---|---|---|---|---|
+| Q1 | Linear key of the processing sweeper issue (re-sends `process_invoice` for invoices stuck in Uploaded, ADR-0004 S1; TS-05 moves there) | Solution Architect / Tech Lead | before merge | answered: [SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37) (2026-12-15) |
 
 ## 8. Documentation Checklist
-- [ ] API spec updated (`uploadInvoice` description; version 0.3.1)
-- [ ] Data model updated (`Invoice.idempotency_key`)
-- [ ] Developer Guide §6 updated (`MAX_UPLOAD_SIZE_MB`)
+- [x] API spec updated (`uploadInvoice` description; version 0.3.1)
+- [x] Data model updated (`Invoice.idempotency_key`)
+- [x] Developer Guide §6 updated (`MAX_UPLOAD_SIZE_MB`); §2.4 upload check
 - [ ] Release notes entry prepared

@@ -1,5 +1,6 @@
 """RFC 9457 problem details for every error response (OpenAPI `Problem`)."""
 
+import logging
 from http import HTTPStatus
 from typing import Any
 
@@ -9,6 +10,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 PROBLEM_JSON = "application/problem+json"
+log = logging.getLogger("saps.api")
 
 
 def problem(
@@ -39,6 +41,13 @@ async def _validation_error(_: Request, exc: Exception) -> JSONResponse:
     return problem(HTTPStatus.BAD_REQUEST, "The request is not valid.", errors)
 
 
+async def _unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+    """Any other error: 500 problem+json without internal details; the details go to the log."""
+    log.error("unhandled_error", exc_info=exc, extra={"path": request.url.path, "method": request.method})
+    return problem(HTTPStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again.")
+
+
 def install_problem_handlers(app: FastAPI) -> None:
     app.add_exception_handler(StarletteHTTPException, _http_exception)
     app.add_exception_handler(RequestValidationError, _validation_error)
+    app.add_exception_handler(Exception, _unexpected_error)

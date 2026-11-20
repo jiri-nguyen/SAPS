@@ -44,7 +44,7 @@ strict = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["dramatiq.*", "apscheduler.*"]
+module = ["dramatiq.*", "apscheduler.*", "boto3.*", "botocore.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

@@ -9,11 +9,19 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from saps.adapters.persistence.db import get_engine, session_factory
+from saps.adapters.persistence.invoice_repository import SqlInvoiceRepository
 from saps.adapters.persistence.user_repository import SqlUserRepository
+from saps.adapters.queue.dramatiq_queue import DramatiqJobQueue
 from saps.adapters.security.argon2_hasher import Argon2PasswordHasher
+from saps.adapters.storage.s3_storage import S3FileStorage
 from saps.application.auth import AuthService
+from saps.application.upload import UploadInvoiceService
 from saps.config import get_settings
 from saps.domain.users import AccessDeniedError, CurrentUser, Role, SessionPolicy, ensure_role
+from saps.ports.file_storage import FileStoragePort
+from saps.ports.invoices import InvoiceReader
+from saps.ports.job_queue import JobQueuePort
+from saps.worker.broker import build_broker
 
 SESSION_COOKIE = "saps_session"
 
@@ -80,3 +88,42 @@ def require_roles(*roles: Role) -> Callable[[CurrentUser], Awaitable[CurrentUser
         return user
 
     return check
+
+
+# --- Invoices (SAPS-17) ---------------------------------------------------------------------------------
+
+
+@lru_cache
+def file_storage() -> FileStoragePort:
+    settings = get_settings()
+    return S3FileStorage(
+        endpoint_url=settings.s3_endpoint_url,
+        bucket=settings.s3_bucket,
+        access_key=settings.s3_access_key,
+        secret_key=settings.s3_secret_key.get_secret_value(),
+    )
+
+
+@lru_cache
+def job_queue() -> JobQueuePort:
+    return DramatiqJobQueue(build_broker(get_settings()))
+
+
+async def invoice_repository() -> SqlInvoiceRepository:
+    """Async, so the engine is created on the request's event loop."""
+    return SqlInvoiceRepository(session_factory(get_engine(get_settings().database_url)))
+
+
+async def invoice_reader(
+    repository: Annotated[SqlInvoiceRepository, Depends(invoice_repository)],
+) -> InvoiceReader:
+    return repository
+
+
+async def upload_service(
+    repository: Annotated[SqlInvoiceRepository, Depends(invoice_repository)],
+    storage: Annotated[FileStoragePort, Depends(file_storage)],
+    queue: Annotated[JobQueuePort, Depends(job_queue)],
+) -> UploadInvoiceService:
+    max_size_bytes = get_settings().max_upload_size_mb * 1024 * 1024
+    return UploadInvoiceService(repository, repository, storage, queue, utc_now, max_size_bytes)

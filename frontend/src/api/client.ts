@@ -38,7 +38,8 @@ export async function apiFetch(
 ): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
-  if (init.body !== undefined) headers.set("Content-Type", "application/json");
+  // JSON bodies only; FormData sets its own multipart boundary.
+  if (typeof init.body === "string") headers.set("Content-Type", "application/json");
   const response = await fetchImpl(path, { ...init, headers, credentials: "same-origin" });
   if (response.ok) return response;
   if (response.status === 401) unauthorizedEvents.dispatchEvent(new Event(UNAUTHORIZED));

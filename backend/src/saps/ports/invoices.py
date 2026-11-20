@@ -1,0 +1,127 @@
+"""Invoice persistence ports: upload (SAPS-17) and the invoice read model of `getInvoice`."""
+
+from collections.abc import Sequence
+from dataclasses import dataclass
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Protocol
+from uuid import UUID
+
+from saps.domain.invoices import (
+    ApprovalDecision,
+    ExceptionCode,
+    ExceptionStatus,
+    InvoiceStatus,
+    InvoiceType,
+    MatchStatus,
+)
+
+
+@dataclass(frozen=True)
+class UserRef:
+    id: UUID
+    display_name: str
+
+
+@dataclass(frozen=True)
+class InvoiceFile:
+    name: str
+    content_type: str
+    size_bytes: int
+    sha256: str
+
+
+@dataclass(frozen=True)
+class InvoiceLineView:
+    id: UUID
+    line_number: int
+    description: str | None
+    po_number: str | None
+    po_line_number: int | None
+    quantity: Decimal | None
+    unit_price: Decimal | None
+    line_amount: Decimal | None
+    match_status: MatchStatus
+    po_unit_price: Decimal | None
+    expected_quantity: Decimal | None
+
+
+@dataclass(frozen=True)
+class InvoiceExceptionView:
+    id: UUID
+    code: ExceptionCode
+    message: str
+    status: ExceptionStatus
+    invoice_line_id: UUID | None
+    resolved_by: UserRef | None
+    resolved_at: datetime | None
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class ApprovalView:
+    id: UUID
+    decision: ApprovalDecision
+    comment: str | None
+    decided_by: UserRef
+    decided_at: datetime
+
+
+@dataclass(frozen=True)
+class InvoiceView:
+    id: UUID
+    status: InvoiceStatus
+    invoice_type: InvoiceType | None
+    vendor_code: str | None
+    vendor_name: str | None
+    invoice_number: str | None
+    invoice_date: date | None
+    currency: str
+    subtotal_amount: Decimal | None
+    tax_amount: Decimal | None
+    total_amount: Decimal | None
+    requires_approval: bool | None
+    price_tolerance_applied: Decimal | None
+    approval_threshold_applied: Decimal | None
+    assigned_to: UserRef | None
+    uploaded_by: UserRef
+    file: InvoiceFile
+    rejected_reason: str | None
+    lines: Sequence[InvoiceLineView]
+    exceptions: Sequence[InvoiceExceptionView]
+    approval: ApprovalView | None
+    created_at: datetime
+    updated_at: datetime
+
+
+@dataclass(frozen=True)
+class NewUpload:
+    invoice_id: UUID
+    tenant_id: UUID
+    uploaded_by: UUID
+    actor: str
+    file: InvoiceFile
+    storage_key: str
+    idempotency_key: str
+    uploaded_at: datetime
+
+
+class DuplicateIdempotencyKeyError(Exception):
+    """Another request with the same key and tenant created its invoice first (SAPS-17 EC-04)."""
+
+
+class InvoiceRepository(Protocol):
+    async def find_by_idempotency_key(self, tenant_id: UUID, key: str) -> UUID | None: ...
+
+    async def add_uploaded(self, upload: NewUpload) -> None:
+        """Insert the invoice (Uploaded) and its `UPLOAD` event and commit (BR-05).
+
+        Raises DuplicateIdempotencyKeyError when the key is already used.
+        """
+        ...
+
+
+class InvoiceReader(Protocol):
+    async def get(self, tenant_id: UUID, invoice_id: UUID) -> InvoiceView | None:
+        """The invoice of this tenant with lines, exceptions, approval and user names (ADR-0007)."""
+        ...

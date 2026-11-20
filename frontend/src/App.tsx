@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { type ApiHealth, fetchApiHealth } from "./api/health";
+import type { InvoiceApi } from "./api/invoices";
 import { type SessionApi, createSessionApi } from "./api/session";
 import { SessionProvider } from "./auth/SessionProvider";
 import { SignInPage } from "./auth/SignInPage";
@@ -27,7 +28,7 @@ function HealthFooter({ checkHealth }: { checkHealth: () => Promise<ApiHealth> }
   );
 }
 
-function Screens({ footer }: { footer: ReactNode }) {
+function Screens({ footer, invoiceApi }: { footer: ReactNode; invoiceApi?: InvoiceApi }) {
   const { user } = useSession();
   if (user === undefined) return <p>Loading…</p>;
   if (user === null)
@@ -37,20 +38,22 @@ function Screens({ footer }: { footer: ReactNode }) {
         {footer}
       </>
     );
-  return <AppShell user={user} footer={footer} />;
+  return <AppShell user={user} footer={footer} invoiceApi={invoiceApi} />;
 }
 
 export function App({
   checkHealth = fetchApiHealth,
   sessionApi,
+  invoiceApi,
 }: {
   checkHealth?: () => Promise<ApiHealth>;
   sessionApi?: SessionApi;
+  invoiceApi?: InvoiceApi;
 }) {
   const api = useMemo(() => sessionApi ?? createSessionApi(), [sessionApi]);
   return (
     <SessionProvider api={api}>
-      <Screens footer={<HealthFooter checkHealth={checkHealth} />} />
+      <Screens footer={<HealthFooter checkHealth={checkHealth} />} invoiceApi={invoiceApi} />
     </SessionProvider>
   );
 }
