@@ -1,7 +1,7 @@
 ---
 id: "SAPS-28"
 title: "SAPS-28 — Matching settings"
-status: draft            # draft | in-review | approved | deprecated
+status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2026-12-15
