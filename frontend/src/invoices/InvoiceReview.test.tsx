@@ -28,6 +28,7 @@ describe("final review on the invoice page (SAPS-21)", () => {
     show(fakeExceptionApi({ getVersioned: vi.fn().mockResolvedValue(versioned(reviewable())) }));
     expect(await screen.findByText(/waits for your final review/)).toBeInTheDocument();
     expect(screen.getByText(/Approved by Accounting Manager 1/)).toBeInTheDocument(); // BR-05
+    expect(screen.queryByText("None.")).not.toBeInTheDocument(); // the fixture has an exception
     expect(screen.getByRole("button", { name: "Confirm" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Reject" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Correct data" })).not.toBeInTheDocument();
@@ -95,10 +96,13 @@ describe("final review on the invoice page (SAPS-21)", () => {
   it("shows final states", async () => {
     const { unmount } = show(
       fakeExceptionApi({
-        getVersioned: vi.fn().mockResolvedValue(versioned(invoiceFixture({ status: "COMPLETED" }))),
+        getVersioned: vi
+          .fn()
+          .mockResolvedValue(versioned(invoiceFixture({ status: "COMPLETED", exceptions: [] }))),
       }),
     );
     expect(await screen.findByText("This invoice is Completed: ready for posting.")).toBeInTheDocument();
+    expect(screen.getByText("None.")).toBeInTheDocument(); // no exceptions
     unmount();
     show(
       fakeExceptionApi({

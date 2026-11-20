@@ -334,6 +334,7 @@ export function InvoiceDetailPage({
           </dl>
 
           <h3>Exceptions</h3>
+          {invoice.exceptions.length === 0 && <p className="muted">None.</p>}
           <ul className="exceptions">
             {invoice.exceptions.map((exception) => (
               <li key={exception.id} className={exception.status === "OPEN" ? "open" : "resolved"}>
