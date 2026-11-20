@@ -3,7 +3,7 @@ title: "§6 Runtime View"
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)", "Product Owner (Customer)"]
-last_updated: 2026-12-08
+last_updated: 2026-12-15
 related: [DEC-003, DEC-004, DEC-005, DEC-006, DEC-007, DEC-008, DEC-009, DEC-010, DEC-012, DEC-013, DEC-014, DEC-016, DEC-021, ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006]
 ---
 
@@ -113,6 +113,9 @@ sequenceDiagram
 **Purpose:** Recover invoices whose message was lost (crash between commit and send, Redis restart) or whose worker
 crashed mid-job ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md) S1, verified in spike
 [SAPS-34](https://linear.app/jiringuyen/issue/SAPS-34)).
+**Message by status:** an invoice stuck in Uploaded gets `process_invoice`; one stuck in Matching gets `rematch_invoice`
+(sent after a correction, [SAPS-20](../../03-features/SAPS-20-exception-handling.md)). Each actor checks its own expected
+status. Built in [SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37).
 
 ```mermaid
 sequenceDiagram

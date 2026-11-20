@@ -4,7 +4,7 @@ title: "SAPS-20 — Exception handling"
 status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
-last_updated: 2026-12-10
+last_updated: 2026-12-15
 related: [UC-03, UC-05, SCP-IN-04, SCP-IN-14, DEC-010, DEC-013, DEC-014, DEC-016, DEC-021, DEC-024, DEC-033, DEC-035, DEC-036, DEC-037, NFR-SEC-001, ADR-0004, ADR-0007, ADR-0008, SAPS-19]
 ---
 
@@ -33,7 +33,7 @@ This is the main manual step of the PoC and covers 11 of the 20 demo scenarios.
 | BR-03 | A claim can be released by the claimant, or by an Accounting Manager for any claim; the invoice returns to the unclaimed queue. | [DEC-036](../01-requirements/decision-log.md#dec-036) |
 | BR-04 | Correcting data: header fields and lines can be changed; `lines`, when sent, replaces all lines. If a matching field changes, the status becomes Matching and re-matching is queued; the invoice stays claimed. | [DEC-010](../01-requirements/decision-log.md#dec-010), [DEC-024](../01-requirements/decision-log.md#dec-024) |
 | BR-05 | Matching fields: vendor code, invoice number, PO number, PO line number, quantity, unit price. Changes to other fields are saved without re-matching. | [DEC-024](../01-requirements/decision-log.md#dec-024) |
-| BR-06 | Accepting as is (resolve): marks all open exceptions resolved without re-matching and sets the next status — PendingApproval if the total amount is above the approval threshold, otherwise PendingReview. Allowed only when every open exception is EX2, EX6, EX7 or EX9; EX1, EX3, EX4, EX5, EX8 and EX10 need corrected data or a rejection. | [DEC-013](../01-requirements/decision-log.md#dec-013), [DEC-035](../01-requirements/decision-log.md#dec-035) |
+| BR-06 | Accepting as is (resolve): marks all open exceptions resolved without re-matching and sets the next status — PendingApproval if the total amount is above the approval threshold of the last matching run (the stored snapshot; the current setting when there is none), otherwise PendingReview. Allowed only when every open exception is EX2, EX6, EX7 or EX9; EX1, EX3, EX4, EX5, EX8 and EX10 need corrected data or a rejection. | [DEC-013](../01-requirements/decision-log.md#dec-013), [DEC-035](../01-requirements/decision-log.md#dec-035) |
 | BR-07 | A non-PO invoice (EX2) is always handled by accepting it after review (BR-06) or rejecting it. | [DEC-006](../01-requirements/decision-log.md#dec-006) |
 | BR-08 | Rejecting requires a reason; status Rejected is final. | [DEC-014](../01-requirements/decision-log.md#dec-014) |
 | BR-09 | When an invoice leaves status Exception (to PendingApproval, PendingReview or Rejected) the claim is cleared. | design, §6 |
@@ -58,8 +58,8 @@ This is the main manual step of the PoC and covers 11 of the 20 demo scenarios.
 | Container | Change | Description |
 |---|---|---|
 | SAPS Web App | new | Exception queue (unclaimed / mine), invoice detail with file viewer, lines with match results, open exceptions; edit form; resolve and reject dialogs |
-| SAPS API | new | `claimInvoice`, `releaseInvoiceClaim`, `updateInvoice`, `resolveInvoiceExceptions`, `rejectInvoice`; claimant and status checks; ETag handling |
-| SAPS Worker | modified | `rematch_invoice` expects status Matching; sweeper re-sends `rematch_invoice` for invoices stuck in Matching (§6) |
+| SAPS API | new | `claimInvoice`, `releaseInvoiceClaim`, `updateInvoice`, `resolveInvoiceExceptions`, `rejectInvoice`, `listInvoices`, `listInvoiceEvents`, `downloadInvoiceFile`; claimant and status checks; ETag handling |
+| SAPS Worker | modified | `rematch_invoice` expects status Matching; matching ends the claim when the invoice leaves Exception (BR-09). The sweeper that re-sends `rematch_invoice` for invoices stuck in Matching is [SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37) (§6) |
 | SAPS Database | modified | Writes Invoice, InvoiceLine, InvoiceException, InvoiceEvent, Notification |
 
 ### 3.2 Main Flow
@@ -119,24 +119,30 @@ sequenceDiagram
 | EC-02 | The invoice changed since the member loaded it (e.g. re-match finished, another tab) | Optimistic locking with ETag | `412`; the Web App reloads the invoice |
 | EC-03 | Update, resolve or reject while the status is Matching (re-match pending) | Not allowed until re-matching finishes | `409`; the Web App shows "re-matching in progress" |
 | EC-04 | Resolve while an open exception is EX1, EX3, EX4, EX5, EX8 or EX10 (BR-06) | Refused; the member must correct the data or reject | `422` naming the exception codes |
-| EC-05 | Re-match message lost or worker crashed | Sweeper re-sends `rematch_invoice` for invoices in Matching ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S1) | Log `sweeper_resent` |
+| EC-05 | Re-match message lost or worker crashed | Sweeper re-sends `rematch_invoice` for invoices in Matching ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S1; [SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37)). When sending fails after the save, the answer is still `202` | Log `sweeper_resent` / `rematch_not_sent` |
 | EC-06 | EX1 (file not in the sample set): no extracted data | The member may enter header and lines manually (`updateInvoice`), which re-runs matching; or reject (DS-07) | `202` / `200` |
 | EC-07 | Vendor code or invoice number changed on an invoice with EX9 | Re-matching also re-runs the duplicate check ([SAPS-23](https://linear.app/jiringuyen/issue/SAPS-23)) | EX9 resolved or raised again |
 | EC-08 | `updateInvoice` with no real change | Nothing saved, no event | `200` |
 | EC-09 | Reject without a reason | Refused | `400` |
 | EC-10 | Caller is not the claimant, or is an Accounting Manager | Refused | `403` |
+| EC-11 | The claimant claims the invoice again | Nothing changes | `200` |
+| EC-12 | `lines` is sent | Lines are matched by line number, so their IDs stay valid; a line that is no longer sent is removed and its exceptions are resolved by the member and detached from the line; the re-match then checks everything again | `202` |
+| EC-13 | Reject an invoice that is in Pending review | Not allowed in this feature; rejecting at final review comes with [SAPS-21](https://linear.app/jiringuyen/issue/SAPS-21) | `409` |
+| EC-14 | Invalid field values (not a 7-digit PO number, too many decimals, empty or null header field, no field sent) | Refused by the schema | `400` |
+
+**Order of checks:** invoice exists in the caller's tenant (`404`) → status (`409`) → claimant (`403`) → ETag (`412`; `428` when `If-Match` is missing) → business rules (`422`).
 
 ### 3.4 API Changes
-Contract: [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) (version 0.3.0 with this spec).
+Contract: [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) (0.4.1: every response with an `Invoice` carries its `ETag`).
 
 | operationId | Method & path | Change | Breaking | Spec |
 |---|---|---|---|---|
-| `listInvoices` | GET /v1/invoices | none — queue filters `status=EXCEPTION`, `assignee=unassigned|me` | No | [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
-| `claimInvoice` | POST /v1/invoices/{invoiceId}/claim | none | No | ″ |
+| `listInvoices` | GET /v1/invoices | none — queue filters `status=EXCEPTION`, `assignee=unassigned\|me`; newest first, cursor paging | No | [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
+| `claimInvoice` | POST /v1/invoices/{invoiceId}/claim | description: `ETag` header; repeating a claim you hold is `200` | No | ″ |
 | `releaseInvoiceClaim` | DELETE /v1/invoices/{invoiceId}/claim | **new** (BR-03) | No | ″ |
 | `updateInvoice` | PATCH /v1/invoices/{invoiceId} | description: a matching-field change sets status Matching; `409` while Matching | No | ″ |
 | `resolveInvoiceExceptions` | POST /v1/invoices/{invoiceId}/resolution | adds `422` when an exception type may not be accepted (BR-06) | No | ″ |
-| `rejectInvoice` | POST /v1/invoices/{invoiceId}/rejection | none | No | ″ |
+| `rejectInvoice` | POST /v1/invoices/{invoiceId}/rejection | `ETag` header; in this feature only for invoices in Exception (Pending review: `409` until SAPS-21) | No | ″ |
 | `getInvoice`, `downloadInvoiceFile`, `listInvoiceEvents` | GET … | none | No | ″ |
 
 ### 3.5 Event Changes
@@ -158,12 +164,12 @@ and InvoiceEvent actions `CLAIM`, `RELEASE`, `UPDATE_FIELDS`, `RESOLVE`, `REJECT
 None.
 
 ### 3.9 Observability
-- Logs: `invoice_claimed`, `invoice_claim_released`, `invoice_updated` (rematch: true/false), `exceptions_resolved` (codes), `invoice_rejected` — IDs and codes only.
+- Logs: `invoice_claimed`, `invoice_claim_released`, `invoice_updated` (rematch: true/false), `exceptions_resolved` (status), `invoice_rejected`, `rematch_not_sent` — IDs and statuses only.
 - Metrics and alerts: none in the PoC.
 
 ## 4. Rollout & Rollback
-1. Merge the OpenAPI change (0.3.0) with the SAPS API implementation.
-2. Deploy SAPS API, SAPS Worker (sweeper change) and SAPS Web App together with `docker compose up -d --build`.
+1. Merge the OpenAPI change (0.4.1) with the SAPS API implementation. The feature ships in two pull requests: SAPS API and SAPS Worker first, then the SAPS Web App screens.
+2. Deploy with `docker compose up -d --build`.
 
 **Rollback:** revert the pull request and recreate the local stack; PoC data is demo data only.
 
@@ -179,7 +185,7 @@ None.
 | TS-07 | Resolve with each of EX2, EX6, EX7, EX9 → next status by approval threshold; with any of EX1, EX3, EX4, EX5, EX8, EX10 → 422 | Unit + Integration | BR-06, BR-07, EC-04 |
 | TS-08 | Reject with and without reason | Integration | BR-08, EC-09 |
 | TS-09 | Claim cleared when leaving Exception; notifications to claimant vs. all members | Integration | BR-09, BR-10 |
-| TS-10 | Sweeper re-sends `rematch_invoice` for an invoice stuck in Matching | Integration | EC-05 |
+| TS-10 | Sweeper re-sends `rematch_invoice` for an invoice stuck in Matching — tested in [SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37); here: an update still answers `202` when sending fails | Integration | EC-05 |
 | TS-11 | Events CLAIM, RELEASE, UPDATE_FIELDS (old/new values), RESOLVE, REJECT recorded | Integration | BR-11 |
 | TS-12 | Demo scenarios DS-07, DS-08, DS-09, DS-10, DS-11, DS-12, DS-13, DS-14, DS-15, DS-20; DS-17 for rejection outside this feature | E2E | [Test Strategy §11](../05-testing/test-strategy.md#11-poc-demo-acceptance) |
 
@@ -190,6 +196,10 @@ None.
 | A matching-field change sets status Matching and keeps the claim | Matches the invoice lifecycle (Exception → Matching); the same member continues if re-matching raises exceptions again | — |
 | Sweeper sends `process_invoice` for Uploaded and `rematch_invoice` for Matching | Each actor checks its own expected status (ADR-0004 S2); otherwise an invoice stuck in Matching would never be recovered | [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) |
 | New operation `releaseInvoiceClaim` | Without it, an invoice claimed by an absent member is blocked | — |
+| Lines are updated in place by line number, not deleted and re-inserted | Exceptions and IDs of unchanged lines stay valid; only removed lines lose their exceptions (EC-12) | — |
+| One transaction per operation with the invoice row locked | The claim race (EC-01) and the status checks cannot interleave; the message is sent after the commit | [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) |
+| Accepting as is uses the approval threshold of the last matching run | The same rule that decided the status at that time (DEC-013) | — |
+| Events show the user's display name as `actor` | The contract says display name; the audit row stores the username | — |
 | `lines` replaces all lines in `updateInvoice` | Simple, explicit edit model for the PoC | — |
 
 ## 7. Open Questions
@@ -198,9 +208,10 @@ None.
 | Q1 | Which exception types may an Accounting Member accept as is (resolve without correcting data)? Proposal: allowed for EX2 (non-PO review), EX6 (price variance), EX7 (quantity variance), EX9 (not a real duplicate); not allowed for EX1, EX3, EX4, EX5, EX8, EX10 — these need corrected data or a rejection. | Product Owner (Customer) | next meeting | answered → [MTG-20261210](../01-requirements/meetings/2026-12-10-exception-handling-rules.md) R1 |
 | Q2 | Can an Accounting Manager release another member's claim (e.g. the member is absent)? Proposal: yes. | Product Owner (Customer) | next meeting | answered → [MTG-20261210](../01-requirements/meetings/2026-12-10-exception-handling-rules.md) R2 |
 | Q3 | When re-matching raises exceptions again, notify only the claimant (proposal) or all Accounting Members? | Product Owner (Customer) | next meeting | answered → [MTG-20261210](../01-requirements/meetings/2026-12-10-exception-handling-rules.md) R3 |
+| Q4 | Clarifications found while planning the build: the exception queue for Accounting Managers (read-only, with Release; Web App pull request), rejecting only invoices in Exception now (EC-13), and the two pull requests | Solution Architect / Tech Lead | before coding | answered: agreed (2026-12-15) |
 
 ## 8. Documentation Checklist
-- [ ] API spec updated (`releaseInvoiceClaim`, `updateInvoice`, `resolveInvoiceExceptions`; version 0.3.0)
-- [ ] Glossary checked (no new terms)
-- [ ] arc42 §6.3 sweeper note: actor chosen by status
+- [x] API spec updated (`releaseInvoiceClaim`, `updateInvoice`, `resolveInvoiceExceptions` existed; 0.4.1 adds the `ETag` header)
+- [x] Glossary checked (no new terms)
+- [x] arc42 §6.3 sweeper note: actor chosen by status
 - [ ] Release notes entry prepared
