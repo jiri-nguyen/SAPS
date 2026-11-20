@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
 last_updated: 2026-12-15
-related: [ADR-0001, ADR-0004, ADR-0007, CON-03, CON-06, DEC-026, SAPS-27, SAPS-34, SAPS-35]
+related: [ADR-0001, ADR-0004, ADR-0007, CON-03, CON-06, DEC-026, SAPS-18, SAPS-27, SAPS-34, SAPS-35]
 ---
 
 # §11 Risks and Technical Debt
@@ -53,6 +53,7 @@ Probability and impact are the Solution Architect's assessment; reviewed at each
 | [TD-01](#td-01) | Worker holds a database transaction for the whole job | M | M | open |
 | [TD-02](#td-02) | No tenant isolation in the PoC | H | L | open |
 | [TD-03](#td-03) | No account lockout or sign-in rate limiting | M | S | open |
+| [TD-04](#td-04) | No EX1 after the last retry of `process_invoice` | M | S | open |
 
 ### TD-01
 **Worker holds a database transaction for the whole job**
@@ -93,3 +94,15 @@ Probability and impact are the Solution Architect's assessment; reviewed at each
 | Backlog | TBD — before any deployment beyond a local machine |
 | Status | open |
 
+### TD-04
+**No EX1 after the last retry of `process_invoice`**
+
+| Field | Value |
+|---|---|
+| Description | When `process_invoice` fails on every Dramatiq retry, the invoice stays Uploaded; ADR-0004 S4 says extraction failures after the last retry set it to Exception (EX1). |
+| Cause | The Dummy Extraction Adapter cannot fail (lookup in a loaded sample set); only infrastructure errors can, and the sweeper ([SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37)) re-sends the message ([SAPS-18](../../03-features/SAPS-18-dummy-invoice-extraction.md), agreed 2026-12-15). |
+| Impact | With a real extraction service, a file it can never read would be retried by the sweeper forever and never reach the exception queue. |
+| Remediation | Dramatiq middleware on the final failure of `process_invoice`: in a new transaction, raise EX1 with the error reason, set Exception and notify Accounting Members; limit sweeper re-sends per invoice. |
+| Effort | S |
+| Backlog | TBD — before real extraction (OCR / AI) is connected |
+| Status | open |

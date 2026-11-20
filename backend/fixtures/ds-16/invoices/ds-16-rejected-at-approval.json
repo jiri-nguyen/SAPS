@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1016",
+  "invoice_date": "2026-12-10",
+  "currency": "USD",
+  "subtotal_amount": "360.00",
+  "tax_amount": "36.00",
+  "total_amount": "396.00",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Laptop bag",
+      "po_number": "0100016",
+      "po_line_number": 1,
+      "quantity": "8",
+      "unit_price": "45.00",
+      "line_amount": "360.00"
+    }
+  ]
+}

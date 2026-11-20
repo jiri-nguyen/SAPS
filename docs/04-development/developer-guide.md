@@ -93,9 +93,11 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   `docker compose exec api python -c "from saps.worker.actors import ping; ping.send('check')"`, then
   `docker compose logs worker` shows `ping_received` with `correlation_id` `check`.
 - `cd backend && uv run pytest` and `cd frontend && npm test` — all tests pass.
-- Upload ([SAPS-17](https://linear.app/jiringuyen/issue/SAPS-17)): as `member1`, open **Upload invoices** and drop one or more PDF / JPEG / PNG files;
-  each row shows the progress, then the status Uploaded. `docker compose logs worker` shows `process_invoice_received`
-  (extraction and matching run after [SAPS-18](https://linear.app/jiringuyen/issue/SAPS-18)).
+- Upload, extraction and matching ([SAPS-17](https://linear.app/jiringuyen/issue/SAPS-17), [SAPS-18](https://linear.app/jiringuyen/issue/SAPS-18), [SAPS-19](https://linear.app/jiringuyen/issue/SAPS-19)):
+  as `member1`, open **Upload invoices** and drop `backend/fixtures/ds-01/invoices/ds-01-trade-po.pdf`; the row shows the
+  progress, then Pending review. `ds-12-price-outside-tolerance.pdf` ends in Exception (EX6); any file outside the sample set,
+  e.g. `ds-07/unregistered/ds-07-unknown-invoice.pdf`, ends in Exception (EX1). `docker compose logs worker` shows
+  `extraction_completed` and `matching_completed`.
 
 ## 3. Project Structure
 ```
@@ -295,6 +297,7 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 | Create a migration | `cd backend && uv run alembic revision --autogenerate -m "<description>"` |
 | Lint and format | `cd backend && uv run ruff format && uv run ruff check --fix && uv run mypy src` / `cd frontend && npm run lint` |
 | Regenerate API client | `cd frontend && npm run gen:api` |
+| Regenerate the dummy sample set after editing a fixture JSON | `cd backend && make fixtures` (commit JSON, files, manifest and schema) |
 
 ## 11. Onboarding Checklist
 - [ ] Access granted (§2.2)

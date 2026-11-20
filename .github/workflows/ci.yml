@@ -125,28 +125,36 @@ jobs:
           curl -fsS -b jar "$base" | grep -q '"displayName":"Accounting Member 1"'
           test "$(code -b jar -c jar -X DELETE -H "$origin" "$base")" = 204
           test "$(code -b jar "$base")" = 401
-      - name: Upload, idempotent repeat, getInvoice and process_invoice (SAPS-17)
+      - name: Upload, extraction and matching (SAPS-17, SAPS-18, SAPS-19)
         run: |
           base=http://localhost:5173/v1
           origin="Origin: http://localhost:5173"
           password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
           curl -fsS -c upload-jar -H "$origin" -H 'Content-Type: application/json' \
             -d "{\"username\":\"member1\",\"password\":\"$password\"}" "$base/session" > /dev/null
-          printf '%%PDF-1.7\n%% SAPS CI smoke test\n%%%%EOF\n' > smoke.pdf
-          upload() {
-            curl -fsS -b upload-jar -H "$origin" -H "Idempotency-Key: ci-smoke-$GITHUB_RUN_ID" \
-              -F 'file=@smoke.pdf;type=application/pdf' "$base/invoices" \
+          upload() {  # $1 file, $2 Idempotency-Key → invoice id
+            curl -fsS -b upload-jar -H "$origin" -H "Idempotency-Key: $2" \
+              -F "file=@$1;type=application/pdf" "$base/invoices" \
               | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])'
           }
-          id="$(upload)"
-          test "$(upload)" = "$id"
-          curl -fsS -b upload-jar "$base/invoices/$id" | grep -q '"status":"UPLOADED"'
-          for i in $(seq 1 20); do
-            docker compose logs worker | grep process_invoice_received | grep -q "$id" && exit 0
-            sleep 1
-          done
-          docker compose logs worker
-          exit 1
+          wait_for() {  # $1 invoice id, $2 expected status, $3 expected exception codes (comma separated)
+            for i in $(seq 1 30); do
+              state="$(curl -fsS -b upload-jar "$base/invoices/$1" | python3 -c 'import json, sys
+          i = json.load(sys.stdin)
+          print(i["status"], ",".join(e["code"] for e in i["exceptions"] if e["status"] == "OPEN"))')"
+              [ "$state" = "$2 $3" ] && return 0
+              sleep 1
+            done
+            echo "invoice $1 is '$state', expected '$2 $3'"
+            docker compose logs worker
+            return 1
+          }
+          printf '%%PDF-1.7\n%% SAPS CI smoke test, not in the sample set\n%%%%EOF\n' > smoke.pdf
+          unknown="$(upload smoke.pdf "ci-unknown-$GITHUB_RUN_ID")"
+          test "$(upload smoke.pdf "ci-unknown-$GITHUB_RUN_ID")" = "$unknown"   # same key → same invoice
+          wait_for "$unknown" EXCEPTION EX1
+          ds01="$(upload backend/fixtures/ds-01/invoices/ds-01-trade-po.pdf "ci-ds01-$GITHUB_RUN_ID")"
+          wait_for "$ds01" PENDING_REVIEW ""
       - name: SAPS API → SAPS Message Broker → SAPS Worker
         run: |
           docker compose exec -T api python -c "from saps.worker.actors import ping; ping.send('ci-smoke')"

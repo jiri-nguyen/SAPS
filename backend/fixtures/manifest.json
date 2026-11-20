@@ -1,0 +1,99 @@
+{
+  "samples": [
+    {
+      "sha256": "4e39e3de7884f75392ca1cf1f734b3b4eac0a878094967bebbc5959cb4ce057c",
+      "file": "ds-01/invoices/ds-01-trade-po.pdf",
+      "data": "ds-01/invoices/ds-01-trade-po.json"
+    },
+    {
+      "sha256": "bcba4a397298847a801fd79ae3c8947083e067668e5ea91e1feff6ac1f1e7bcf",
+      "file": "ds-02/invoices/ds-02-non-trade-po.jpg",
+      "data": "ds-02/invoices/ds-02-non-trade-po.json"
+    },
+    {
+      "sha256": "cfd2e2c1d03da29478d7b9552b5ac430339dabc004c0140f6e940b64b70e87ff",
+      "file": "ds-03/invoices/ds-03-above-threshold.pdf",
+      "data": "ds-03/invoices/ds-03-above-threshold.json"
+    },
+    {
+      "sha256": "c7db5f2e1ff14e02f3f4416831e3349f462b7c877876087673416c74ce10a8a5",
+      "file": "ds-04/invoices/ds-04-first-delivery.pdf",
+      "data": "ds-04/invoices/ds-04-first-delivery.json"
+    },
+    {
+      "sha256": "9f2463c838b7e6c1487cfa244d37e0050813e2395f8e0544b827923e8d40c4b9",
+      "file": "ds-04/invoices/ds-04-second-delivery.pdf",
+      "data": "ds-04/invoices/ds-04-second-delivery.json"
+    },
+    {
+      "sha256": "9b613b3885a80135a5c532db5dcd5d8948a746e84c039a14f68651f31b5d3351",
+      "file": "ds-05/invoices/ds-05-two-pos.pdf",
+      "data": "ds-05/invoices/ds-05-two-pos.json"
+    },
+    {
+      "sha256": "a95056099b506d578f8905d052d0bd87801392db9385204adb1532eb977ee31d",
+      "file": "ds-06/invoices/ds-06-price-within-tolerance.pdf",
+      "data": "ds-06/invoices/ds-06-price-within-tolerance.json"
+    },
+    {
+      "sha256": "1044b9b08d61d9c0d0792d43263ffd8555aa48d32c751d5523d7db3b39e57fe1",
+      "file": "ds-08/invoices/ds-08-non-po.pdf",
+      "data": "ds-08/invoices/ds-08-non-po.json"
+    },
+    {
+      "sha256": "543b2fa65e87843c5b9808b20932c2095925ffd47a832f342aa1006484483578",
+      "file": "ds-09/invoices/ds-09-invalid-po-number.pdf",
+      "data": "ds-09/invoices/ds-09-invalid-po-number.json"
+    },
+    {
+      "sha256": "c54151e91d13aa1552d0ed8048bc2b0c9300cc729224c9d3b722794be5e1f563",
+      "file": "ds-10/invoices/ds-10-po-not-found.pdf",
+      "data": "ds-10/invoices/ds-10-po-not-found.json"
+    },
+    {
+      "sha256": "b2c64ccb08fe048c11b33fa04f8c682e5e5a5198d47c0e2b9027b15c7177f082",
+      "file": "ds-11/invoices/ds-11-trade-and-non-trade.pdf",
+      "data": "ds-11/invoices/ds-11-trade-and-non-trade.json"
+    },
+    {
+      "sha256": "f55be9961daf0f5b6b95f40179d670d6551c0d634a18795189ff41b75b4bf228",
+      "file": "ds-12/invoices/ds-12-price-outside-tolerance.pdf",
+      "data": "ds-12/invoices/ds-12-price-outside-tolerance.json"
+    },
+    {
+      "sha256": "e389eb947e99979db9c67adddaf17bdc4fd55aaaa85b4f919550bed0e0d83212",
+      "file": "ds-13/invoices/ds-13-quantity-above-expected.pdf",
+      "data": "ds-13/invoices/ds-13-quantity-above-expected.json"
+    },
+    {
+      "sha256": "2146056a94b6b2357980e27792521e41a45df6932688bf08b8d9c7eb2915f6a5",
+      "file": "ds-14/invoices/ds-14-missing-goods-receipt.pdf",
+      "data": "ds-14/invoices/ds-14-missing-goods-receipt.json"
+    },
+    {
+      "sha256": "b7e849eb3d13fa0cc66b2914d1e6f473ed5c8fedca5f18e212232714bd3a0396",
+      "file": "ds-15/invoices/ds-15-duplicate-scan.png",
+      "data": "ds-15/invoices/ds-15-duplicate-scan.json"
+    },
+    {
+      "sha256": "28ba46d7019f8a9f1d0ad9b91a090603eb6334a084c0d8faa48f165e041abebe",
+      "file": "ds-16/invoices/ds-16-rejected-at-approval.pdf",
+      "data": "ds-16/invoices/ds-16-rejected-at-approval.json"
+    },
+    {
+      "sha256": "3bb35dd0d40e89e6d127e74f4c364075a7685066e34d169b2296b0ae95e59ac2",
+      "file": "ds-17/invoices/ds-17-rejected-at-review.pdf",
+      "data": "ds-17/invoices/ds-17-rejected-at-review.json"
+    },
+    {
+      "sha256": "5cf67fd2e049a1652f5a1d0a116ae1c8dc3d6b1b854a63555f2c8daead285374",
+      "file": "ds-18/invoices/ds-18-settings-tolerance.pdf",
+      "data": "ds-18/invoices/ds-18-settings-tolerance.json"
+    },
+    {
+      "sha256": "7ab19d56509a7f8e140836d6552a39e46c890d849e79dc7a743d2a2117e197f5",
+      "file": "ds-20/invoices/ds-20-vendor-mismatch.pdf",
+      "data": "ds-20/invoices/ds-20-vendor-mismatch.json"
+    }
+  ]
+}

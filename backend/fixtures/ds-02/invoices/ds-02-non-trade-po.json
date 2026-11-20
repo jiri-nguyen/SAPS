@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V002",
+  "vendor_name": "Beta Facility Services Ltd.",
+  "invoice_number": "BFS-26-0412",
+  "invoice_date": "2026-12-03",
+  "currency": "USD",
+  "subtotal_amount": "180.00",
+  "tax_amount": "18.00",
+  "total_amount": "198.00",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Office cleaning service, December",
+      "po_number": "1100002",
+      "po_line_number": 1,
+      "quantity": "1",
+      "unit_price": "180.00",
+      "line_amount": "180.00"
+    }
+  ]
+}

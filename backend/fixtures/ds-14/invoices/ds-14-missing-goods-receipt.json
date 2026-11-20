@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1015",
+  "invoice_date": "2026-12-10",
+  "currency": "USD",
+  "subtotal_amount": "42.00",
+  "tax_amount": "4.20",
+  "total_amount": "46.20",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Network cable, 5 m",
+      "po_number": "0100014",
+      "po_line_number": 1,
+      "quantity": "12",
+      "unit_price": "3.50",
+      "line_amount": "42.00"
+    }
+  ]
+}

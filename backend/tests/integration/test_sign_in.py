@@ -14,6 +14,7 @@ from saps.adapters.security.argon2_hasher import Argon2PasswordHasher
 from saps.api.main import create_app
 from saps.application.auth import hash_token
 from saps.config import get_settings
+from saps.seed import DEMO_TENANT
 from saps.seed import _run as run_seed
 
 pytestmark = pytest.mark.integration
@@ -56,9 +57,23 @@ async def _sign_in(client: AsyncClient, username: str = "member1", password: str
 
 async def test_seed_is_idempotent(database_url: str, db: AsyncSession) -> None:
     await run_seed(database_url, PASSWORD)
-    assert await db.scalar(select(func.count()).select_from(Tenant)) == 1
-    assert await db.scalar(select(func.count()).select_from(MatchingSettings)) == 1
-    users = (await db.execute(select(UserAccount).order_by(UserAccount.username))).scalars().all()
+    # Other tests add their own tenants; the seed owns only the demo tenant.
+    tenants = (await db.execute(select(Tenant).where(Tenant.name == DEMO_TENANT))).scalars().all()
+    assert len(tenants) == 1
+    tenant_id = tenants[0].id
+    settings = (
+        select(func.count()).select_from(MatchingSettings).where(MatchingSettings.tenant_id == tenant_id)
+    )
+    assert await db.scalar(settings) == 1
+    users = (
+        (
+            await db.execute(
+                select(UserAccount).where(UserAccount.tenant_id == tenant_id).order_by(UserAccount.username)
+            )
+        )
+        .scalars()
+        .all()
+    )
     assert [u.username for u in users] == ["manager1", "manager2", "member1", "member2"]
     assert all(u.password_hash.startswith("$argon2id$") for u in users)
     assert Argon2PasswordHasher().verify(users[0].password_hash, PASSWORD)

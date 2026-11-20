@@ -1,0 +1,30 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1012",
+  "invoice_date": "2026-12-08",
+  "currency": "USD",
+  "subtotal_amount": "180.00",
+  "tax_amount": "18.00",
+  "total_amount": "198.00",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Filing cabinet",
+      "po_number": "0100011",
+      "po_line_number": 1,
+      "quantity": "1",
+      "unit_price": "120.00",
+      "line_amount": "120.00"
+    },
+    {
+      "line_number": 2,
+      "description": "Furniture assembly service",
+      "po_number": "1100011",
+      "po_line_number": 1,
+      "quantity": "1",
+      "unit_price": "60.00",
+      "line_amount": "60.00"
+    }
+  ]
+}

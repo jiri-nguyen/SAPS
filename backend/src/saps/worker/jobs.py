@@ -8,13 +8,18 @@ from pathlib import Path
 from uuid import UUID
 
 from saps.adapters.erp.dummy_erp import DummyErpAdapter
+from saps.adapters.extraction.dummy_extraction import DummyExtractionAdapter
 from saps.adapters.persistence.db import get_engine, session_factory
 from saps.adapters.persistence.matching_repository import SqlMatchingRepository
+from saps.adapters.persistence.processing_repository import SqlProcessingRepository
 from saps.application.matching import MatchingService, MatchOutcome
-from saps.config import get_settings
+from saps.application.processing import ProcessInvoiceService, ProcessOutcome
+from saps.config import Settings, get_settings
 from saps.ports.erp import ErpDataPort
+from saps.ports.extraction import ExtractionPort
 
 log = logging.getLogger("saps.worker.matching")
+processing_log = logging.getLogger("saps.worker.processing")
 
 
 @lru_cache
@@ -25,8 +30,36 @@ def erp_adapter(name: str, fixtures_dir: Path) -> ErpDataPort:
     return DummyErpAdapter(fixtures_dir)
 
 
+@lru_cache
+def extraction_adapter(name: str, fixtures_dir: Path) -> ExtractionPort:
+    """Selected by EXTRACTION_ADAPTER; only `dummy` exists in the PoC (ADR-0001, DEC-012)."""
+    if name != "dummy":
+        raise ValueError(f"Unknown EXTRACTION_ADAPTER: {name}")
+    return DummyExtractionAdapter(fixtures_dir)
+
+
+def load_adapters(settings: Settings) -> None:
+    """Build the adapters at worker start-up: broken fixtures stop the worker before any job (EC-04)."""
+    extraction_adapter(settings.extraction_adapter, settings.fixtures_dir)
+    erp_adapter(settings.erp_adapter, settings.fixtures_dir)
+
+
 def _utc_now() -> datetime:
     return datetime.now(UTC)
+
+
+def _log_matching(outcome: MatchOutcome, started: float) -> None:
+    log.info(
+        "matching_completed",
+        extra={
+            "invoice_id": str(outcome.invoice_id),
+            "tenant_id": str(outcome.tenant_id),
+            "invoice_type": outcome.invoice_type.value if outcome.invoice_type else None,
+            "status": outcome.status.value,
+            "exception_codes": [code.value for code in outcome.open_codes],
+            "duration_ms": round((time.perf_counter() - started) * 1000),
+        },
+    )
 
 
 async def run_matching(invoice_id: UUID) -> MatchOutcome | None:
@@ -39,15 +72,34 @@ async def run_matching(invoice_id: UUID) -> MatchOutcome | None:
     if outcome is None:
         log.info("matching_skipped", extra={"invoice_id": str(invoice_id)})
         return None
-    log.info(
-        "matching_completed",
+    _log_matching(outcome, started)
+    return outcome
+
+
+async def run_processing(invoice_id: UUID) -> ProcessOutcome | None:
+    """`process_invoice`: extraction, then matching, in one transaction (SAPS-18 BR-01, ADR-0004)."""
+    settings = get_settings()
+    started = time.perf_counter()
+    extraction = extraction_adapter(settings.extraction_adapter, settings.fixtures_dir)
+    erp = erp_adapter(settings.erp_adapter, settings.fixtures_dir)
+    async with session_factory(get_engine(settings.database_url))() as session, session.begin():
+        matching = MatchingService(SqlMatchingRepository(session), erp, _utc_now)
+        service = ProcessInvoiceService(SqlProcessingRepository(session), extraction, matching, _utc_now)
+        outcome = await service.process(invoice_id)
+    if outcome is None:
+        processing_log.info("processing_skipped", extra={"invoice_id": str(invoice_id)})
+        return None
+    processing_log.info(
+        "extraction_completed",
         extra={
             "invoice_id": str(outcome.invoice_id),
             "tenant_id": str(outcome.tenant_id),
-            "invoice_type": outcome.invoice_type.value if outcome.invoice_type else None,
-            "status": outcome.status.value,
-            "exception_codes": [code.value for code in outcome.open_codes],
+            "found": outcome.found,
+            "line_count": outcome.line_count,
+            "unreadable_reason": outcome.unreadable_reason,
             "duration_ms": round((time.perf_counter() - started) * 1000),
         },
     )
+    if outcome.matching is not None:
+        _log_matching(outcome.matching, started)
     return outcome

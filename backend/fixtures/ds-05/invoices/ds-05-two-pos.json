@@ -1,0 +1,30 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1005",
+  "invoice_date": "2026-12-05",
+  "currency": "USD",
+  "subtotal_amount": "85.00",
+  "tax_amount": "8.50",
+  "total_amount": "93.50",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Whiteboard markers, pack",
+      "po_number": "0100005",
+      "po_line_number": 1,
+      "quantity": "10",
+      "unit_price": "4.50",
+      "line_amount": "45.00"
+    },
+    {
+      "line_number": 2,
+      "description": "Sticky notes, pack",
+      "po_number": "0100006",
+      "po_line_number": 1,
+      "quantity": "20",
+      "unit_price": "2.00",
+      "line_amount": "40.00"
+    }
+  ]
+}

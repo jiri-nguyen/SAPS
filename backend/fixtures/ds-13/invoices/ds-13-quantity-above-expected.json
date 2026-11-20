@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1014",
+  "invoice_date": "2026-12-09",
+  "currency": "USD",
+  "subtotal_amount": "144.00",
+  "tax_amount": "14.40",
+  "total_amount": "158.40",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Monitor stand",
+      "po_number": "0100013",
+      "po_line_number": 1,
+      "quantity": "8",
+      "unit_price": "18.00",
+      "line_amount": "144.00"
+    }
+  ]
+}

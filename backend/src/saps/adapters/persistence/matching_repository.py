@@ -6,7 +6,6 @@ from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import func, select, text, tuple_, update
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from saps.adapters.persistence.models import (
@@ -15,22 +14,17 @@ from saps.adapters.persistence.models import (
     InvoiceException,
     InvoiceLine,
     MatchingSettings,
-    Notification,
-    UserAccount,
 )
-from saps.domain.invoices import ExceptionStatus, InvoiceStatus, NotificationType
+from saps.adapters.persistence.notification_repository import SqlNotifications
+from saps.domain.invoices import ExceptionStatus, InvoiceStatus
 from saps.domain.matching import InvoiceToMatch, LineToMatch, MatchingRules, PoLineKey
-from saps.domain.users import Role
 from saps.ports.matching import InvoiceForMatching, MatchUpdate, OpenException
 
 # DEC-023: invoices whose quantities are already taken from the PO line.
 INVOICED_STATUSES = (InvoiceStatus.PENDING_APPROVAL, InvoiceStatus.PENDING_REVIEW, InvoiceStatus.COMPLETED)
 
 
-class SqlMatchingRepository:
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-
+class SqlMatchingRepository(SqlNotifications):
     async def lock_invoice(self, invoice_id: UUID) -> InvoiceForMatching | None:
         invoice = (
             await self._session.execute(
@@ -163,31 +157,3 @@ class SqlMatchingRepository:
             )
         )
         await session.flush()
-
-    async def active_user_ids(self, tenant_id: UUID, role: Role) -> list[UUID]:
-        rows = await self._session.execute(
-            select(UserAccount.id)
-            .where(UserAccount.tenant_id == tenant_id, UserAccount.role == role, UserAccount.is_active)
-            .order_by(UserAccount.username)
-        )
-        return list(rows.scalars())
-
-    async def add_notifications(
-        self,
-        tenant_id: UUID,
-        invoice_id: UUID,
-        recipients: Sequence[UUID],
-        notification_type: NotificationType,
-        message: str,
-    ) -> None:
-        self._session.add_all(
-            Notification(
-                tenant_id=tenant_id,
-                recipient_id=recipient,
-                invoice_id=invoice_id,
-                type=notification_type,
-                message=message,
-            )
-            for recipient in recipients
-        )
-        await self._session.flush()

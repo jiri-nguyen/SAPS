@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1017",
+  "invoice_date": "2026-12-11",
+  "currency": "USD",
+  "subtotal_amount": "45.00",
+  "tax_amount": "4.50",
+  "total_amount": "49.50",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Desk organizer",
+      "po_number": "0100017",
+      "po_line_number": 1,
+      "quantity": "5",
+      "unit_price": "9.00",
+      "line_amount": "45.00"
+    }
+  ]
+}
