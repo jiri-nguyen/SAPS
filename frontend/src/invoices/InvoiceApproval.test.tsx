@@ -44,6 +44,8 @@ describe("approval on the invoice page (SAPS-22)", () => {
     expect(screen.getByText(/Non-PO invoice: manual review is required/)).toBeInTheDocument();
     expect(screen.getByText(/resolved by Accounting Member 1 on 2026-12-15 09:30 UTC/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "← Approval queue" })).toHaveAttribute("href", "#/approvals");
+    expect(screen.queryByText(/Non-PO invoice: Non-PO invoice/)).not.toBeInTheDocument(); // the title is not repeated
+    expect(screen.queryByText(/Claimed by/)).not.toBeInTheDocument(); // only meaningful in exception handling
     expect(screen.queryByRole("button", { name: "Correct data" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Accept as is" })).not.toBeInTheDocument();
   });

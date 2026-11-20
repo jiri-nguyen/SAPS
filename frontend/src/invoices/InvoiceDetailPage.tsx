@@ -5,7 +5,7 @@ import type { UserAccount } from "../api/session";
 import { canHandleExceptions } from "../auth/roles";
 import { href } from "../routing";
 import { errorMessage, isStale } from "./errors";
-import { EXCEPTION_TITLE, STATUS_LABEL, decimal, refusedCodes, text, timestamp } from "./format";
+import { STATUS_LABEL, decimal, exceptionText, refusedCodes, text, timestamp } from "./format";
 import { InvoiceEditForm } from "./InvoiceEditForm";
 
 type Mode = "view" | "edit" | "reject";
@@ -161,7 +161,9 @@ export function InvoiceDetailPage({
         </h2>
         <span className={`badge status ${invoice.status.toLowerCase()}`}>{STATUS_LABEL[invoice.status]}</span>
         <span>Total {decimal(invoice.totalAmount)} USD</span>
-        <span>Claimed by {invoice.assignedTo?.displayName ?? "nobody"}</span>
+        {(inException || invoice.assignedTo != null) && (
+          <span>Claimed by {invoice.assignedTo?.displayName ?? "nobody"}</span>
+        )}
       </header>
 
       {matching && (
@@ -303,8 +305,8 @@ export function InvoiceDetailPage({
           <ul className="exceptions">
             {invoice.exceptions.map((exception) => (
               <li key={exception.id} className={exception.status === "OPEN" ? "open" : "resolved"}>
-                <span className="badge code">{exception.code}</span> {EXCEPTION_TITLE[exception.code]}:{" "}
-                {exception.message}
+                <span className="badge code">{exception.code}</span>{" "}
+                {exceptionText(exception.code, exception.message)}
                 {exception.status === "RESOLVED" && (
                   <span className="muted">
                     {" "}
