@@ -12,6 +12,7 @@ from saps.adapters.persistence.db import get_engine, session_factory
 from saps.adapters.persistence.exception_repository import SqlExceptionUnitOfWork
 from saps.adapters.persistence.invoice_repository import SqlInvoiceRepository
 from saps.adapters.persistence.matching_settings_repository import SqlMatchingSettingsRepository
+from saps.adapters.persistence.notification_inbox import SqlNotificationInbox
 from saps.adapters.persistence.user_repository import SqlUserRepository
 from saps.adapters.queue.dramatiq_queue import DramatiqJobQueue
 from saps.adapters.security.argon2_hasher import Argon2PasswordHasher
@@ -20,6 +21,7 @@ from saps.application.approval import ApprovalService
 from saps.application.auth import AuthService
 from saps.application.exception_handling import ExceptionHandlingService
 from saps.application.matching_settings import MatchingSettingsService
+from saps.application.notifications import NotificationInboxService
 from saps.application.review import ReviewService
 from saps.application.upload import UploadInvoiceService
 from saps.config import get_settings
@@ -166,3 +168,11 @@ async def review_service(
 def matching_settings_service(session: DbSession) -> MatchingSettingsService:
     """Runs in the request's transaction; the settings row lock ends with it."""
     return MatchingSettingsService(SqlMatchingSettingsRepository(session))
+
+
+# --- Notifications (SAPS-24) ----------------------------------------------------------------------------
+
+
+def notification_service(session: DbSession) -> NotificationInboxService:
+    """Runs in the request's transaction; every operation is scoped to the caller."""
+    return NotificationInboxService(SqlNotificationInbox(session), utc_now)

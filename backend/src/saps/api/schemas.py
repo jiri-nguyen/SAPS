@@ -15,11 +15,13 @@ from saps.domain.invoices import (
     InvoiceStatus,
     InvoiceType,
     MatchStatus,
+    NotificationType,
 )
 from saps.domain.matching import MatchingRules
 from saps.domain.users import CurrentUser, Role
 from saps.ports.invoices import InvoiceEventView, InvoiceSummaryView, InvoiceView
 from saps.ports.matching_settings import MatchingSettingsView
+from saps.ports.notifications import NotificationPage as NotificationPageView
 
 
 class CamelModel(BaseModel):
@@ -259,3 +261,26 @@ class MatchingSettingsUpdate(CamelModel):
 
     def rules(self) -> MatchingRules:
         return MatchingRules(Decimal(self.price_tolerance_usd), Decimal(self.approval_threshold_usd))
+
+
+class Notification(_ReadModel):
+    id: UUID
+    type: NotificationType
+    invoice_id: UUID
+    message: str
+    read_at: datetime | None
+    created_at: datetime
+
+
+class NotificationPage(CamelModel):
+    items: list[Notification]
+    next_page_token: str | None
+    unread_count: int
+
+    @classmethod
+    def from_view(cls, page: NotificationPageView) -> Self:
+        return cls(
+            items=[Notification.model_validate(item) for item in page.items],
+            next_page_token=page.next_page_token,
+            unread_count=page.unread_count,
+        )
