@@ -3,7 +3,7 @@
 openapi: 3.1.0
 info:
   title: SAPS API
-  version: "0.4.3"
+  version: "0.4.4"
   description: |
     HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload, the exception queue,
     approval, final review, notifications and matching settings.
@@ -570,6 +570,11 @@ paths:
       description: |
         Only the Accounting Manager (DEC-015). New values apply to matching runs and approval decisions that start
         after the change; invoices keep the values they were processed with (`priceToleranceApplied`, `approvalThresholdApplied`).
+
+        Both values are sent together and are 0 or more with no upper limit (DEC-045). A value that is missing, not a
+        decimal string or has too many decimals is a `400`; a negative value is a `422` whose `errors` name the field.
+        Saving the same values changes nothing: `updatedAt` and `updatedBy` keep showing the last real change (DEC-046).
+        `updatedBy` is the display name of the user, or `system` for the defaults created with the tenant.
       tags: [MatchingSettings]
       x-roles: [ACCOUNTING_MANAGER]
       parameters:

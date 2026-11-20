@@ -24,9 +24,18 @@ def problem(
     return JSONResponse(body, status_code=status, media_type=PROBLEM_JSON)
 
 
+class FieldProblem(StarletteHTTPException):
+    """An error answer that names the fields at fault (`errors` of the Problem schema)."""
+
+    def __init__(self, status_code: int, detail: str, errors: list[dict[str, str]]) -> None:
+        super().__init__(status_code, detail)
+        self.errors = errors
+
+
 async def _http_exception(_: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, StarletteHTTPException)
-    response = problem(exc.status_code, str(exc.detail) if exc.detail else None)
+    errors = exc.errors if isinstance(exc, FieldProblem) else None
+    response = problem(exc.status_code, str(exc.detail) if exc.detail else None, errors)
     if exc.headers:
         response.headers.update(exc.headers)
     return response
