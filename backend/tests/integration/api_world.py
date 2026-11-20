@@ -82,6 +82,9 @@ class Api:
             who, "POST", f"/v1/invoices/{invoice_id}/rejection", json={"reason": reason}
         )
 
+    async def confirm(self, who: str, invoice_id: uuid.UUID) -> Response:
+        return await self.request(who, "POST", f"/v1/invoices/{invoice_id}/confirmation")
+
     async def decide(
         self, who: str, invoice_id: uuid.UUID, decision: str, comment: str | None = None
     ) -> Response:

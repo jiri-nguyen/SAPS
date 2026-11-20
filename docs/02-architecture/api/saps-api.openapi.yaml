@@ -3,7 +3,7 @@
 openapi: 3.1.0
 info:
   title: SAPS API
-  version: "0.4.2"
+  version: "0.4.3"
   description: |
     HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload, the exception queue,
     approval, final review, notifications and matching settings.
@@ -392,6 +392,8 @@ paths:
       responses:
         "200":
           description: Completed
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Invoice" }

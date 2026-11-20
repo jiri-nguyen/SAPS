@@ -1144,6 +1144,7 @@ export interface operations {
             /** @description Completed */
             200: {
                 headers: {
+                    ETag: components["headers"]["ETag"];
                     [name: string]: unknown;
                 };
                 content: {
