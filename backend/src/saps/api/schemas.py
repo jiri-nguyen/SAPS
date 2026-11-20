@@ -16,8 +16,10 @@ from saps.domain.invoices import (
     InvoiceType,
     MatchStatus,
 )
+from saps.domain.matching import MatchingRules
 from saps.domain.users import CurrentUser, Role
 from saps.ports.invoices import InvoiceEventView, InvoiceSummaryView, InvoiceView
+from saps.ports.matching_settings import MatchingSettingsView
 
 
 class CamelModel(BaseModel):
@@ -227,3 +229,33 @@ class ApprovalCreate(CamelModel):
 
     decision: ApprovalDecision
     comment: str | None = Field(default=None, max_length=1000)
+
+
+class MatchingSettings(CamelModel):
+    """`getMatchingSettings` / `updateMatchingSettings` answer; decimals are JSON strings."""
+
+    price_tolerance_usd: Decimal
+    approval_threshold_usd: Decimal
+    updated_at: datetime
+    updated_by: str
+
+    @classmethod
+    def from_view(cls, view: MatchingSettingsView) -> Self:
+        return cls(
+            price_tolerance_usd=view.rules.price_tolerance,
+            approval_threshold_usd=view.rules.approval_threshold,
+            updated_at=view.updated_at,
+            updated_by=view.updated_by,
+        )
+
+
+class MatchingSettingsUpdate(CamelModel):
+    """Both values together (SAPS-28 BR-03). Patterns of the contract: UnitPrice (4 decimals), Amount (2)."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
+
+    price_tolerance_usd: Annotated[str, Field(pattern=r"^-?\d{1,14}(\.\d{1,4})?$")]
+    approval_threshold_usd: Annotated[str, Field(pattern=r"^-?\d{1,16}(\.\d{1,2})?$")]
+
+    def rules(self) -> MatchingRules:
+        return MatchingRules(Decimal(self.price_tolerance_usd), Decimal(self.approval_threshold_usd))

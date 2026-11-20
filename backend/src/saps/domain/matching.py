@@ -75,6 +75,16 @@ class MatchingRules:
     approval_threshold: Decimal
 
 
+def settings_errors(rules: MatchingRules) -> dict[str, str]:
+    """SAPS-28 BR-03 (DEC-045): both settings are 0 USD or more. Keys are the API field names."""
+    errors: dict[str, str] = {}
+    if rules.price_tolerance < 0:
+        errors["priceToleranceUsd"] = "The price tolerance must be 0 or more."
+    if rules.approval_threshold < 0:
+        errors["approvalThresholdUsd"] = "The approval threshold must be 0 or more."
+    return errors
+
+
 @dataclass(frozen=True)
 class Finding:
     """An exception found by matching; `line_id` is None for header-level codes (EX1, EX2, EX5)."""

@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from saps.adapters.persistence.db import database_is_reachable, dispose_engines, get_engine
 from saps.api.origin_check import OriginCheckMiddleware
 from saps.api.problems import install_problem_handlers
-from saps.api.routers import invoices, session
+from saps.api.routers import invoices, matching_settings, session
 from saps.api.upload_limit import UploadSizeLimitMiddleware
 from saps.config import get_settings
 from saps.logging_config import configure_logging
@@ -45,6 +45,7 @@ def create_app() -> FastAPI:
     install_problem_handlers(app)
     app.include_router(session.router)
     app.include_router(invoices.router)
+    app.include_router(matching_settings.router)
 
     @app.get("/health", operation_id="getHealth", tags=["Health"])
     async def get_health() -> Health:
