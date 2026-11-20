@@ -98,7 +98,7 @@ sequenceDiagram
 | EC-03 | Same `Idempotency-Key` sent twice (double click, network retry) | Second request returns the first invoice | `202`, same invoice id |
 | EC-04 | Two requests with the same key at the same time | Unique index (`tenant_id`, `idempotency_key`); the loser reads and returns the winner's invoice | `202` |
 | EC-05 | File stored, database commit fails | Orphan object stays; harmless in the PoC ([ADR-0006](../02-architecture/adr/0006-store-invoice-files-in-seaweedfs.md)) | `500`; client retries with the same key |
-| EC-06 | Commit succeeds, sending the message fails | Invoice stays Uploaded; the sweeper sends `process_invoice` later ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S1; sweeper: own Linear issue, Q1) | `202` already returned; log `process_invoice_not_sent` |
+| EC-06 | Commit succeeds, sending the message fails | Invoice stays Uploaded; the sweeper sends `process_invoice` later ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S1; sweeper: [SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37)) | `202` already returned; log `process_invoice_not_sent` |
 | EC-07 | SAPS File Storage unavailable | Nothing in the database | `500` problem+json |
 | EC-08 | Accounting Manager tries to upload | Refused | `403` |
 
@@ -143,7 +143,7 @@ Sends `process_invoice(invoice_id)` ([ADR-0004](../02-architecture/adr/0004-proc
 | TS-02 | 10 MB + 1 byte → 413; empty → 400; `.pdf` name with text content → 415 | Integration | BR-03, EC-01, EC-02 |
 | TS-03 | Same Idempotency-Key twice, sequentially and in parallel → one invoice | Integration | BR-06, EC-03, EC-04 |
 | TS-04 | Same file with two keys → two invoices | Integration | BR-07 |
-| TS-05 | Message lost after commit → sweeper processes the invoice (tested with the sweeper issue, Q1); here: upload still answers `202` when sending fails | Integration | EC-06 |
+| TS-05 | Message lost after commit → sweeper processes the invoice (tested in [SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37)); here: upload still answers `202` when sending fails | Integration | EC-06 |
 | TS-06 | Accounting Manager upload → 403; no `Origin` header → 403 | Integration | EC-08, §3.7 |
 | TS-07 | Upload several files in the Web App; statuses update by polling | E2E | BR-08 |
 | TS-08 | All demo scenarios DS-01 … DS-20 start with this upload | E2E | [Test Strategy §11](../05-testing/test-strategy.md#11-poc-demo-acceptance) |
@@ -163,7 +163,7 @@ Sends `process_invoice(invoice_id)` ([ADR-0004](../02-architecture/adr/0004-proc
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | Linear key of the processing sweeper issue (re-sends `process_invoice` for invoices stuck in Uploaded, ADR-0004 S1; TS-05 moves there) | Solution Architect / Tech Lead | before merge | open — sweeper is out of this issue (agreed 2026-12-15), key TBD |
+| Q1 | Linear key of the processing sweeper issue (re-sends `process_invoice` for invoices stuck in Uploaded, ADR-0004 S1; TS-05 moves there) | Solution Architect / Tech Lead | before merge | answered: [SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37) (2026-12-15) |
 
 ## 8. Documentation Checklist
 - [x] API spec updated (`uploadInvoice` description; version 0.3.1)
