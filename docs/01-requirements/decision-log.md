@@ -56,6 +56,8 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, 
 | [DEC-042](#dec-042) | 2026-12-14 | Normalize invoice numbers for duplicate detection | Business | confirmed |
 | [DEC-043](#dec-043) | 2026-12-14 | Duplicate check ignores rejected invoices | Business | confirmed |
 | [DEC-044](#dec-044) | 2026-12-15 | Dependency audit gate: runtime blocking, dev-only report when no fix exists | Process | confirmed |
+| [DEC-045](#dec-045) | 2026-12-15 | Allowed values of the matching settings | Business | confirmed |
+| [DEC-046](#dec-046) | 2026-12-15 | Only the last change of the matching settings is kept | Scope | confirmed |
 
 ## 2. Decisions
 
@@ -1097,3 +1099,52 @@ PR on an unfixable dev-tool advisory gives no security benefit.
 
 **Consequences & follow-ups:** Findings are rechecked with each weekly Dependabot update; when a fix exists, it is applied.
 
+### DEC-045
+**Allowed values of the matching settings**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-15 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20261215](meetings/2026-12-15-matching-settings-rules.md) D1 |
+| Impacts | [SAPS-28](../03-features/SAPS-28-matching-settings.md) BR-03, EC-02, EC-03; refines [DEC-015](#dec-015) |
+| Supersedes / Superseded by | — |
+
+**Context:** [DEC-015](#dec-015) makes the price tolerance and the approval threshold settings but does not say which
+values are allowed.
+
+**Decision:** The price tolerance is 0 USD or more, with up to 4 decimals. The approval threshold is 0 USD or more, with
+up to 2 decimals. There is no upper limit for either. A value with too many decimals is refused with `400`; a negative
+value is refused with `422` naming the field.
+
+**Rationale:** 0 is a valid business choice (the unit price must equal the PO price; every invoice with a positive total
+needs approval). The decimals match the stored columns of
+[MatchingSettings](../02-architecture/data-model.md#matchingsettings).
+
+**Consequences & follow-ups:** None.
+
+### DEC-046
+**Only the last change of the matching settings is kept**
+
+| Field | Value |
+|---|---|
+| Date | 2026-12-15 |
+| Category | Scope |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20261215](meetings/2026-12-15-matching-settings-rules.md) D2 |
+| Impacts | [SAPS-28](../03-features/SAPS-28-matching-settings.md) BR-05; data model unchanged; refines [DEC-015](#dec-015) |
+| Supersedes / Superseded by | — |
+
+**Context:** The Matching settings screen shows who changed the settings and when. A full history of changes would need a
+new entity and a history screen.
+
+**Decision:** In the PoC, only the last change is kept (`updated_by`, `updated_at` on MatchingSettings). There is no
+history of changes and no history screen. The application log records the old and new values of each change
+(`matching_settings_updated`).
+
+**Rationale:** The settings change rarely; the log is enough for the PoC.
+
+**Consequences & follow-ups:** A history of changes may be requested after the PoC; it would add a new entity.
