@@ -58,6 +58,6 @@ class ProcessInvoiceService:
 
         ensure_transition(invoice.status, InvoiceStatus.MATCHING)
         await self._repo.save_extraction(invoice, extracted, actor=SYSTEM_ACTOR, now=self._clock())
-        # The duplicate check (EX9, SAPS-23) runs here, before matching.
+        # The matching run starts with the duplicate check (EX9, SAPS-23 BR-06).
         outcome = await self._matching.match(invoice.id)
         return ProcessOutcome(invoice.id, invoice.tenant_id, True, len(extracted.lines), None, outcome)

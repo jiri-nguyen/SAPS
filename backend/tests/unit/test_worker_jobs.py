@@ -25,3 +25,30 @@ async def test_rematch_actor_runs_matching(monkeypatch: pytest.MonkeyPatch) -> N
     invoice_id = uuid4()
     await actors.rematch_invoice.fn.__wrapped__(str(invoice_id))
     assert called == [invoice_id]
+
+
+def test_duplicate_logs(monkeypatch: pytest.MonkeyPatch) -> None:  # SAPS-23 §3.9
+    from saps.application.matching import MatchOutcome
+    from saps.domain.invoices import ExceptionCode, InvoiceStatus
+
+    messages: list[tuple[str, dict[str, object]]] = []
+    monkeypatch.setattr(jobs.log, "info", lambda msg, extra: messages.append((msg, extra)))
+    invoice_id, other = uuid4(), uuid4()
+    found = MatchOutcome(
+        invoice_id,
+        uuid4(),
+        None,
+        InvoiceStatus.EXCEPTION,
+        (ExceptionCode.EX9,),
+        (ExceptionCode.EX9,),
+        (),
+        (other,),
+    )
+    cleared = MatchOutcome(
+        invoice_id, uuid4(), None, InvoiceStatus.PENDING_REVIEW, (), (), (ExceptionCode.EX9,)
+    )
+    jobs._log_matching(found, 0.0)
+    jobs._log_matching(cleared, 0.0)
+    names = [m for m, _ in messages]
+    assert names == ["duplicate_found", "matching_completed", "duplicate_cleared", "matching_completed"]
+    assert messages[0][1] == {"invoice_id": str(invoice_id), "other_invoice_id": str(other)}

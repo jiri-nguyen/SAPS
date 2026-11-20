@@ -7,6 +7,7 @@ from sqlalchemy import select, update
 
 from saps.adapters.persistence.models import Invoice, InvoiceEvent, InvoiceException, InvoiceLine
 from saps.adapters.persistence.notification_repository import SqlNotifications
+from saps.domain.duplicates import normalize_invoice_number
 from saps.domain.extraction import ExtractedInvoice
 from saps.domain.invoices import ExceptionCode, InvoiceStatus
 from saps.ports.extraction import StoredFile
@@ -44,6 +45,7 @@ class SqlProcessingRepository(SqlNotifications):
                 vendor_code=extracted.vendor_code,
                 vendor_name=extracted.vendor_name,
                 invoice_number=extracted.invoice_number,
+                invoice_number_normalized=normalize_invoice_number(extracted.invoice_number),  # SAPS-23
                 invoice_date=extracted.invoice_date,
                 currency=extracted.currency,
                 subtotal_amount=extracted.subtotal_amount,

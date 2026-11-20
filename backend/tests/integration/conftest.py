@@ -5,10 +5,11 @@ Skipped when Docker is not available.
 
 import os
 import subprocess
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 BACKEND = Path(__file__).parents[2]
 
@@ -39,3 +40,12 @@ def database_url() -> Iterator[str]:
         yield url
     finally:
         container.stop()
+
+
+@pytest.fixture
+async def engine(database_url: str) -> AsyncIterator[AsyncEngine]:
+    engine = create_async_engine(database_url)
+    try:
+        yield engine
+    finally:
+        await engine.dispose()

@@ -6,6 +6,7 @@ from datetime import datetime
 from uuid import UUID
 
 from saps.application.notifications import notify_status
+from saps.domain.duplicates import DuplicateCandidate, duplicate_finding, normalize_invoice_number
 from saps.domain.invoices import (
     ExceptionCode,
     InvoiceStatus,
@@ -18,8 +19,9 @@ from saps.ports.matching import InvoiceForMatching, MatchingRepository, MatchUpd
 
 SYSTEM_ACTOR = "system"
 MATCH_ACTION = "MATCH"
-# EX9 belongs to the duplicate check (SAPS-23); matching never opens or resolves it.
-MATCHING_CODES = frozenset(ExceptionCode) - {ExceptionCode.EX9}
+# Codes a matching run opens and resolves: all of them, EX9 included, because the duplicate check
+# (SAPS-23) runs inside the same run (process_invoice and rematch_invoice, SAPS-23 BR-06).
+MATCHING_CODES = frozenset(ExceptionCode)
 
 
 @dataclass(frozen=True)
@@ -31,6 +33,7 @@ class MatchOutcome:
     open_codes: tuple[ExceptionCode, ...]
     opened: tuple[ExceptionCode, ...]
     resolved: tuple[ExceptionCode, ...]
+    duplicate_of: tuple[UUID, ...] = ()
 
 
 class MatchingService:
@@ -47,6 +50,7 @@ class MatchingService:
         if invoice is None or invoice.status is not InvoiceStatus.MATCHING:
             return None
 
+        duplicates = await self._find_duplicates(invoice)
         rules = await self._repo.get_rules(invoice.tenant_id)
         derivation = derive_invoice_type(invoice.invoice)
         purchase_orders, receipts, invoiced = {}, [], {}
@@ -59,7 +63,8 @@ class MatchingService:
             invoiced = await self._repo.already_invoiced(invoice.tenant_id, keys, invoice.id)
         result = evaluate(invoice.invoice, derivation, rules, purchase_orders, receipts, invoiced)
 
-        opened, resolved, messages = _reconcile(invoice, result.findings)
+        findings = result.findings + ((duplicate_finding(duplicates),) if duplicates else ())
+        opened, resolved, messages = _reconcile(invoice, findings)
         open_codes = sorted(
             {e.code for e in invoice.open_exceptions if e.id not in resolved} | {f.code for f in opened},
             key=_code_order,
@@ -100,7 +105,18 @@ class MatchingService:
             tuple(open_codes),
             tuple(opened_codes),
             tuple(resolved_codes),
+            tuple(c.id for c in duplicates),
         )
+
+    async def _find_duplicates(self, invoice: InvoiceForMatching) -> list[DuplicateCandidate]:
+        """SAPS-23: same tenant, vendor and normalized number; no check without both values (EC-06)."""
+        vendor = invoice.invoice.vendor_code
+        number = normalize_invoice_number(invoice.invoice_number)
+        if not vendor or number is None:
+            return []
+        # Held until the job commits, so two copies processed in parallel cannot both pass (EC-01).
+        await self._repo.lock_duplicate_key(invoice.tenant_id, vendor, number)
+        return await self._repo.find_duplicates(invoice.tenant_id, vendor, number, invoice.id)
 
 
 def _code_order(code: ExceptionCode) -> int:

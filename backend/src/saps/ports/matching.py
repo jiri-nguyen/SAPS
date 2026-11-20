@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Any, Protocol
 from uuid import UUID
 
+from saps.domain.duplicates import DuplicateCandidate
 from saps.domain.invoices import ExceptionCode, InvoiceStatus, InvoiceType
 from saps.domain.matching import InvoiceToMatch, LineResult, MatchingRules, PoLineKey
 from saps.ports.notifications import NotificationPort
@@ -69,6 +70,16 @@ class MatchingRepository(NotificationPort, Protocol):
         self, tenant_id: UUID, keys: Sequence[PoLineKey], exclude_invoice_id: UUID
     ) -> dict[PoLineKey, Decimal]:
         """BR-10: quantities on other invoices in PendingApproval, PendingReview or Completed."""
+        ...
+
+    async def lock_duplicate_key(self, tenant_id: UUID, vendor_code: str, invoice_number: str) -> None:
+        """Transaction-level lock per (tenant, vendor, normalized invoice number) (SAPS-23 EC-01)."""
+        ...
+
+    async def find_duplicates(
+        self, tenant_id: UUID, vendor_code: str, invoice_number: str, exclude_invoice_id: UUID
+    ) -> list[DuplicateCandidate]:
+        """Other invoices with this vendor and normalized number in a compared status (BR-01, BR-03)."""
         ...
 
     async def save_match(
