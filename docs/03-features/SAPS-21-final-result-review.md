@@ -4,7 +4,7 @@ title: "SAPS-21 — Final result review"
 status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
-last_updated: 2026-12-11
+last_updated: 2026-12-15
 related: [UC-05, UC-06, SCP-IN-05, SCP-IN-14, DEC-013, DEC-014, DEC-021, DEC-039, DEC-040, DEC-041, NFR-SEC-001, ADR-0007, ADR-0008, SAPS-19, SAPS-20, SAPS-22]
 ---
 
@@ -49,7 +49,7 @@ confirms (status Completed, ready for posting) or rejects the invoice. The resul
 ### 3.1 Affected Building Blocks
 | Container | Change | Description |
 |---|---|---|
-| SAPS Web App | new | Review queue (`status=PENDING_REVIEW`), read-only result view, confirm and reject actions |
+| SAPS Web App | new | Review queue (`status=PENDING_REVIEW`; shares one queue page with the approval queue of SAPS-22), read-only result view with the approval decision, Confirm and Reject (reason required); banners for Completed (ready for posting) and Rejected (with the reason); routes `#/review`, `#/review/{id}` |
 | SAPS API | new | `confirmInvoice`; `rejectInvoice` for PendingReview; role, tenant and status checks |
 | SAPS Database | modified | Writes Invoice status, `rejected_reason`, InvoiceEvent |
 
@@ -91,16 +91,19 @@ sequenceDiagram
 | EC-02 | Reject without a reason | Refused | `400` |
 | EC-03 | Accounting Manager calls `confirmInvoice` | Refused (role) | `403` |
 | EC-04 | Invoice not in PendingReview | Refused | `409` |
+| EC-05 | A member rejects an invoice in Pending approval through `rejectInvoice` | Refused; the Accounting Manager rejects it through the approval ([SAPS-22](SAPS-22-invoice-approval.md)) | `409` |
+
+**Order of checks:** invoice exists in the caller's tenant (`404`) → status (`409`). `rejectInvoice` keeps the SAPS-20 rules for invoices in Exception (claimant only).
 
 ### 3.4 API Changes
-No change. Uses operations of [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) 0.3.0:
+Contract 0.4.3: the confirmation response carries the invoice's `ETag` like the other `Invoice` responses (additive). Uses operations of [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml):
 
 | operationId | Method & path | Change | Breaking | Spec |
 |---|---|---|---|---|
 | `listInvoices` | GET /v1/invoices?status=PENDING_REVIEW | none | No | [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
 | `getInvoice`, `downloadInvoiceFile` | GET /v1/invoices/{invoiceId}, …/file | none | No | ″ |
-| `confirmInvoice` | POST /v1/invoices/{invoiceId}/confirmation | none | No | ″ |
-| `rejectInvoice` | POST /v1/invoices/{invoiceId}/rejection | none | No | ″ |
+| `confirmInvoice` | POST /v1/invoices/{invoiceId}/confirmation | `ETag` header on `200` | No | ″ |
+| `rejectInvoice` | POST /v1/invoices/{invoiceId}/rejection | now also in Pending review, for any member ([SAPS-20](SAPS-20-exception-handling.md) EC-13) | No | ″ |
 
 ### 3.6 Data Model Changes
 None. Uses Invoice `status` / `rejected_reason` and InvoiceEvent ([data model](../02-architecture/data-model.md)).
@@ -133,6 +136,8 @@ None. Uses Invoice `status` / `rejected_reason` and InvoiceEvent ([data model](.
 | Decision | Rationale | ADR |
 |---|---|---|
 | No claim for the review step | Review is a single action; a conditional status update prevents double handling | — |
+| The status check runs under the invoice row lock | The second of two members acting at once waits, then sees the new status and gets `409` (EC-01) | [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) |
+| Rejecting at final review reuses `rejectInvoice` and its event `REJECT` | One operation for every member rejection; the status decides the rule (claimant in Exception, anyone in Pending review) | — |
 
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |

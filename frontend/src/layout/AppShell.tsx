@@ -5,9 +5,9 @@ import { type InvoiceApi, createInvoiceApi } from "../api/invoices";
 import type { UserAccount } from "../api/session";
 import { MENU_BY_ROLE, ROLE_LABEL } from "../auth/roles";
 import { useSession } from "../auth/session-context";
-import { ApprovalQueuePage } from "../invoices/ApprovalQueuePage";
 import { ExceptionQueuePage } from "../invoices/ExceptionQueuePage";
 import { InvoiceDetailPage, type Queue } from "../invoices/InvoiceDetailPage";
+import { StatusQueuePage } from "../invoices/StatusQueuePage";
 import { UploadPage } from "../invoices/UploadPage";
 import { href, useRoute } from "../routing";
 
@@ -29,7 +29,8 @@ export function AppShell({
   const route = useRoute();
   // A route the role may not open (or none) shows the role's first screen (SAPS-27 BR-10).
   const current = menu.find((item) => item.id === route.page) ?? menu[0];
-  const queue: Queue | null = current.id === "exceptions" || current.id === "approvals" ? current.id : null;
+  const queue: Queue | null =
+    current.id === "exceptions" || current.id === "approvals" || current.id === "review" ? current.id : null;
   const invoiceId = route.page === current.id ? route.invoiceId : undefined;
   const detail = queue !== null && invoiceId !== undefined;
 
@@ -43,7 +44,25 @@ export function AppShell({
   } else if (current.id === "exceptions") {
     page = <ExceptionQueuePage api={exceptions} role={user.role} />;
   } else if (current.id === "approvals") {
-    page = <ApprovalQueuePage api={exceptions} />;
+    page = (
+      <StatusQueuePage
+        api={exceptions}
+        status="PENDING_APPROVAL"
+        queue="approvals"
+        label="Approval queue"
+        emptyText="No invoices wait for approval."
+      />
+    );
+  } else if (current.id === "review") {
+    page = (
+      <StatusQueuePage
+        api={exceptions}
+        status="PENDING_REVIEW"
+        queue="review"
+        label="Review queue"
+        emptyText="No invoices wait for the final review."
+      />
+    );
   } else {
     page = <p>This screen is not available yet.</p>;
   }

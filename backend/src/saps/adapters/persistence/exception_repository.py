@@ -32,6 +32,7 @@ UPDATE_ACTION = "UPDATE_FIELDS"
 RESOLVE_ACTION = "RESOLVE"
 REJECT_ACTION = "REJECT"
 APPROVE_ACTION = "APPROVE"
+CONFIRM_ACTION = "CONFIRM"
 
 
 class SqlExceptionRepository(SqlNotifications):
@@ -181,6 +182,11 @@ class SqlExceptionRepository(SqlNotifications):
         action = APPROVE_ACTION if decision is ApprovalDecision.APPROVED else REJECT_ACTION
         details = {"decision": decision.value, "comment": comment}
         self._add_event(invoice, status, action, actor, now, details)
+        await self._session.flush()
+
+    async def confirm(self, invoice: InvoiceForHandling, *, actor: str, now: datetime) -> None:
+        await self._update_invoice(invoice.id, actor, status=InvoiceStatus.COMPLETED)
+        self._add_event(invoice, InvoiceStatus.COMPLETED, CONFIRM_ACTION, actor, now, None)
         await self._session.flush()
 
     # --- helpers -----------------------------------------------------------------------------------

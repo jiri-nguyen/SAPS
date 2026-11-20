@@ -104,5 +104,18 @@ class ApprovalRepository(NotificationPort, Protocol):
 
 ApprovalUnitOfWork = Callable[[], AbstractAsyncContextManager[ApprovalRepository]]
 
+
+class ReviewRepository(Protocol):
+    """SAPS-21: the final review of an invoice in PendingReview."""
+
+    async def lock_invoice(self, tenant_id: UUID, invoice_id: UUID) -> InvoiceForHandling | None: ...
+
+    async def confirm(self, invoice: InvoiceForHandling, *, actor: str, now: datetime) -> None:
+        """Status Completed ("ready for posting") and InvoiceEvent CONFIRM."""
+        ...
+
+
+ReviewUnitOfWork = Callable[[], AbstractAsyncContextManager[ReviewRepository]]
+
 ExceptionUnitOfWork = Callable[[], AbstractAsyncContextManager[ExceptionRepository]]
 """Starts a transaction and gives its repository; commits when the block ends, rolls back on an error."""

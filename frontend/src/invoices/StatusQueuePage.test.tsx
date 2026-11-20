@@ -3,20 +3,33 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "../api/client";
+import type { ExceptionApi } from "../api/exceptions";
 import { fakeExceptionApi, summary } from "../test/invoices";
-import { ApprovalQueuePage } from "./ApprovalQueuePage";
+import { StatusQueuePage } from "./StatusQueuePage";
 
 const waiting = (overrides = {}) =>
   summary({ status: "PENDING_APPROVAL", openExceptionCodes: [], ...overrides });
 const page = (items = [waiting()], nextPageToken: string | null = null) => ({ items, nextPageToken });
 
-describe("ApprovalQueuePage", () => {
+function ApprovalQueuePage({ api }: { api: ExceptionApi }) {
+  return (
+    <StatusQueuePage
+      api={api}
+      status="PENDING_APPROVAL"
+      queue="approvals"
+      label="Approval queue"
+      emptyText="No invoices wait for approval."
+    />
+  );
+}
+
+describe("StatusQueuePage", () => {
   it("lists the invoices that wait for approval and links to them", async () => {
     const list = vi
       .fn()
       .mockResolvedValue(page([waiting({ totalAmount: "495.00", invoiceType: "TRADE_PO" })]));
     render(<ApprovalQueuePage api={fakeExceptionApi({ list })} />);
-    const row = await screen.findByTestId("approval-row");
+    const row = await screen.findByTestId("status-row");
     expect(row).toHaveTextContent("Alpha Office Supplies Co.");
     expect(row).toHaveTextContent("495.00");
     expect(row).toHaveTextContent("TRADE_PO");
@@ -29,7 +42,7 @@ describe("ApprovalQueuePage", () => {
     render(<ApprovalQueuePage api={fakeExceptionApi({ list })} />);
     expect(await screen.findByText("No invoices wait for approval.")).toBeInTheDocument();
     await userEvent.setup().click(screen.getByRole("button", { name: "Refresh" }));
-    expect(await screen.findByTestId("approval-row")).toBeInTheDocument();
+    expect(await screen.findByTestId("status-row")).toBeInTheDocument();
   });
 
   it("loads more pages", async () => {
@@ -70,5 +83,39 @@ describe("ApprovalQueuePage", () => {
     unmount();
     resolve(page());
     await Promise.resolve();
+  });
+
+  it("serves the review queue with its own status, links and empty text (SAPS-21)", async () => {
+    const list = vi
+      .fn()
+      .mockResolvedValueOnce(page([]))
+      .mockResolvedValueOnce(page([summary({ status: "PENDING_REVIEW" })]));
+    const api = fakeExceptionApi({ list });
+    const { rerender } = render(
+      <StatusQueuePage
+        api={api}
+        status="PENDING_REVIEW"
+        queue="review"
+        label="Review queue"
+        emptyText="Nothing to review."
+      />,
+    );
+    expect(await screen.findByText("Nothing to review.")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Review queue" })).toBeInTheDocument();
+    expect(list).toHaveBeenCalledWith({ status: ["PENDING_REVIEW"] });
+    rerender(
+      <StatusQueuePage
+        api={api}
+        status="COMPLETED"
+        queue="review"
+        label="Review queue"
+        emptyText="Nothing to review."
+      />,
+    );
+    expect(await screen.findByRole("link", { name: "AOS-2026-1013" })).toHaveAttribute(
+      "href",
+      "#/review/inv-12",
+    );
+    expect(list).toHaveBeenLastCalledWith({ status: ["COMPLETED"] });
   });
 });

@@ -143,6 +143,36 @@ describe("App", () => {
     expect(exceptionApi.getVersioned).toHaveBeenCalledWith("inv-12");
   });
 
+  it("shows the review queue and an invoice to review to a member (SAPS-21)", async () => {
+    const exceptionApi = fakeExceptionApi({
+      list: vi.fn().mockResolvedValue({
+        items: [{ ...summary(), status: "PENDING_REVIEW", openExceptionCodes: [] }],
+        nextPageToken: null,
+      }),
+    });
+    window.location.hash = "#/review";
+    render(
+      <App
+        sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MEMBER) })}
+        checkHealth={pending}
+        exceptionApi={exceptionApi}
+      />,
+    );
+    expect(await screen.findByRole("heading", { name: "Review queue" })).toBeInTheDocument();
+    expect(exceptionApi.list).toHaveBeenCalledWith({ status: ["PENDING_REVIEW"] });
+    await userEvent.setup().click(await screen.findByRole("link", { name: "AOS-2026-1013" }));
+    expect(await screen.findByRole("link", { name: "← Review queue" })).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/review/inv-12");
+  });
+
+  it("does not open the review queue for a manager", async () => {
+    window.location.hash = "#/review/inv-12";
+    render(
+      <App sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MANAGER) })} checkHealth={pending} />,
+    );
+    expect(await screen.findByRole("heading", { name: "Approval queue" })).toBeInTheDocument();
+  });
+
   it("does not open the approval queue for a member", async () => {
     window.location.hash = "#/approvals/inv-12";
     render(

@@ -136,7 +136,7 @@ describe("InvoiceDetailPage", () => {
     expect(
       await screen.findByText("Saved. Matching runs again with the corrected data."),
     ).toBeInTheDocument();
-    expect(await screen.findByText(/exception handling is finished/)).toBeInTheDocument();
+    expect(await screen.findByText(/waits for your final review/)).toBeInTheDocument(); // next step (SAPS-21)
     expect(screen.getByText("Pending review", { selector: ".badge" })).toBeInTheDocument();
     await waitFor(() => expect(getVersioned.mock.calls.length).toBeGreaterThanOrEqual(3));
   });

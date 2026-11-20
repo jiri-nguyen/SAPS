@@ -90,8 +90,8 @@ describe("approval on the invoice page (SAPS-22)", () => {
       "does not wait for approval (status Pending review)",
     );
     expect(
-      await screen.findByText(/This invoice is Pending review; the approval is finished\./),
-    ).toBeInTheDocument();
+      await screen.findByText("This invoice waits for the final review by an Accounting Member."),
+    ).toBeInTheDocument(); // the other manager approved it: next step SAPS-21
     expect(screen.queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
   });
 

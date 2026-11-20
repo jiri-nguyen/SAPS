@@ -108,6 +108,9 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   `ds-03-above-threshold.pdf` uploaded by `member1`), open the invoice (the accepted EX2 shows who accepted it and when) and
   **Approve** (Pending review, members are notified) or **Reject** with a comment (Rejected, no notification). A member sees that the
   invoice waits for a manager and has no decision buttons.
+- Final review ([SAPS-21](https://linear.app/jiringuyen/issue/SAPS-21)): as `member2`, open **Review queue**, open DS-01 and **Confirm**
+  (Completed: ready for posting), or DS-17 and **Reject** with a reason. The whole demo chain: `member1` uploads DS-03 →
+  `manager1` approves → `member2` confirms (the review screen shows the approval).
 
 ## 3. Project Structure
 ```

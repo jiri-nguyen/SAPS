@@ -305,10 +305,13 @@ async def test_reject_needs_a_reason(api: Api) -> None:  # EC-09
     assert (await api.claim("bob", invoice_id)).status_code == 409  # final state
 
 
-async def test_reject_is_only_for_invoices_in_exception(api: Api) -> None:
-    invoice_id = await api.sample(DS01)  # Pending review: rejecting there comes with SAPS-21
+async def test_a_member_cannot_reject_an_invoice_waiting_for_approval(api: Api) -> None:
+    invoice_id = await api.sample(
+        "ds-03/invoices/ds-03-above-threshold.pdf"
+    )  # a manager rejects it (SAPS-22)
     response = await api.reject("alice", invoice_id)
-    assert response.status_code == 409 and "Pending review" in response.json()["detail"]
+    assert response.status_code == 409 and "Pending approval" in response.json()["detail"]
+    # Rejecting in Pending review (final review) is covered by SAPS-21: tests/integration/test_review_api.py
 
 
 # TS-09 -----------------------------------------------------------------------------------------------

@@ -162,14 +162,19 @@ class ExceptionHandlingService:
             await notify_status(repo, invoice, status, [])
         return await self._view(user, invoice_id)
 
-    async def reject(self, user: CurrentUser, invoice_id: UUID, reason: str) -> InvoiceView:
+    async def reject(
+        self, user: CurrentUser, invoice_id: UUID, reason: str
+    ) -> tuple[InvoiceView, InvoiceStatus]:
+        """Reject during exception handling (claimant only, SAPS-20 BR-08) or at final review (any Accounting
+        Member, no claim: SAPS-21 BR-02, BR-04). Returns the invoice and the status it was rejected from."""
         async with self._uow() as repo:
             invoice = await self._lock(repo, user, invoice_id)
-            _ensure_in_exception(invoice)  # rejecting at final review comes with SAPS-21
-            _ensure_claimant(user, invoice)
+            if invoice.status is not InvoiceStatus.PENDING_REVIEW:
+                _ensure_in_exception(invoice)  # Pending approval is rejected by a manager (SAPS-22)
+                _ensure_claimant(user, invoice)
             ensure_transition(invoice.status, InvoiceStatus.REJECTED)
             await repo.reject(invoice, reason, actor=user.username, now=self._clock())
-        return await self._view(user, invoice_id)
+        return await self._view(user, invoice_id), invoice.status
 
     # --- helpers -----------------------------------------------------------------------------------
 

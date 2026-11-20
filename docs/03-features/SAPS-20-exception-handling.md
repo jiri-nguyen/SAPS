@@ -127,7 +127,7 @@ sequenceDiagram
 | EC-10 | Caller is not the claimant, or is an Accounting Manager | Refused | `403` |
 | EC-11 | The claimant claims the invoice again | Nothing changes | `200` |
 | EC-12 | `lines` is sent | Lines are matched by line number, so their IDs stay valid; a line that is no longer sent is removed and its exceptions are resolved by the member and detached from the line; the re-match then checks everything again | `202` |
-| EC-13 | Reject an invoice that is in Pending review | Not allowed in this feature; rejecting at final review comes with [SAPS-21](https://linear.app/jiringuyen/issue/SAPS-21) | `409` |
+| EC-13 | Reject an invoice that is in Pending review | Handled as the final review by [SAPS-21](SAPS-21-final-result-review.md): any Accounting Member, no claim. A member cannot reject an invoice in Pending approval (the manager rejects it through the approval, [SAPS-22](SAPS-22-invoice-approval.md)) | `200` / `409` |
 | EC-14 | Invalid field values (not a 7-digit PO number, too many decimals, empty or null header field, no field sent) | Refused by the schema | `400` |
 
 **SAPS Web App behaviour:** while the status is Matching it shows "Re-matching in progress" and polls `getInvoice` every 2 s; `412` reloads the invoice and says why; Accept as is is disabled, with the codes named, while EX1, EX3, EX4, EX5, EX8 or EX10 is open; a lost claim race (`409`) is explained and the queue refreshed.
@@ -144,7 +144,7 @@ Contract: [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) 
 | `releaseInvoiceClaim` | DELETE /v1/invoices/{invoiceId}/claim | **new** (BR-03) | No | ″ |
 | `updateInvoice` | PATCH /v1/invoices/{invoiceId} | description: a matching-field change sets status Matching; `409` while Matching | No | ″ |
 | `resolveInvoiceExceptions` | POST /v1/invoices/{invoiceId}/resolution | adds `422` when an exception type may not be accepted (BR-06) | No | ″ |
-| `rejectInvoice` | POST /v1/invoices/{invoiceId}/rejection | `ETag` header; in this feature only for invoices in Exception (Pending review: `409` until SAPS-21) | No | ″ |
+| `rejectInvoice` | POST /v1/invoices/{invoiceId}/rejection | `ETag` header; in Exception for the claimant; in Pending review for any member ([SAPS-21](SAPS-21-final-result-review.md)) | No | ″ |
 | `getInvoice`, `downloadInvoiceFile`, `listInvoiceEvents` | GET … | none | No | ″ |
 
 ### 3.5 Event Changes

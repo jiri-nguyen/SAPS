@@ -7,7 +7,7 @@ export interface Route {
 }
 
 /** Queues that open an invoice: `#/{queue}/{invoiceId}` (`#/invoices/{id}` is the old link to the exception queue). */
-const DETAIL_QUEUES: ReadonlySet<string> = new Set(["exceptions", "approvals"]);
+const DETAIL_QUEUES: ReadonlySet<string> = new Set(["exceptions", "approvals", "review"]);
 
 export function parseHash(hash: string): Route {
   const [first = "", second] = hash.replace(/^#\/?/, "").split("/");

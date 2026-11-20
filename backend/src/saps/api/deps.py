@@ -18,6 +18,7 @@ from saps.adapters.storage.s3_storage import S3FileStorage
 from saps.application.approval import ApprovalService
 from saps.application.auth import AuthService
 from saps.application.exception_handling import ExceptionHandlingService
+from saps.application.review import ReviewService
 from saps.application.upload import UploadInvoiceService
 from saps.config import get_settings
 from saps.domain.users import AccessDeniedError, CurrentUser, Role, SessionPolicy, ensure_role
@@ -147,3 +148,11 @@ async def approval_service(
     """SAPS-22: one transaction per decision; the invoice row lock makes the first decision win."""
     sessions = session_factory(get_engine(get_settings().database_url))
     return ApprovalService(SqlExceptionUnitOfWork(sessions), repository, utc_now)
+
+
+async def review_service(
+    repository: Annotated[SqlInvoiceRepository, Depends(invoice_repository)],
+) -> ReviewService:
+    """SAPS-21: one transaction per confirmation; the invoice row lock makes the first action win."""
+    sessions = session_factory(get_engine(get_settings().database_url))
+    return ReviewService(SqlExceptionUnitOfWork(sessions), repository, utc_now)

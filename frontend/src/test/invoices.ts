@@ -115,6 +115,7 @@ export function fakeExceptionApi(overrides: Partial<ExceptionApi> = {}): Excepti
     resolve: vi.fn(),
     reject: vi.fn(),
     decide: vi.fn(),
+    confirm: vi.fn(),
     events: vi.fn().mockResolvedValue([]),
     fileUrl: (id: string) => `/v1/invoices/${id}/file`,
     ...overrides,

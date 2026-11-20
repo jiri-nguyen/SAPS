@@ -17,6 +17,7 @@ from saps.api.deps import (
     file_storage,
     invoice_reader,
     require_roles,
+    review_service,
     upload_service,
 )
 from saps.api.schemas import (
@@ -46,6 +47,7 @@ from saps.application.invoices import (
     list_invoices,
     open_invoice_file,
 )
+from saps.application.review import ReviewService
 from saps.application.upload import IncomingFile, UploadInvoiceService
 from saps.domain.exception_handling import LineData
 from saps.domain.invoice_files import (
@@ -152,6 +154,7 @@ _HANDLING_STATUS: dict[type[HandlingError], int] = {
 }
 Service = Annotated[ExceptionHandlingService, Depends(exception_service)]
 Approvals = Annotated[ApprovalService, Depends(approval_service)]
+Reviews = Annotated[ReviewService, Depends(review_service)]
 IfMatch = Annotated[str | None, Header(alias="If-Match")]
 
 
@@ -278,10 +281,23 @@ async def reject_invoice(
     invoice_id: UUID, body: RejectionCreate, response: Response, user: Member, service: Service
 ) -> Invoice:
     try:
-        view = await service.reject(user, invoice_id, body.reason)
+        view, rejected_from = await service.reject(user, invoice_id, body.reason)
     except (InvoiceNotFoundError, HandlingError) as exc:
         raise _problem(exc) from exc
-    log.info("invoice_rejected", extra={"invoice_id": str(invoice_id), "user_id": str(user.user_id)})
+    event = (
+        "invoice_rejected_at_review" if rejected_from is InvoiceStatus.PENDING_REVIEW else "invoice_rejected"
+    )
+    log.info(event, extra={"invoice_id": str(invoice_id), "user_id": str(user.user_id)})
+    return _invoice_response(response, view)
+
+
+@router.post("/{invoice_id}/confirmation", operation_id="confirmInvoice", response_model_by_alias=True)
+async def confirm_invoice(invoice_id: UUID, response: Response, user: Member, service: Reviews) -> Invoice:
+    try:
+        view = await service.confirm(user, invoice_id)
+    except (InvoiceNotFoundError, HandlingError) as exc:
+        raise _problem(exc) from exc
+    log.info("invoice_completed", extra={"invoice_id": str(invoice_id), "user_id": str(user.user_id)})
     return _invoice_response(response, view)
 
 
