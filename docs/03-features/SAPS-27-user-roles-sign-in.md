@@ -36,7 +36,7 @@ Accounting Manager. Every other feature builds on this one: it provides the curr
 | BR-07 | Role check per operation (`x-roles` in the OpenAPI contract); a wrong role gives `403`. | [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
 | BR-08 | The tenant of a request is the tenant of the session's user; data of other tenants is never returned (`404`). | [ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md) |
 | BR-09 | Demo data: one tenant "PoC Customer" with its MatchingSettings (0.5 USD, 300 USD) and the users in §3.8, created by an idempotent seed. | [DEC-015](../01-requirements/decision-log.md#dec-015) |
-| BR-10 | The SAPS Web App shows a sign-in page, the signed-in user and role, a sign-out button, and only the menu items allowed for the role. A `401` from any call returns to the sign-in page. | [NFR-USAB-001](../01-requirements/nfr.md#nfr-usab-001) |
+| BR-10 | The SAPS Web App shows a sign-in page, the signed-in user and role, a sign-out button, and only the menu items allowed for the role (Accounting Member: Upload invoices, Exception queue, Review queue; Accounting Manager: Approval queue, Exception queue read-only, Matching settings — [SAPS-20](SAPS-20-exception-handling.md)). A `401` from any call returns to the sign-in page. | [NFR-USAB-001](../01-requirements/nfr.md#nfr-usab-001) |
 
 ### 2.2 Affected NFRs
 | NFR | How this feature is affected |

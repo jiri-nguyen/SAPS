@@ -57,7 +57,7 @@ This is the main manual step of the PoC and covers 11 of the 20 demo scenarios.
 ### 3.1 Affected Building Blocks
 | Container | Change | Description |
 |---|---|---|
-| SAPS Web App | new | Exception queue (unclaimed / mine), invoice detail with file viewer, lines with match results, open exceptions; edit form; resolve and reject dialogs |
+| SAPS Web App | new | Exception queue (Unclaimed / Mine; read-only for Accounting Managers, who can only release a claim), invoice detail with file viewer, lines with match results, exceptions and history; edit form for header and lines; accept as is and reject; routes `#/exceptions`, `#/invoices/{id}` |
 | SAPS API | new | `claimInvoice`, `releaseInvoiceClaim`, `updateInvoice`, `resolveInvoiceExceptions`, `rejectInvoice`, `listInvoices`, `listInvoiceEvents`, `downloadInvoiceFile`; claimant and status checks; ETag handling |
 | SAPS Worker | modified | `rematch_invoice` expects status Matching; matching ends the claim when the invoice leaves Exception (BR-09). The sweeper that re-sends `rematch_invoice` for invoices stuck in Matching is [SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37) (§6) |
 | SAPS Database | modified | Writes Invoice, InvoiceLine, InvoiceException, InvoiceEvent, Notification |
@@ -129,6 +129,8 @@ sequenceDiagram
 | EC-12 | `lines` is sent | Lines are matched by line number, so their IDs stay valid; a line that is no longer sent is removed and its exceptions are resolved by the member and detached from the line; the re-match then checks everything again | `202` |
 | EC-13 | Reject an invoice that is in Pending review | Not allowed in this feature; rejecting at final review comes with [SAPS-21](https://linear.app/jiringuyen/issue/SAPS-21) | `409` |
 | EC-14 | Invalid field values (not a 7-digit PO number, too many decimals, empty or null header field, no field sent) | Refused by the schema | `400` |
+
+**SAPS Web App behaviour:** while the status is Matching it shows "Re-matching in progress" and polls `getInvoice` every 2 s; `412` reloads the invoice and says why; Accept as is is disabled, with the codes named, while EX1, EX3, EX4, EX5, EX8 or EX10 is open; a lost claim race (`409`) is explained and the queue refreshed.
 
 **Order of checks:** invoice exists in the caller's tenant (`404`) → status (`409`) → claimant (`403`) → ETag (`412`; `428` when `If-Match` is missing) → business rules (`422`).
 
