@@ -4,7 +4,7 @@ title: "SAPS-23 — Duplicate invoice detection"
 status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
-last_updated: 2026-12-14
+last_updated: 2026-12-15
 related: [UC-02, UC-03, SCP-IN-07, DEC-008, DEC-024, DEC-033, DEC-035, DEC-039, DEC-042, DEC-043, ADR-0004, ADR-0007, SAPS-18, SAPS-19, SAPS-20]
 ---
 
@@ -50,7 +50,7 @@ code or invoice number is corrected.
 ### 3.1 Affected Building Blocks
 | Container | Change | Description |
 |---|---|---|
-| SAPS Worker | new | Duplicate check in `domain/` and `application/`; called by `process_invoice` and `rematch_invoice` |
+| SAPS Worker | new | Duplicate check in `domain/duplicates.py`; runs at the start of every matching run (`MatchingService`), so both `process_invoice` and `rematch_invoice` use it |
 | SAPS Database | modified | Reads Invoice; writes InvoiceException EX9 |
 
 ### 3.2 Main Flow
@@ -81,6 +81,8 @@ sequenceDiagram
 | EC-04 | Member corrects the invoice number after EX9 | Re-match runs the check again; EX9 is resolved by the system if no other invoice matches | EX9 resolved |
 | EC-05 | EX9 accepted as is, later another invoice with the same key arrives | The new invoice gets EX9 against both earlier invoices | EX9 |
 | EC-06 | Vendor code or invoice number missing after extraction | No duplicate check for this invoice (cannot compare); other checks continue | — |
+| EC-07 | An invoice number that is empty after normalization (e.g. "-") | Treated as missing (EC-06) | — |
+| EC-08 | EX9 is open and the vendor code or invoice number is then cleared | The open EX9 is resolved by the system: no duplicate can be shown any more | EX9 resolved |
 
 ### 3.4 API Changes
 None. EX9 is visible through `getInvoice` ([saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml)).
@@ -120,12 +122,15 @@ None. EX9 is visible through `getInvoice` ([saps-api.openapi.yaml](../02-archite
 | EX9 goes to the later invoice; the earlier one is unchanged | The earlier invoice may already be approved or completed | — |
 | Advisory lock per duplicate key | Same pattern as the PO line lock in SAPS-19; prevents two copies passing in parallel | — |
 | Matching still runs on a duplicate | All problems are visible at once (SAPS-19 §6) | — |
+| The check runs inside the matching run; EX9 is reconciled like the matching codes (opened, kept, resolved by the system) | One place for `process_invoice` and `rematch_invoice` (BR-06); one transaction and one `MATCH` event with the opened and resolved codes | — |
+| Lock order: duplicate key first, then the PO lines (sorted) | A fixed order across all jobs avoids deadlocks | — |
 
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
 | Q1 | Should invoice numbers be normalized before comparison, so that "INV-0001", "inv 0001" and "INV0001" count as the same? Proposal: yes — ignore case, spaces, dashes, dots and slashes; keep leading zeros. | Product Owner (Customer) | next meeting | answered → [MTG-20261214](../01-requirements/meetings/2026-12-14-duplicate-detection-rules.md) R1 |
 | Q2 | Should rejected invoices be ignored by the duplicate check, so that a corrected invoice can be uploaded again (DEC-039)? Proposal: yes. | Product Owner (Customer) | next meeting | answered → [MTG-20261214](../01-requirements/meetings/2026-12-14-duplicate-detection-rules.md) R2 |
+| Q3 | Clarification found while coding: EC-08 (an open EX9 is resolved when the vendor code or invoice number is cleared) | Solution Architect / Tech Lead | before merge | answered: agreed with the implementation plan (2026-12-15) |
 
 ## 8. Documentation Checklist
 - [x] Data model updated (`Invoice.invoice_number_normalized`)
