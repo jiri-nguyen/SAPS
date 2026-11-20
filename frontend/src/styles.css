@@ -298,6 +298,21 @@ table.data th {
   background: var(--ok-bg);
 }
 
+.field-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.settings-form {
+  max-width: 34rem;
+}
+
+.settings-form .hint {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
 .banner.error {
   background: var(--error-bg);
   color: var(--danger);

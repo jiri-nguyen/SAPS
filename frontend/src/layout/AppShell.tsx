@@ -2,6 +2,7 @@ import { type ReactNode, useMemo } from "react";
 
 import { type ExceptionApi, createExceptionApi } from "../api/exceptions";
 import { type InvoiceApi, createInvoiceApi } from "../api/invoices";
+import { type SettingsApi, createSettingsApi } from "../api/settings";
 import type { UserAccount } from "../api/session";
 import { MENU_BY_ROLE, ROLE_LABEL } from "../auth/roles";
 import { useSession } from "../auth/session-context";
@@ -10,21 +11,25 @@ import { InvoiceDetailPage, type Queue } from "../invoices/InvoiceDetailPage";
 import { StatusQueuePage } from "../invoices/StatusQueuePage";
 import { UploadPage } from "../invoices/UploadPage";
 import { href, useRoute } from "../routing";
+import { MatchingSettingsPage } from "../settings/MatchingSettingsPage";
 
 export function AppShell({
   user,
   footer,
   invoiceApi,
   exceptionApi,
+  settingsApi,
 }: {
   user: UserAccount;
   footer?: ReactNode;
   invoiceApi?: InvoiceApi;
   exceptionApi?: ExceptionApi;
+  settingsApi?: SettingsApi;
 }) {
   const { signOut } = useSession();
   const invoices = useMemo(() => invoiceApi ?? createInvoiceApi(), [invoiceApi]);
   const exceptions = useMemo(() => exceptionApi ?? createExceptionApi(), [exceptionApi]);
+  const settings = useMemo(() => settingsApi ?? createSettingsApi(), [settingsApi]);
   const menu = MENU_BY_ROLE[user.role];
   const route = useRoute();
   // A route the role may not open (or none) shows the role's first screen (SAPS-27 BR-10).
@@ -64,7 +69,7 @@ export function AppShell({
       />
     );
   } else {
-    page = <p>This screen is not available yet.</p>;
+    page = <MatchingSettingsPage api={settings} />;
   }
 
   return (

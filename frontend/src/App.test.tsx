@@ -7,6 +7,7 @@ import { ApiError, UNAUTHORIZED, unauthorizedEvents } from "./api/client";
 import type { SessionApi, UserAccount } from "./api/session";
 import { useSession } from "./auth/session-context";
 import { fakeExceptionApi, summary } from "./test/invoices";
+import { fakeSettingsApi } from "./test/settings";
 
 const MEMBER: UserAccount = {
   id: "1",
@@ -190,7 +191,14 @@ describe("App", () => {
   });
 
   it("shows only the manager menu for a manager and switches screens", async () => {
-    renderApp(fakeApi({ getSession: vi.fn().mockResolvedValue(MANAGER) }));
+    const settingsApi = fakeSettingsApi();
+    render(
+      <App
+        sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MANAGER) })}
+        checkHealth={pending}
+        settingsApi={settingsApi}
+      />,
+    );
     const menu = await screen.findByRole("navigation", { name: "Main menu" });
     expect(menu).not.toHaveTextContent("Upload invoices");
     expect(menu).toHaveTextContent("Exception queue"); // read-only for managers (SAPS-20, DEC-036)
@@ -199,6 +207,8 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Matching settings" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Matching settings" })).toHaveAttribute("aria-current", "page");
     expect(window.location.hash).toBe("#/matching-settings");
+    expect(await screen.findByRole("form", { name: "Change matching settings" })).toBeInTheDocument();
+    expect(settingsApi.get).toHaveBeenCalledOnce();
   });
 
   it("shows one message for a wrong username or password", async () => {
