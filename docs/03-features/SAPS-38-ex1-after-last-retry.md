@@ -1,7 +1,7 @@
 ---
 id: "SAPS-38"
 title: "SAPS-38 — EX1 after the last retry of process_invoice"
-status: draft            # draft | in-review | approved | deprecated
+status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2026-12-15
@@ -32,10 +32,10 @@ fail, so the change matters before a real extraction service is connected; it is
 | ID | Rule | Source |
 |---|---|---|
 | BR-01 | After the last retry of `process_invoice` has failed (any error, also the time limit), an invoice still in Uploaded becomes Exception with EX1 "Invoice unreadable: {reason}", an InvoiceEvent `EXTRACT` (found false, the reason) and a notification to all active Accounting Members, exactly as an unreadable file ([SAPS-18](SAPS-18-dummy-invoice-extraction.md) BR-03). | [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S4, [DEC-033](../01-requirements/decision-log.md#dec-033) |
-| BR-02 | The reason names the kind of error and a shortened message: "Processing failed after the last retry: {ErrorClass}: {message, max 200 characters}". It never contains a stack trace or the content of the file. | design, Q3 |
+| BR-02 | The reason names the kind of error and a shortened message: "Processing failed after the last retry: {ErrorClass}: {message, max 200 characters}". It never contains a stack trace or the content of the file. | design, Q3 (answered 2026-12-15) |
 | BR-03 | The failure step runs in a new transaction, locks the invoice row and does nothing when the invoice is no longer in Uploaded (for example the sweeper or a late retry finished it). | [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S2 |
-| BR-04 | The number of retries and the back-off of `process_invoice` are settings: `PROCESS_INVOICE_MAX_RETRIES` (proposal 5, that is 6 attempts), `PROCESS_INVOICE_MIN_BACKOFF_MS` (15 000) and `PROCESS_INVOICE_MAX_BACKOFF_MS` (300 000), so the last retry comes within minutes (today: Dramatiq defaults, 20 retries and back-off up to 7 days). | [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S4, Q1 |
-| BR-05 | The sweeper sends `process_invoice` for an invoice in Uploaded at most `SWEEPER_MAX_RESENDS` times (proposal 3). When the limit is reached and the invoice is stuck again, the sweeper records an InvoiceEvent `RESEND_LIMIT` (actor `system`), logs `sweeper_gave_up` once and never selects the invoice again; the invoice stays in Uploaded. No EX1 is raised by the sweeper. Invoices in Matching are not limited. | [SAPS-37](SAPS-37-stuck-invoice-sweeper.md), Q2 |
+| BR-04 | The number of retries and the back-off of `process_invoice` are settings: `PROCESS_INVOICE_MAX_RETRIES` (proposal 5, that is 6 attempts), `PROCESS_INVOICE_MIN_BACKOFF_MS` (15 000) and `PROCESS_INVOICE_MAX_BACKOFF_MS` (300 000), so the last retry comes within minutes (today: Dramatiq defaults, 20 retries and back-off up to 7 days). | [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S4, Q1 (answered 2026-12-15) |
+| BR-05 | The sweeper sends `process_invoice` for an invoice in Uploaded at most `SWEEPER_MAX_RESENDS` times (proposal 3). When the limit is reached and the invoice is stuck again, the sweeper records an InvoiceEvent `RESEND_LIMIT` (actor `system`), logs `sweeper_gave_up` once and never selects the invoice again; the invoice stays in Uploaded. No EX1 is raised by the sweeper. Invoices in Matching are not limited. | [SAPS-37](SAPS-37-stuck-invoice-sweeper.md), Q2 (answered 2026-12-15) |
 
 ### 2.2 Affected NFRs
 None. [nfr.md §4.3](../01-requirements/nfr.md#43-availability--disaster-recovery-avail) has no availability requirement for the PoC.
@@ -168,9 +168,9 @@ The compose smoke test is not extended: the Dummy Extraction Adapter cannot fail
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | Retry values: 5 retries, back-off from 15 s to 5 min (BR-04)? | Solution Architect / Tech Lead | before implementation | open |
-| Q2 | `SWEEPER_MAX_RESENDS` 3, then `RESEND_LIMIT` event and a log line (BR-05)? | Solution Architect / Tech Lead | before implementation | open |
-| Q3 | Wording of the reason: "Processing failed after the last retry: {ErrorClass}: {message}" (BR-02)? | Solution Architect / Tech Lead | before implementation | open |
+| Q1 | Retry values: 5 retries, back-off from 15 s to 5 min (BR-04)? | Solution Architect / Tech Lead | before implementation | answered: yes, as proposed (2026-12-15) |
+| Q2 | `SWEEPER_MAX_RESENDS` 3, then `RESEND_LIMIT` event and a log line (BR-05)? | Solution Architect / Tech Lead | before implementation | answered: yes, as proposed (2026-12-15) |
+| Q3 | Wording of the reason: "Processing failed after the last retry: {ErrorClass}: {message}" (BR-02)? | Solution Architect / Tech Lead | before implementation | answered: yes, as proposed (2026-12-15) |
 
 ## 8. Documentation Checklist
 - [x] API spec: no change
