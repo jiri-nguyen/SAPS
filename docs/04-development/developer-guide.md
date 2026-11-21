@@ -268,6 +268,8 @@ All settings are environment variables, read in `backend/src/saps/config.py`. `.
 | `DRAMATIQ_MAINTENANCE_CHANCE` | Broker maintenance frequency out of 1,000,000 — default 100000 = 10 % ([ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S7) | `.env.example` |
 | `ACTOR_TIME_LIMIT_MS` | Time limit per job — default 60000 | `.env.example` |
 | `SWEEPER_INTERVAL_SECONDS`, `SWEEPER_STUCK_AFTER_SECONDS` | Sweeper tick and stuck age — defaults 10 and 60 | `.env.example` |
+| `SWEEPER_MAX_RESENDS` | Re-sends of `process_invoice` per Uploaded invoice before `RESEND_LIMIT` — default 3 | `.env.example` |
+| `PROCESS_INVOICE_MAX_RETRIES`, `PROCESS_INVOICE_MIN_BACKOFF_MS`, `PROCESS_INVOICE_MAX_BACKOFF_MS` | Retries and back-off of `process_invoice` before EX1 — defaults 5, 15000 and 300000 | `.env.example` |
 | `VITE_NOTIFICATION_POLL_SECONDS` | SAPS Web App polling interval for notifications — default 15 ([SAPS-24](../03-features/SAPS-24-in-app-notifications.md)) | `frontend/.env.example` |
 | `MAX_UPLOAD_SIZE_MB` | Maximum invoice file size — default 10 ([SAPS-17](../03-features/SAPS-17-invoice-upload.md)) | `.env.example` |
 | `EXTRACTION_ADAPTER`, `ERP_ADAPTER` | Port adapters — `dummy` in the PoC | `.env.example` |
@@ -308,7 +310,7 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 | Symptom | Cause | Fix |
 |---|---|---|
 | Port 5432, 6379, 8333 or 8000 already in use | Another local service | Stop it, or change the host port in `compose.yaml` |
-| Invoice stays in Uploaded or Matching | SAPS Worker not running, or message lost | `docker compose logs worker`; the sweeper re-sends after `SWEEPER_STUCK_AFTER_SECONDS` (`RESEND` in the invoice history, log `sweeper_resent`); `sweeper_failed` means the tick failed (database or broker down) and the next tick tries again |
+| Invoice stays in Uploaded or Matching | SAPS Worker not running, or message lost | `docker compose logs worker`; the sweeper re-sends after `SWEEPER_STUCK_AFTER_SECONDS` (`RESEND` in the invoice history, log `sweeper_resent`); `sweeper_failed` means the tick failed (database or broker down) and the next tick tries again; `RESEND_LIMIT` in the history and `sweeper_gave_up` in the log mean the sweeper stopped after `SWEEPER_MAX_RESENDS` re-sends and the invoice needs an operator; EX1 with "Processing failed after the last retry" means `process_invoice` failed on every retry ([SAPS-38](https://linear.app/jiringuyen/issue/SAPS-38)) |
 | `MissingGreenlet` / lazy-load error | Lazy loading in async SQLAlchemy code | Load relationships explicitly (`selectinload`) |
 | Presigned URL returns 403 | Wrong S3 credentials or clock skew | Check `S3_*` settings; restart the stack |
 | `docker compose up --wait` takes about 40 s | SAPS File Storage becomes healthy only when SeaweedFS can store files (`/dir/assign`); the SAPS API waits for it | Expected; without the wait the first upload would hang 7–20 s |

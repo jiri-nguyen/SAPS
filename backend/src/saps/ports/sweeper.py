@@ -14,6 +14,8 @@ class StuckInvoice:
     id: UUID
     tenant_id: UUID
     status: InvoiceStatus
+    resends: int = 0
+    """Number of `RESEND` events of the invoice (SAPS-38 BR-05)."""
 
 
 class StuckInvoiceRepository(Protocol):
@@ -24,6 +26,10 @@ class StuckInvoiceRepository(Protocol):
     async def lock_stuck(self, older_than_seconds: int, limit: int) -> list[StuckInvoice]:
         """Invoices in Uploaded or Matching not updated for `older_than_seconds` (database clock), oldest
         first, row-locked; invoices whose job is running are skipped (BR-01, BR-03, BR-06)."""
+        ...
+
+    async def mark_gave_up(self, invoice: StuckInvoice) -> None:
+        """Set `updated_at` and record `RESEND_LIMIT`; the invoice is never selected again (SAPS-38 BR-05)."""
         ...
 
     async def mark_resent(self, invoice: StuckInvoice, message: str) -> None:

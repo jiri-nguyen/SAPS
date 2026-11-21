@@ -145,7 +145,7 @@ At least one sample per supported type (PDF, PNG, JPEG) exists.
 | Lookup by SHA-256 of the content | A renamed file is still found; a changed file is not (data model Q4, answered) | — |
 | Fixtures validated at worker start-up and in CI | Broken demo data is found before the demo | — |
 | The JSON schema is generated from the Pydantic model that validates the results | One definition; no `jsonschema` runtime dependency; a test fails when the committed schema is out of date | — |
-| No EX1 after the last retry yet (ADR-0004 S4) | The dummy lookup cannot fail; needed with real extraction | [TD-04](../02-architecture/arc42/11-risks-and-technical-debt.md#td-04) |
+| EX1 after the last retry of `process_invoice` (ADR-0004 S4) | The dummy lookup cannot fail; added for a real extraction service ([SAPS-38](SAPS-38-ex1-after-last-retry.md), resolves [TD-04](../02-architecture/arc42/11-risks-and-technical-debt.md#td-04)) | — |
 | Dev-only dependencies ReportLab, Pillow, pypdf (generator and TS-06) | Generated files are committed; nothing extra in the Docker image (approved by the SA, 2026-12-15) | — |
 
 ## 7. Open Questions

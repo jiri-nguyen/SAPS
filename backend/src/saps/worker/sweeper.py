@@ -25,18 +25,34 @@ async def run_sweep(settings: Settings, queue: JobQueuePort) -> None:
     """One tick. Never raises: a failed tick is logged and the next one tries again (EC-03, EC-05)."""
     try:
         sessions = session_factory(get_engine(settings.database_url))
-        service = SweeperService(SqlSweepUnitOfWork(sessions), queue, settings.sweeper_stuck_after_seconds)
-        resent = await service.sweep()
+        service = SweeperService(
+            SqlSweepUnitOfWork(sessions),
+            queue,
+            settings.sweeper_stuck_after_seconds,
+            max_resends=settings.sweeper_max_resends,
+        )
+        result = await service.sweep()
     except Exception:
         log.exception("sweeper_failed")
         return
-    for item in resent or []:
+    if result is None:
+        return
+    for item in result.resent:
         log.info(
             "sweeper_resent",
             extra={
                 "invoice_id": str(item.invoice_id),
                 "tenant_id": str(item.tenant_id),
                 "message_name": item.message,
+            },
+        )
+    for gave_up in result.gave_up:
+        log.warning(
+            "sweeper_gave_up",
+            extra={
+                "invoice_id": str(gave_up.invoice_id),
+                "tenant_id": str(gave_up.tenant_id),
+                "resends": gave_up.resends,
             },
         )
 

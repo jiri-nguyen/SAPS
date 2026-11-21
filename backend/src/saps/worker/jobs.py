@@ -13,7 +13,7 @@ from saps.adapters.persistence.db import get_engine, session_factory
 from saps.adapters.persistence.matching_repository import SqlMatchingRepository
 from saps.adapters.persistence.processing_repository import SqlProcessingRepository
 from saps.application.matching import MatchingService, MatchOutcome
-from saps.application.processing import ProcessInvoiceService, ProcessOutcome
+from saps.application.processing import FailedProcessingService, ProcessInvoiceService, ProcessOutcome
 from saps.config import Settings, get_settings
 from saps.domain.invoices import ExceptionCode
 from saps.ports.erp import ErpDataPort
@@ -110,3 +110,26 @@ async def run_processing(invoice_id: UUID) -> ProcessOutcome | None:
     if outcome.matching is not None:
         _log_matching(outcome.matching, started)
     return outcome
+
+
+async def run_failure(invoice_id: UUID, reason: str) -> bool:
+    """`process_invoice_failed`: EX1 after the last retry in a new transaction (SAPS-38).
+
+    Never raises: a failure here is logged and the invoice stays in Uploaded for the sweeper (EC-04).
+    """
+    settings = get_settings()
+    try:
+        async with session_factory(get_engine(settings.database_url))() as session, session.begin():
+            raised = await FailedProcessingService(SqlProcessingRepository(session), _utc_now).fail(
+                invoice_id, reason
+            )
+    except Exception:
+        processing_log.exception("process_failure_not_recorded", extra={"invoice_id": str(invoice_id)})
+        return False
+    if raised:
+        processing_log.info(
+            "process_failure_recorded", extra={"invoice_id": str(invoice_id), "reason": reason}
+        )
+    else:
+        processing_log.info("process_failure_skipped", extra={"invoice_id": str(invoice_id)})
+    return raised

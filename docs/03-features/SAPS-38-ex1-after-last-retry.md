@@ -50,12 +50,12 @@ None. [nfr.md §4.3](../01-requirements/nfr.md#43-availability--disaster-recover
 ### 3.1 Affected Building Blocks
 | Container | Change | Description |
 |---|---|---|
-| SAPS Worker | modified | `process_invoice` gets the retry settings and an `on_failure` callback actor `process_invoice_failed`; the sweeper skips invoices over the re-send limit |
+| SAPS Worker | modified | `process_invoice` gets the retry settings and an `on_retry_exhausted` callback actor `process_invoice_failed`; the sweeper skips invoices over the re-send limit |
 | SAPS Database | none | Updates `invoice`, inserts `invoice_exception`, `invoice_event`, `notification`; no schema change |
 | SAPS Message Broker | none | Carries the callback message |
 | SAPS API, SAPS Web App | none | The invoice appears in the exception queue like any EX1 |
 
-Code outline: Dramatiq calls the `on_failure` callback with the message and the error data after the last retry. The callback calls
+Code outline: Dramatiq (Retries middleware) calls the `on_retry_exhausted` callback once, with the failed message, after the last retry; the last error is in `options["traceback"]` of the message, and the reason is its exception line (error class and message, never the frames). The callback calls
 `ProcessInvoiceService.fail(invoice_id, reason)` (new), which reuses `ProcessingRepository.raise_unreadable` and `notify_status`
 ([SAPS-18](SAPS-18-dummy-invoice-extraction.md)). The sweeper repository counts `RESEND` events and excludes invoices that have a `RESEND_LIMIT` event.
 
@@ -160,7 +160,7 @@ The compose smoke test is not extended: the Dummy Extraction Adapter cannot fail
 ## 6. Decisions
 | Decision | Rationale | ADR |
 |---|---|---|
-| Use the Dramatiq `on_failure` callback, not a custom middleware | It runs once after the last retry and receives the error; less code than a middleware | [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S4 |
+| Use the Dramatiq `on_retry_exhausted` callback, not `on_failure` and not a custom middleware | `on_failure` runs after every failed attempt; `on_retry_exhausted` runs once after the last retry and needs no custom middleware. It carries no exception, so the reason is read from the traceback of the message (checked in the implementation, Dramatiq 2.2.1) | [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S4 |
 | The sweeper gives up with a `RESEND_LIMIT` event and no EX1 | Agreed with the Solution Architect (2026-12-15); a failing job already gets EX1 from the callback, the sweeper only recovers lost messages | [SAPS-37](SAPS-37-stuck-invoice-sweeper.md) |
 | The limit is counted from `RESEND` events | No new column; the history shows every re-send | — |
 | EX1 for every kind of error after the last retry | Matches ADR-0004 S4 and TD-04; the reason tells the Accounting Member what happened | — |
@@ -175,7 +175,7 @@ The compose smoke test is not extended: the Dummy Extraction Adapter cannot fail
 ## 8. Documentation Checklist
 - [x] API spec: no change
 - [x] Data model updated (`RESEND_LIMIT` in the action examples of InvoiceEvent)
-- [ ] TD-04 set to resolved with the Linear link (code PR)
-- [ ] SAPS-18 known gaps, SAPS-37 out of scope, arc42 §6.3 updated (code PR)
-- [ ] Developer Guide settings table and `.env.example` updated (code PR)
+- [x] TD-04 set to resolved with the Linear link
+- [x] SAPS-18 known gaps, SAPS-37 out of scope, arc42 §6.3 updated
+- [x] Developer Guide settings table and `.env.example` updated
 - [ ] Release notes entry prepared

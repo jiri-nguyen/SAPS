@@ -118,7 +118,9 @@ crashed mid-job ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md
 status. Built in [SAPS-37](../../03-features/SAPS-37-stuck-invoice-sweeper.md): a Dramatiq middleware starts the timer in every SAPS Worker
 process (own thread and event loop); the age and the new `updated_at` use the database clock; a tick re-sends at most 100 invoices,
 oldest first; each re-send is recorded as InvoiceEvent `RESEND` (actor `system`); when a send fails the tick rolls back and the next
-tick tries again.
+tick tries again. An invoice in Uploaded is re-sent at most `SWEEPER_MAX_RESENDS` times; then the sweeper records `RESEND_LIMIT` and
+never selects it again ([SAPS-38](../../03-features/SAPS-38-ex1-after-last-retry.md)). When `process_invoice` itself fails on its last retry,
+the callback `process_invoice_failed` raises EX1 and notifies the Accounting Members.
 
 ```mermaid
 sequenceDiagram

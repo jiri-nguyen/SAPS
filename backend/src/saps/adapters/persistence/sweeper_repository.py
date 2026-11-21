@@ -14,6 +14,7 @@ from saps.ports.sweeper import StuckInvoice
 SWEEPER_LOCK_KEY = 3700037  # pg_try_advisory_xact_lock key shared by all SAPS Worker processes (BR-03)
 SWEEPER_ACTOR = "system"
 SWEEPER_ACTION = "RESEND"
+SWEEPER_LIMIT_ACTION = "RESEND_LIMIT"
 STUCK_STATUSES = (InvoiceStatus.UPLOADED, InvoiceStatus.MATCHING)
 
 
@@ -25,19 +26,39 @@ class SqlSweeperRepository:
         return bool(await self._session.scalar(select(func.pg_try_advisory_xact_lock(SWEEPER_LOCK_KEY))))
 
     async def lock_stuck(self, older_than_seconds: int, limit: int) -> list[StuckInvoice]:
+        resends = (
+            select(func.count())
+            .select_from(InvoiceEvent)
+            .where(InvoiceEvent.invoice_id == Invoice.id, InvoiceEvent.action == SWEEPER_ACTION)
+            .correlate(Invoice)
+            .scalar_subquery()
+        )
+        gave_up = (
+            select(InvoiceEvent.id)
+            .where(InvoiceEvent.invoice_id == Invoice.id, InvoiceEvent.action == SWEEPER_LIMIT_ACTION)
+            .correlate(Invoice)
+            .exists()
+        )
         rows = await self._session.execute(
-            select(Invoice.id, Invoice.tenant_id, Invoice.status)
+            select(Invoice.id, Invoice.tenant_id, Invoice.status, resends.label("resends"))
             .where(
                 Invoice.status.in_(STUCK_STATUSES),
                 Invoice.updated_at < func.now() - timedelta(seconds=older_than_seconds),  # database clock
+                ~gave_up,  # SAPS-38 BR-05: an invoice the sweeper gave up on is never selected again
             )
             .order_by(Invoice.updated_at, Invoice.id)
             .limit(limit)
             .with_for_update(skip_locked=True, of=Invoice)
         )
-        return [StuckInvoice(row.id, row.tenant_id, row.status) for row in rows]
+        return [StuckInvoice(row.id, row.tenant_id, row.status, row.resends) for row in rows]
+
+    async def mark_gave_up(self, invoice: StuckInvoice) -> None:
+        await self._mark(invoice, SWEEPER_LIMIT_ACTION, {"resends": invoice.resends})
 
     async def mark_resent(self, invoice: StuckInvoice, message: str) -> None:
+        await self._mark(invoice, SWEEPER_ACTION, {"message": message})
+
+    async def _mark(self, invoice: StuckInvoice, action: str, details: dict[str, object]) -> None:
         await self._session.execute(
             update(Invoice).where(Invoice.id == invoice.id).values(updated_at=func.now())
         )
@@ -47,9 +68,9 @@ class SqlSweeperRepository:
                 invoice_id=invoice.id,
                 status_from=invoice.status,
                 status_to=invoice.status,
-                action=SWEEPER_ACTION,
+                action=action,
                 actor=SWEEPER_ACTOR,
-                details={"message": message},
+                details=details,
             )
         )
         await self._session.flush()

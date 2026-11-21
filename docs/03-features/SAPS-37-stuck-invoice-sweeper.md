@@ -41,7 +41,7 @@ SAPS Worker finds such invoices and sends the missing message again. This is the
 None. [nfr.md §4.3](../01-requirements/nfr.md#43-availability--disaster-recovery-avail) has no availability requirement for the PoC; the sweeper only keeps a lost message from leaving an invoice stuck for good.
 
 ### 2.3 Out of Scope
-- Setting an invoice to Exception (EX1) after the last retry of `process_invoice`, and a limit on re-sends per invoice: technical debt [TD-04](../02-architecture/arc42/11-risks-and-technical-debt.md#td-04), before a real extraction service is connected.
+- Setting an invoice to Exception (EX1) after the last retry of `process_invoice`, and a limit on re-sends per invoice: done in [SAPS-38](SAPS-38-ex1-after-last-retry.md) (resolves [TD-04](../02-architecture/arc42/11-risks-and-technical-debt.md#td-04)); an Uploaded invoice is re-sent at most `SWEEPER_MAX_RESENDS` times, then the event `RESEND_LIMIT` is recorded.
 - A transactional outbox (a later option in ADR-0004 S1).
 - A screen or alert for resent invoices (the invoice history and the log are enough in the PoC).
 
@@ -100,7 +100,7 @@ sequenceDiagram
 | EC-05 | The SAPS Database is down during a tick | The tick fails and is logged; the scheduler keeps running and the next tick tries again | Log `sweeper_failed` |
 | EC-06 | The SAPS Worker stops | The timer stops with it; in-flight tick finishes or rolls back | — |
 | EC-07 | More than 100 invoices are stuck | The oldest 100 are re-sent; the rest at the next ticks (BR-06) | Log `sweeper_resent` per invoice |
-| EC-08 | An invoice never leaves Uploaded or Matching (for example a failing actor) | It is re-sent every stuck period and gets a `RESEND` event each time; the cap and EX1 are [TD-04](../02-architecture/arc42/11-risks-and-technical-debt.md#td-04) | Log `sweeper_resent` |
+| EC-08 | An invoice never leaves Uploaded or Matching (for example a failing actor) | It is re-sent every stuck period and gets a `RESEND` event each time; the cap (`RESEND_LIMIT`) and EX1 after the last retry are [SAPS-38](SAPS-38-ex1-after-last-retry.md) | Log `sweeper_resent` |
 
 ### 3.4 API Changes
 None. The SAPS API already answers `202` when sending fails after the commit ([SAPS-17](SAPS-17-invoice-upload.md) EC-06, [SAPS-20](SAPS-20-exception-handling.md) EC-05).
