@@ -115,7 +115,10 @@ crashed mid-job ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md
 [SAPS-34](https://linear.app/jiringuyen/issue/SAPS-34)).
 **Message by status:** an invoice stuck in Uploaded gets `process_invoice`; one stuck in Matching gets `rematch_invoice`
 (sent after a correction, [SAPS-20](../../03-features/SAPS-20-exception-handling.md)). Each actor checks its own expected
-status. Built in [SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37).
+status. Built in [SAPS-37](../../03-features/SAPS-37-stuck-invoice-sweeper.md): a Dramatiq middleware starts the timer in every SAPS Worker
+process (own thread and event loop); the age and the new `updated_at` use the database clock; a tick re-sends at most 100 invoices,
+oldest first; each re-send is recorded as InvoiceEvent `RESEND` (actor `system`); when a send fails the tick rolls back and the next
+tick tries again.
 
 ```mermaid
 sequenceDiagram

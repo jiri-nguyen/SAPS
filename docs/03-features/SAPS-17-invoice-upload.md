@@ -143,7 +143,7 @@ Sends `process_invoice(invoice_id)` ([ADR-0004](../02-architecture/adr/0004-proc
 | TS-02 | 10 MB + 1 byte → 413; empty → 400; `.pdf` name with text content → 415 | Integration | BR-03, EC-01, EC-02 |
 | TS-03 | Same Idempotency-Key twice, sequentially and in parallel → one invoice | Integration | BR-06, EC-03, EC-04 |
 | TS-04 | Same file with two keys → two invoices | Integration | BR-07 |
-| TS-05 | Message lost after commit → sweeper processes the invoice (tested in [SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37)); here: upload still answers `202` when sending fails | Integration | EC-06 |
+| TS-05 | Message lost after commit → sweeper processes the invoice (tested in [SAPS-37](SAPS-37-stuck-invoice-sweeper.md) TS-02 and TS-08); here: upload still answers `202` when sending fails | Integration | EC-06 |
 | TS-06 | Accounting Manager upload → 403; no `Origin` header → 403 | Integration | EC-08, §3.7 |
 | TS-07 | Upload several files in the Web App; statuses update by polling | E2E | BR-08 |
 | TS-08 | All demo scenarios DS-01 … DS-20 start with this upload | E2E | [Test Strategy §11](../05-testing/test-strategy.md#11-poc-demo-acceptance) |

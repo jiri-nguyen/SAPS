@@ -122,6 +122,10 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   panel lists the notification (unread ones are highlighted); click it to open the invoice and mark it read, or **Mark all as read**.
   As `manager1`, the bell shows the approval request of DS-03; clicking it opens the approval screen. Members are told about
   exceptions and final reviews, managers about approvals; rejecting and completing an invoice notify nobody.
+- Sweeper ([SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37)): `docker compose stop worker`, upload `ds-17-rejected-at-review.pdf` as
+  `member1` (it stays Uploaded), `docker compose exec redis redis-cli FLUSHALL` (the message is lost), `docker compose start worker`.
+  After `SWEEPER_STUCK_AFTER_SECONDS` (60 s by default) the next tick sends it again: the invoice reaches Pending review, its
+  history shows `RESEND` by `system`, and `docker compose logs worker` shows `sweeper_resent`.
 
 ## 3. Project Structure
 ```
@@ -304,7 +308,7 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 | Symptom | Cause | Fix |
 |---|---|---|
 | Port 5432, 6379, 8333 or 8000 already in use | Another local service | Stop it, or change the host port in `compose.yaml` |
-| Invoice stays in Uploaded | SAPS Worker not running, or message lost | `docker compose logs worker`; the sweeper re-sends after `SWEEPER_STUCK_AFTER_SECONDS` |
+| Invoice stays in Uploaded or Matching | SAPS Worker not running, or message lost | `docker compose logs worker`; the sweeper re-sends after `SWEEPER_STUCK_AFTER_SECONDS` (`RESEND` in the invoice history, log `sweeper_resent`); `sweeper_failed` means the tick failed (database or broker down) and the next tick tries again |
 | `MissingGreenlet` / lazy-load error | Lazy loading in async SQLAlchemy code | Load relationships explicitly (`selectinload`) |
 | Presigned URL returns 403 | Wrong S3 credentials or clock skew | Check `S3_*` settings; restart the stack |
 | `docker compose up --wait` takes about 40 s | SAPS File Storage becomes healthy only when SeaweedFS can store files (`/dir/assign`); the SAPS API waits for it | Expected; without the wait the first upload would hang 7–20 s |
