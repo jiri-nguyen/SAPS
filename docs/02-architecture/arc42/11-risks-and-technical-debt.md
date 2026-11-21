@@ -53,7 +53,7 @@ Probability and impact are the Solution Architect's assessment; reviewed at each
 | [TD-01](#td-01) | Worker holds a database transaction for the whole job | M | M | open |
 | [TD-02](#td-02) | No tenant isolation in the PoC | H | L | open |
 | [TD-03](#td-03) | No account lockout or sign-in rate limiting | M | S | open |
-| [TD-04](#td-04) | No EX1 after the last retry of `process_invoice` | M | S | open |
+| [TD-04](#td-04) | No EX1 after the last retry of `process_invoice` | M | S | resolved |
 
 ### TD-01
 **Worker holds a database transaction for the whole job**
@@ -104,5 +104,5 @@ Probability and impact are the Solution Architect's assessment; reviewed at each
 | Impact | With a real extraction service, a file it can never read would be retried by the sweeper forever and never reach the exception queue. |
 | Remediation | Dramatiq middleware on the final failure of `process_invoice`: in a new transaction, raise EX1 with the error reason, set Exception and notify Accounting Members; limit sweeper re-sends per invoice. |
 | Effort | S |
-| Backlog | TBD — before real extraction (OCR / AI) is connected |
-| Status | open |
+| Backlog | [SAPS-38](https://linear.app/jiringuyen/issue/SAPS-38) |
+| Status | resolved — [SAPS-38](../../03-features/SAPS-38-ex1-after-last-retry.md): the callback `process_invoice_failed` raises EX1 after the last retry; the sweeper stops after `SWEEPER_MAX_RESENDS` re-sends |
