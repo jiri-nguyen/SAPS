@@ -323,7 +323,7 @@ Audit trail of status changes and user actions on an invoice.
 | invoice_id | uuid | No | FK → Invoice | Internal | Invoice concerned |
 | status_from | enum | Yes | — | Internal | Previous status; null on creation |
 | status_to | enum | No | — | Internal | New status |
-| action | string(50) | No | — | Internal | e.g. `UPLOAD`, `MATCH`, `UPDATE_FIELDS`, `APPROVE`, `REJECT`, `CONFIRM` |
+| action | string(50) | No | — | Internal | e.g. `UPLOAD`, `MATCH`, `UPDATE_FIELDS`, `APPROVE`, `REJECT`, `CONFIRM`, `RESEND` (the sweeper sent a lost message again, [SAPS-37](../03-features/SAPS-37-stuck-invoice-sweeper.md)) |
 | actor | string(100) | No | — | Internal | User or `system` (SAPS Worker) |
 | details | json | Yes | — | Confidential | Changed fields, old and new values |
 | occurred_at | timestamp UTC | No | — | Internal | Event time |
