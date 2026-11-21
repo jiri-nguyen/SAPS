@@ -59,6 +59,11 @@ Code outline (ports and adapters, [ADR-0001](../02-architecture/adr/0001-isolate
 port `StuckInvoiceRepository` (advisory lock, select and lock stuck invoices, mark re-sent); the existing Job Queue Port sends the
 messages; SQL adapter on the worker's session; `saps.worker.sweeper` holds the middleware and the scheduler.
 
+Implementation notes:
+- The middleware is added to the broker in `saps.worker.actors`; it starts a daemon thread with its own event loop and an `AsyncIOScheduler` at worker boot and stops it at worker shutdown. The tick never raises: any error is logged as `sweeper_failed`.
+- The SQL adapter takes the lock with `pg_try_advisory_xact_lock` (one fixed key) and selects with `FOR UPDATE SKIP LOCKED`; the lock and the row locks end with the transaction.
+- The log field for the message name is `message_name` (`message` is the log text).
+
 ### 3.2 Main Flow
 ```mermaid
 sequenceDiagram
@@ -159,6 +164,6 @@ Both settings already exist in `.env.example` and `saps.config`; there is no new
 ## 8. Documentation Checklist
 - [x] API spec: no change
 - [x] Data model updated (`RESEND` in the action examples of InvoiceEvent)
-- [ ] arc42 §6.3 updated with the implementation details (batch limit, event, failure handling)
-- [ ] Developer Guide §2.4 and troubleshooting (stuck invoice) updated
+- [x] arc42 §6.3 updated with the implementation details (batch limit, event, failure handling)
+- [x] Developer Guide §2.4 and troubleshooting (stuck invoice) updated
 - [ ] Release notes entry prepared

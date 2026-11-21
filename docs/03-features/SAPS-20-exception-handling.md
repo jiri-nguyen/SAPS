@@ -187,7 +187,7 @@ None.
 | TS-07 | Resolve with each of EX2, EX6, EX7, EX9 → next status by approval threshold; with any of EX1, EX3, EX4, EX5, EX8, EX10 → 422 | Unit + Integration | BR-06, BR-07, EC-04 |
 | TS-08 | Reject with and without reason | Integration | BR-08, EC-09 |
 | TS-09 | Claim cleared when leaving Exception; notifications to claimant vs. all members | Integration | BR-09, BR-10 |
-| TS-10 | Sweeper re-sends `rematch_invoice` for an invoice stuck in Matching — tested in [SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37); here: an update still answers `202` when sending fails | Integration | EC-05 |
+| TS-10 | Sweeper re-sends `rematch_invoice` for an invoice stuck in Matching — tested in [SAPS-37](SAPS-37-stuck-invoice-sweeper.md) TS-09; here: an update still answers `202` when sending fails | Integration | EC-05 |
 | TS-11 | Events CLAIM, RELEASE, UPDATE_FIELDS (old/new values), RESOLVE, REJECT recorded | Integration | BR-11 |
 | TS-12 | Demo scenarios DS-07, DS-08, DS-09, DS-10, DS-11, DS-12, DS-13, DS-14, DS-15, DS-20; DS-17 for rejection outside this feature | E2E | [Test Strategy §11](../05-testing/test-strategy.md#11-poc-demo-acceptance) |
 

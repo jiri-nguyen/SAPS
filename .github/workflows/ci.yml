@@ -105,7 +105,8 @@ jobs:
         run: |
           password="$(openssl rand -hex 16)"
           echo "::add-mask::$password"
-          sed "s/^SEED_USER_PASSWORD=.*/SEED_USER_PASSWORD=$password/" .env.example > .env
+          # A short stuck age and tick keep the lost-message check short (SAPS-37 Q2); the defaults stay 60 s and 10 s.
+          sed "s/^SEED_USER_PASSWORD=.*/SEED_USER_PASSWORD=$password/; s/^SWEEPER_INTERVAL_SECONDS=.*/SWEEPER_INTERVAL_SECONDS=5/; s/^SWEEPER_STUCK_AFTER_SECONDS=.*/SWEEPER_STUCK_AFTER_SECONDS=15/" .env.example > .env
       - name: Start all containers
         run: docker compose up -d --build --wait
       - name: SAPS Web App, proxy and SAPS API
@@ -243,6 +244,30 @@ jobs:
           done
           docker compose logs worker
           exit 1
+      - name: Lost message is recovered by the sweeper (SAPS-37)
+        run: |
+          base=http://localhost:5173/v1
+          origin="Origin: http://localhost:5173"
+          password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
+          curl -fsS -c sweeper-jar -H "$origin" -H 'Content-Type: application/json' \
+            -d "{\"username\":\"member1\",\"password\":\"$password\"}" "$base/session" > /dev/null
+          docker compose stop worker   # nobody takes the message
+          id="$(curl -fsS -b sweeper-jar -H "$origin" -H "Idempotency-Key: ci-lost-$GITHUB_RUN_ID" \
+            -F "file=@backend/fixtures/ds-17/invoices/ds-17-rejected-at-review.pdf;type=application/pdf" "$base/invoices" \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])')"
+          docker compose exec -T redis redis-cli FLUSHALL   # the message is lost
+          docker compose start worker
+          for i in $(seq 1 60); do   # stuck after 15 s, swept at the next 5 s tick
+            state="$(curl -fsS -b sweeper-jar "$base/invoices/$id" | python3 -c 'import json, sys; print(json.load(sys.stdin)["status"])')"
+            [ "$state" = PENDING_REVIEW ] && break
+            sleep 1
+          done
+          test "$state" = PENDING_REVIEW || { echo "invoice is '$state', expected PENDING_REVIEW"; docker compose logs worker; exit 1; }
+          curl -fsS -b sweeper-jar "$base/invoices/$id/events" | python3 -c 'import json, sys
+          events = json.load(sys.stdin)["items"]
+          actions = [(e["action"], e["actor"]) for e in events]
+          assert ("RESEND", "system") in actions, actions'
+          docker compose logs worker | grep -q '"message": "sweeper_resent"'
       - name: Logs on failure
         if: failure()
         run: docker compose logs
