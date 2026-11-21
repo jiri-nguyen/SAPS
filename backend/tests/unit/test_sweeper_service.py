@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from saps.application.sweeper import BATCH_LIMIT, SweeperService
+from saps.application.sweeper import BATCH_LIMIT, GaveUp, SweeperService, SweepResult
 from saps.domain.invoices import InvoiceStatus
 from saps.ports.sweeper import StuckInvoice
 from tests.fakes import MemoryQueue
@@ -20,6 +20,7 @@ class MemoryRepo:
         self.locked = locked
         self.asked: list[tuple[int, int]] = []
         self.marked: list[tuple[StuckInvoice, str]] = []
+        self.gave_up: list[StuckInvoice] = []
 
     async def try_lock(self) -> bool:
         return self.locked
@@ -31,6 +32,9 @@ class MemoryRepo:
     async def mark_resent(self, invoice: StuckInvoice, message: str) -> None:
         self.marked.append((invoice, message))
 
+    async def mark_gave_up(self, invoice: StuckInvoice) -> None:
+        self.gave_up.append(invoice)
+
 
 def _uow(repo: MemoryRepo):  # type: ignore[no-untyped-def]
     @asynccontextmanager
@@ -40,17 +44,17 @@ def _uow(repo: MemoryRepo):  # type: ignore[no-untyped-def]
     return uow
 
 
-def _invoice(status: InvoiceStatus) -> StuckInvoice:
-    return StuckInvoice(uuid4(), TENANT, status)
+def _invoice(status: InvoiceStatus, resends: int = 0) -> StuckInvoice:
+    return StuckInvoice(uuid4(), TENANT, status, resends)
 
 
 async def test_uploaded_gets_process_and_matching_gets_rematch() -> None:  # BR-02
     uploaded, matching = _invoice(InvoiceStatus.UPLOADED), _invoice(InvoiceStatus.MATCHING)
     repo, queue = MemoryRepo([uploaded, matching]), MemoryQueue()
-    resent = await SweeperService(_uow(repo), queue, 60).sweep()
+    result = await SweeperService(_uow(repo), queue, 60).sweep()
     assert (queue.sent, queue.rematch) == ([uploaded.id], [matching.id])
     assert repo.marked == [(uploaded, "process_invoice"), (matching, "rematch_invoice")]  # BR-04
-    assert resent is not None and [(r.invoice_id, r.tenant_id, r.message) for r in resent] == [
+    assert result is not None and [(r.invoice_id, r.tenant_id, r.message) for r in result.resent] == [
         (uploaded.id, TENANT, "process_invoice"),
         (matching.id, TENANT, "rematch_invoice"),
     ]
@@ -64,7 +68,7 @@ async def test_no_lock_means_no_sweep() -> None:  # EC-01
 
 
 async def test_nothing_stuck_is_an_empty_sweep() -> None:
-    assert await SweeperService(_uow(MemoryRepo([])), MemoryQueue(), 60).sweep() == []
+    assert await SweeperService(_uow(MemoryRepo([])), MemoryQueue(), 60).sweep() == SweepResult([], [])
 
 
 async def test_a_failing_send_raises_before_marking() -> None:  # EC-03
@@ -78,3 +82,21 @@ async def test_the_batch_limit_is_passed_on() -> None:  # BR-06
     repo = MemoryRepo([])
     await SweeperService(_uow(repo), MemoryQueue(), 15, limit=2).sweep()
     assert repo.asked == [(15, 2)]
+
+
+async def test_an_uploaded_invoice_over_the_limit_is_given_up_without_a_send() -> None:  # SAPS-38 BR-05
+    last, over = _invoice(InvoiceStatus.UPLOADED, 2), _invoice(InvoiceStatus.UPLOADED, 3)
+    repo, queue = MemoryRepo([last, over]), MemoryQueue()
+    result = await SweeperService(_uow(repo), queue, 60, max_resends=3).sweep()
+    assert queue.sent == [last.id]  # the third re-send is still allowed
+    assert repo.gave_up == [over] and [m[0] for m in repo.marked] == [last]
+    assert result is not None and result.gave_up == [GaveUp(over.id, TENANT, 3)]
+
+
+async def test_a_matching_invoice_is_never_limited() -> None:  # SAPS-38 BR-05
+    matching = _invoice(InvoiceStatus.MATCHING, 50)
+    repo, queue = MemoryRepo([matching]), MemoryQueue()
+    result = await SweeperService(_uow(repo), queue, 60, max_resends=3).sweep()
+    assert (
+        queue.rematch == [matching.id] and repo.gave_up == [] and result is not None and result.gave_up == []
+    )

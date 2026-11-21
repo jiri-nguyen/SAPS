@@ -9,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 
-from saps.application.sweeper import Resent
+from saps.application.sweeper import GaveUp, Resent, SweepResult
 from saps.config import Settings
 from saps.worker import sweeper
 from saps.worker.sweeper import SweeperMiddleware, run_sweep
@@ -60,12 +60,12 @@ def test_shutdown_without_boot_does_nothing() -> None:
 
 
 class _Service:
-    outcome: list[Resent] | Exception | None = None
+    outcome: SweepResult | Exception | None = None
 
-    def __init__(self, *args: object) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
         pass
 
-    async def sweep(self) -> list[Resent] | None:
+    async def sweep(self) -> SweepResult | None:
         if isinstance(self.outcome, Exception):
             raise self.outcome
         return self.outcome
@@ -84,7 +84,7 @@ async def test_every_resent_invoice_is_logged(
 ) -> None:
     caplog.set_level(logging.INFO, logger="saps.worker.sweeper")
     invoice_id, tenant_id = uuid4(), uuid4()
-    no_database.outcome = [Resent(invoice_id, tenant_id, "process_invoice")]
+    no_database.outcome = SweepResult([Resent(invoice_id, tenant_id, "process_invoice")], [])
     await run_sweep(Settings(_env_file=None), MemoryQueue())
     [record] = caplog.records
     assert record.getMessage() == "sweeper_resent"
@@ -94,9 +94,9 @@ async def test_every_resent_invoice_is_logged(
     )
 
 
-@pytest.mark.parametrize("outcome", [None, []])
+@pytest.mark.parametrize("outcome", [None, SweepResult([], [])])
 async def test_an_idle_tick_logs_nothing(
-    no_database: type[_Service], caplog: pytest.LogCaptureFixture, outcome: list[Resent] | None
+    no_database: type[_Service], caplog: pytest.LogCaptureFixture, outcome: SweepResult | None
 ) -> None:
     caplog.set_level(logging.INFO, logger="saps.worker.sweeper")
     no_database.outcome = outcome
@@ -112,3 +112,15 @@ async def test_a_failed_tick_is_logged_and_does_not_raise(
     [record] = caplog.records
     assert (record.levelno, record.getMessage()) == (logging.ERROR, "sweeper_failed")
     await asyncio.sleep(0)
+
+
+async def test_giving_up_on_an_invoice_is_logged_as_a_warning(
+    no_database: type[_Service], caplog: pytest.LogCaptureFixture
+) -> None:  # SAPS-38 BR-05
+    caplog.set_level(logging.INFO, logger="saps.worker.sweeper")
+    invoice_id, tenant_id = uuid4(), uuid4()
+    no_database.outcome = SweepResult([], [GaveUp(invoice_id, tenant_id, 3)])
+    await run_sweep(Settings(_env_file=None), MemoryQueue())
+    [record] = caplog.records
+    assert (record.levelno, record.getMessage()) == (logging.WARNING, "sweeper_gave_up")
+    assert (record.__dict__["invoice_id"], record.__dict__["resends"]) == (str(invoice_id), 3)

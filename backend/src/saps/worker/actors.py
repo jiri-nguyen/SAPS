@@ -3,20 +3,23 @@
 Start with: `dramatiq saps.worker.actors`. `process_invoice` runs extraction and matching (SAPS-18, SAPS-19);
 `rematch_invoice` runs matching again (SAPS-19). The sweeper (SAPS-37) is a timer started by a middleware.
 `ping` checks the path SAPS API → SAPS Message Broker → SAPS Worker.
-Failing invoice actors are retried by Dramatiq with exponential back-off (ADR-0004 S4).
+Failing invoice actors are retried by Dramatiq with exponential back-off (ADR-0004 S4); after the last
+retry of `process_invoice`, `process_invoice_failed` raises EX1 (SAPS-38).
 """
 
 import logging
 from functools import partial
+from typing import Any
 from uuid import UUID
 
 import dramatiq
 
 from saps.adapters.queue.dramatiq_queue import DramatiqJobQueue
+from saps.application.processing import describe_failure
 from saps.config import get_settings
 from saps.logging_config import configure_logging
 from saps.worker.broker import install_broker
-from saps.worker.jobs import load_adapters, run_matching, run_processing
+from saps.worker.jobs import load_adapters, run_failure, run_matching, run_processing
 from saps.worker.sweeper import SweeperMiddleware, run_sweep
 
 settings = get_settings()
@@ -43,7 +46,23 @@ async def rematch_invoice(invoice_id: str) -> None:
     await run_matching(UUID(invoice_id))
 
 
-@dramatiq.actor(time_limit=settings.actor_time_limit_ms)
+@dramatiq.actor(
+    time_limit=settings.actor_time_limit_ms,
+    max_retries=settings.process_invoice_max_retries,
+    min_backoff=settings.process_invoice_min_backoff_ms,
+    max_backoff=settings.process_invoice_max_backoff_ms,
+    on_retry_exhausted="process_invoice_failed",
+)
 async def process_invoice(invoice_id: str) -> None:
     """Sent by uploadInvoice (SAPS-17) and the sweeper (SAPS-37); expects status Uploaded."""
     await run_processing(UUID(invoice_id))
+
+
+@dramatiq.actor(max_retries=0, time_limit=settings.actor_time_limit_ms)
+async def process_invoice_failed(message_data: dict[str, Any], retry_data: dict[str, Any]) -> None:
+    """Sent once after the last retry of `process_invoice` failed (SAPS-38 BR-01).
+
+    Dramatiq passes the failed message; its `options["traceback"]` holds the last error (BR-02).
+    """
+    invoice_id = UUID(str(message_data["args"][0]))
+    await run_failure(invoice_id, describe_failure(str(message_data.get("options", {}).get("traceback", ""))))

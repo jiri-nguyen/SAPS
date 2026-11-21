@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from saps.adapters.persistence.db import session_factory
 from saps.adapters.persistence.models import Invoice, InvoiceEvent
 from saps.adapters.persistence.sweeper_repository import SWEEPER_LOCK_KEY, SqlSweepUnitOfWork
-from saps.application.sweeper import SweeperService
+from saps.application.sweeper import SweeperService, SweepResult
 from saps.domain.invoices import InvoiceStatus
 from tests.fakes import MemoryQueue
 from tests.integration.api_world import Api
@@ -52,18 +52,35 @@ async def _invoice(
     return invoice_id
 
 
+async def _sweep_result(
+    engine: AsyncEngine, queue: MemoryQueue, limit: int = 100, max_resends: int = 3
+) -> SweepResult | None:
+    service = SweeperService(
+        SqlSweepUnitOfWork(session_factory(engine)), queue, STUCK_AFTER, limit, max_resends
+    )
+    return await service.sweep()
+
+
 async def _sweep(engine: AsyncEngine, queue: MemoryQueue, limit: int = 100) -> list[uuid.UUID] | None:
-    service = SweeperService(SqlSweepUnitOfWork(session_factory(engine)), queue, STUCK_AFTER, limit)
-    resent = await service.sweep()
-    return None if resent is None else [item.invoice_id for item in resent]
+    result = await _sweep_result(engine, queue, limit)
+    return None if result is None else [item.invoice_id for item in result.resent]
 
 
-async def _events(engine: AsyncEngine, invoice_id: uuid.UUID) -> list[InvoiceEvent]:
+async def _events(engine: AsyncEngine, invoice_id: uuid.UUID, action: str = "RESEND") -> list[InvoiceEvent]:
     async with session_factory(engine)() as session:
         rows = await session.execute(
-            select(InvoiceEvent).where(InvoiceEvent.invoice_id == invoice_id, InvoiceEvent.action == "RESEND")
+            select(InvoiceEvent).where(InvoiceEvent.invoice_id == invoice_id, InvoiceEvent.action == action)
         )
         return list(rows.scalars())
+
+
+async def _age(engine: AsyncEngine, invoice_id: uuid.UUID) -> None:
+    async with session_factory(engine)() as session, session.begin():
+        await session.execute(
+            update(Invoice)
+            .where(Invoice.id == invoice_id)
+            .values(updated_at=datetime.now(UTC) - timedelta(days=1))
+        )
 
 
 async def _updated_at(engine: AsyncEngine, invoice_id: uuid.UUID) -> datetime:
@@ -211,3 +228,40 @@ async def test_invoices_of_every_tenant_are_swept(engine: AsyncEngine) -> None: 
         )
     resent = await _sweep(engine, MemoryQueue())
     assert resent is not None and {first, second, third} <= set(resent)
+
+
+# SAPS-38 BR-05 / TS-05 ---------------------------------------------------------------------------------
+
+
+async def test_the_sweeper_gives_up_on_an_uploaded_invoice_after_the_limit(engine: AsyncEngine) -> None:
+    invoice_id = await _invoice(engine)
+    queue = MemoryQueue()
+    for _ in range(3):  # three re-sends, each after another stuck period
+        result = await _sweep_result(engine, queue)
+        assert result is not None and [r.invoice_id for r in result.resent] == [invoice_id]
+        await _age(engine, invoice_id)
+    assert queue.sent == [invoice_id] * 3
+    assert len(await _events(engine, invoice_id)) == 3
+
+    result = await _sweep_result(engine, queue)  # the fourth time: give up
+    assert result is not None and result.resent == []
+    assert [(g.invoice_id, g.resends) for g in result.gave_up] == [(invoice_id, 3)]
+    assert queue.sent == [invoice_id] * 3
+    [limit] = await _events(engine, invoice_id, "RESEND_LIMIT")
+    assert (limit.actor, limit.details) == ("system", {"resends": 3})
+    assert await _status(engine, invoice_id) is InvoiceStatus.UPLOADED  # no EX1 from the sweeper
+
+    await _age(engine, invoice_id)
+    again = await _sweep_result(engine, queue)  # never selected again, logged once
+    assert again is not None and again.resent == [] and again.gave_up == []
+    assert len(await _events(engine, invoice_id, "RESEND_LIMIT")) == 1
+
+
+async def test_a_matching_invoice_is_re_sent_however_often(engine: AsyncEngine) -> None:
+    invoice_id = await _invoice(engine, InvoiceStatus.MATCHING)
+    queue = MemoryQueue()
+    for _ in range(5):
+        assert await _sweep(engine, queue) == [invoice_id]
+        await _age(engine, invoice_id)
+    assert queue.rematch == [invoice_id] * 5
+    assert await _events(engine, invoice_id, "RESEND_LIMIT") == []

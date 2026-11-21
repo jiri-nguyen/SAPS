@@ -21,8 +21,12 @@ class Settings(BaseSettings):
     dramatiq_heartbeat_timeout_ms: int = Field(default=30_000, gt=0)
     dramatiq_maintenance_chance: int = Field(default=100_000, ge=0, le=1_000_000)
     actor_time_limit_ms: int = Field(default=60_000, gt=0)
+    process_invoice_max_retries: int = Field(default=5, gt=0)
+    process_invoice_min_backoff_ms: int = Field(default=15_000, gt=0)
+    process_invoice_max_backoff_ms: int = Field(default=300_000, gt=0)
     sweeper_interval_seconds: int = Field(default=10, gt=0)
     sweeper_stuck_after_seconds: int = Field(default=60, gt=0)
+    sweeper_max_resends: int = Field(default=3, gt=0)
 
     # SAPS File Storage (ADR-0006)
     s3_endpoint_url: str = "http://localhost:8333"
