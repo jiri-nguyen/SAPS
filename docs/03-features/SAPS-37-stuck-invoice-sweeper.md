@@ -1,7 +1,7 @@
 ---
 id: "SAPS-37"
 title: "SAPS-37 — Stuck-invoice sweeper"
-status: draft            # draft | in-review | approved | deprecated
+status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2026-12-15
@@ -35,7 +35,7 @@ SAPS Worker finds such invoices and sends the missing message again. This is the
 | BR-03 | The sweeper runs every `SWEEPER_INTERVAL_SECONDS` (default 10 s) in every SAPS Worker process, but only one sweep runs per tick across all processes (PostgreSQL advisory lock). An invoice whose job is running is skipped (its row is locked). | [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S1 |
 | BR-04 | Each re-send sets `updated_at` to now, so the invoice waits another stuck period before the next re-send, and records an InvoiceEvent `RESEND` (actor `system`, status unchanged, `details` names the message). | design, §6 |
 | BR-05 | The sweeper works across all tenants (a system job); the actors stay idempotent, so a message that arrives twice changes nothing. | [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) S2, [ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md) |
-| BR-06 | A tick re-sends at most 100 invoices, oldest `updated_at` first; the rest wait for the next tick. | design, Q1 |
+| BR-06 | A tick re-sends at most 100 invoices, oldest `updated_at` first; the rest wait for the next tick. | design, Q1 (answered 2026-12-15) |
 
 ### 2.2 Affected NFRs
 None. [nfr.md §4.3](../01-requirements/nfr.md#43-availability--disaster-recovery-avail) has no availability requirement for the PoC; the sweeper only keeps a lost message from leaving an invoice stuck for good.
@@ -114,8 +114,8 @@ None. The SAPS API already answers `202` when sending fails after the commit ([S
 ### 3.8 Configuration & Feature Flags
 | Key | Purpose | Default | Per environment |
 |---|---|---|---|
-| `SWEEPER_INTERVAL_SECONDS` | Time between two ticks | 10 | CI may use a shorter value (Q2) |
-| `SWEEPER_STUCK_AFTER_SECONDS` | Age after which an invoice counts as stuck | 60 | CI may use a shorter value (Q2) |
+| `SWEEPER_INTERVAL_SECONDS` | Time between two ticks | 10 | CI-only `.env`: 5 (Q2) |
+| `SWEEPER_STUCK_AFTER_SECONDS` | Age after which an invoice counts as stuck | 60 | CI-only `.env`: 15 (Q2) |
 
 Both settings already exist in `.env.example` and `saps.config`; there is no new setting.
 
@@ -153,8 +153,8 @@ Both settings already exist in `.env.example` and `saps.config`; there is no new
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | How many invoices may one tick re-send? Proposal: 100, oldest first (BR-06). | Solution Architect / Tech Lead | before implementation | open |
-| Q2 | May the CI smoke test use a shorter stuck age and interval so the lost-message check stays short? Proposal: `SWEEPER_STUCK_AFTER_SECONDS=15` and `SWEEPER_INTERVAL_SECONDS=5` in the CI-only `.env`; the defaults stay 60 and 10. | Solution Architect / Tech Lead | before implementation | open |
+| Q1 | How many invoices may one tick re-send? | Solution Architect / Tech Lead | before implementation | answered: 100, oldest first (2026-12-15) |
+| Q2 | May the CI smoke test use a shorter stuck age and interval so the lost-message check stays short? | Solution Architect / Tech Lead | before implementation | answered: yes; `SWEEPER_STUCK_AFTER_SECONDS=15` and `SWEEPER_INTERVAL_SECONDS=5` in the CI-only `.env`, defaults stay 60 and 10 (2026-12-15) |
 
 ## 8. Documentation Checklist
 - [x] API spec: no change
