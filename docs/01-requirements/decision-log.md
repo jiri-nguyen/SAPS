@@ -1230,7 +1230,7 @@ history of changes and no history screen. The application log records the old an
 | Status | confirmed |
 | Decided by | Product Owner (Customer) |
 | Source | [MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) D4, R5, R9 |
-| Impacts | [scope.md](scope.md) SCP-OUT-01, SCP-OUT-09, priorities of SCP-IN-15 to -22; refines the timing of [DEC-026](#dec-026); proposed NFR-MAINT-001 |
+| Impacts | [scope.md](scope.md) SCP-OUT-01, SCP-OUT-09, priorities of SCP-IN-15 to -22; refines the timing of [DEC-026](#dec-026); [NFR-MAINT-001](nfr.md#nfr-maint-001) |
 | Supersedes / Superseded by | — |
 
 **Context:** The Product Owner has no AWS account and no OCR / AI extraction service yet; a working end-to-end flow for several companies matters more.
@@ -1239,7 +1239,7 @@ history of changes and no history screen. The application log records the old an
 
 **Rationale:** Stated by the Product Owner.
 
-**Consequences & follow-ups:** The direction of [DEC-026](#dec-026) (AWS, many companies) is unchanged; only its timing moves. The design requirement is proposed as NFR-MAINT-001. Priority of the other Phase 2 items is open ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q6, Q7).
+**Consequences & follow-ups:** The direction of [DEC-026](#dec-026) (AWS, many companies) is unchanged; only its timing moves. The design requirement is [NFR-MAINT-001](nfr.md#nfr-maint-001). Priority of the other Phase 2 items is open ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q6, Q7).
 
 
 ### DEC-051

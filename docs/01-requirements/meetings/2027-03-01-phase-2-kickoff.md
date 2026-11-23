@@ -74,7 +74,7 @@ related: [MTG-20261205, MTG-20261114, DEC-003, DEC-026, DEC-047, DEC-048, DEC-04
 | R6 | A demo of the new features at the end of Phase 2, like the PoC; no interim release | Project | [DEC-051](../decision-log.md#dec-051); scope.md BO3; Phase 2 demo scenarios in the test strategy (later) | logged |
 | R7 | About 3 companies, each 1,000 invoices per day; about 30 users in total | NFR | nfr.md 0.4 Workload Profile; NFR-SCAL-001 unchanged (the numbers fit its target); targets per Q8 | logged |
 | R8 | Users work in Singapore time (SGT, UTC+8) | NFR | nfr.md 0.4 Workload Profile "Operating hours", "User locations" | logged |
-| R9 | Update after the meeting: OCR / AI extraction (OUT-01) and AWS deployment (OUT-09) move after the Phase 2 demo; the design must make it easy to add them later | Scope / NFR | [DEC-048](../decision-log.md#dec-048), [DEC-050](../decision-log.md#dec-050); scope.md SCP-OUT-01, -09; NFR-MAINT-001 | proposed (NFR-MAINT-001) |
+| R9 | Update after the meeting: OCR / AI extraction (OUT-01) and AWS deployment (OUT-09) move after the Phase 2 demo; the design must make it easy to add them later | Scope / NFR | [DEC-048](../decision-log.md#dec-048), [DEC-050](../decision-log.md#dec-050); scope.md SCP-OUT-01, -09; [NFR-MAINT-001](../nfr.md#nfr-maint-001) | logged |
 
 ### 7.1 Conflicts with existing items
 | Existing item | Conflict | Proposal |
@@ -89,7 +89,7 @@ related: [MTG-20261205, MTG-20261114, DEC-003, DEC-026, DEC-047, DEC-048, DEC-04
 - Sign-in with Keycloak (OIDC), roles from Keycloak, impact on sessions and the Origin check (ADR-0008).
 - Tenancy model: one database with `tenant_id` (ADR-0007) vs a schema or a database per company; how a user belongs to a company.
 - Mailbox intake: mail provider and protocol (Microsoft Graph, Gmail API, IMAP), one mailbox per company or one shared.
-- Later in the phase: ERP integration via MuleSoft. After the Phase 2 demo: OCR / AI extraction service and AWS deployment (the Phase 2 design keeps both easy to add, NFR-MAINT-001).
+- Later in the phase: ERP integration via MuleSoft. After the Phase 2 demo: OCR / AI extraction service and AWS deployment (the Phase 2 design keeps both easy to add, [NFR-MAINT-001](../nfr.md#nfr-maint-001)).
 
 ## 8. Action Items
 | # | Action | Owner | Due | Status |
