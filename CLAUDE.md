@@ -11,7 +11,7 @@ project, then fill in **Project Context**.
 | Project name | `Smart-AP-Suite` |
 | Project code | `SAPS` (Linear team key) |
 | Customer | `TBD` |
-| Cloud | `AWS` after the PoC (Product Owner's company account, DEC-026); the PoC runs locally |
+| Cloud | `AWS` after the Phase 2 demo (Product Owner's company account, DEC-026, DEC-050); the PoC ran locally, Phase 2 environment TBD (MTG-20270301 Q2) |
 | Primary region(s) | `TBD` |
 | Work tracker | Linear |
 | Work tracker base URL | `https://linear.app/jiringuyen/issue/` (project: `https://linear.app/jiringuyen/project/smart-ap-suite-766faab061af/overview`) |

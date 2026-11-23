@@ -58,6 +58,11 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, 
 | [DEC-044](#dec-044) | 2026-12-15 | Dependency audit gate: runtime blocking, dev-only report when no fix exists | Process | confirmed |
 | [DEC-045](#dec-045) | 2026-12-15 | Allowed values of the matching settings | Business | confirmed |
 | [DEC-046](#dec-046) | 2026-12-15 | Only the last change of the matching settings is kept | Scope | confirmed |
+| [DEC-047](#dec-047) | 2027-03-01 | PoC accepted | Project | confirmed |
+| [DEC-048](#dec-048) | 2027-03-01 | [CR] Scope of Phase 2 | Scope | confirmed |
+| [DEC-049](#dec-049) | 2027-03-01 | Single Sign-On with Keycloak | Technical | confirmed |
+| [DEC-050](#dec-050) | 2027-03-01 | Phase 2 priorities; OCR / AI and AWS after the Phase 2 demo | Project | confirmed |
+| [DEC-051](#dec-051) | 2027-03-01 | Phase 2 timeline and demo | Project | confirmed |
 
 ## 2. Decisions
 
@@ -1148,3 +1153,113 @@ history of changes and no history screen. The application log records the old an
 **Rationale:** The settings change rarely; the log is enough for the PoC.
 
 **Consequences & follow-ups:** A history of changes may be requested after the PoC; it would add a new entity.
+
+### DEC-047
+**PoC accepted**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Project |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) D1, R1 |
+| Impacts | [scope.md](scope.md) BO2, SCP-IN-11 |
+| Supersedes / Superseded by | — |
+
+**Context:** The PoC demo of all scenarios of the demo scenario catalog took place ([Test Strategy §11](../05-testing/test-strategy.md#11-poc-demo-acceptance)).
+
+**Decision:** The Product Owner accepts the PoC: BO2 is met.
+
+**Rationale:** Stated by the Product Owner, the sign-off owner ([DEC-011](#dec-011)).
+
+**Consequences & follow-ups:** Phase 2 starts ([DEC-051](#dec-051)).
+
+
+### DEC-048
+**[CR] Scope of Phase 2**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Scope |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) D2, R3, R4, R9 |
+| Impacts | [scope.md](scope.md) version 0.7: SCP-IN-15 to SCP-IN-22; SCP-OUT-02, -07, -08, -10, -11, -12, -13 withdrawn (moved); SCP-OUT-01, -09 changed |
+| Supersedes / Superseded by | — |
+
+**Context:** After the PoC, the Product Owner names the items of Phase 2. Most were out of the PoC scope (SCP-OUT). Users also miss a view of invoices that finished processing: Completed and Rejected invoices disappear from the Web App.
+
+**Decision:** In scope of Phase 2: ERP integration via MuleSoft (from SCP-OUT-02), automated checks for non-PO invoices (SCP-OUT-07), posting results to the ERP or exporting them (SCP-OUT-08), Single Sign-On (SCP-OUT-10, [DEC-049](#dec-049)), invoice intake from a mailbox (SCP-OUT-11), multi-tenancy (SCP-OUT-12), GR-based invoice verification (SCP-OUT-13), and the new invoice list and search. Real extraction with OCR / AI (SCP-OUT-01) and cloud deployment (SCP-OUT-09) stay out until after the Phase 2 demo ([DEC-050](#dec-050)). SCP-OUT-03, -04, -05, -06, -14 and -15 stay out.
+
+**Rationale:** Stated by the Product Owner; OCR / AI and AWS are not available to the Product Owner yet.
+
+**Consequences & follow-ups:** Linear issues for the new scope items (listed by the team, created by the Solution Architect). Feature specs and ADRs for SSO, mailbox intake and multi-tenancy first. Open questions in [MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q1–Q12.
+
+
+### DEC-049
+**Single Sign-On with Keycloak**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Technical |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) D3, R3 |
+| Impacts | SCP-IN-18; [ADR-0008](../02-architecture/adr/0008-use-session-cookies-for-authentication.md) (to be superseded in part by a new ADR); [NFR-SEC-001](nfr.md#nfr-sec-001) (new version); SCP-IN-12 |
+| Supersedes / Superseded by | — |
+
+**Context:** The PoC signs users in with simple accounts stored in the SAPS Database ([ADR-0008](../02-architecture/adr/0008-use-session-cookies-for-authentication.md)).
+
+**Decision:** Single Sign-On uses Keycloak.
+
+**Rationale:** Stated by the Product Owner.
+
+**Consequences & follow-ups:** A new ADR describes the sign-in with Keycloak (protocol, roles, sessions, Origin check). Who runs Keycloak and the realm per company are open ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q3).
+
+
+### DEC-050
+**Phase 2 priorities; OCR / AI and AWS after the Phase 2 demo**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Project |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) D4, R5, R9 |
+| Impacts | [scope.md](scope.md) SCP-OUT-01, SCP-OUT-09, priorities of SCP-IN-15 to -22; refines the timing of [DEC-026](#dec-026); [NFR-MAINT-001](nfr.md#nfr-maint-001) |
+| Supersedes / Superseded by | — |
+
+**Context:** The Product Owner has no AWS account and no OCR / AI extraction service yet; a working end-to-end flow for several companies matters more.
+
+**Decision:** Single Sign-On (Keycloak), invoice intake from a mailbox and multi-tenancy are built first. Real extraction with OCR / AI and the deployment on AWS move after the Phase 2 demo. The design of Phase 2 must make it easy to add both later.
+
+**Rationale:** Stated by the Product Owner.
+
+**Consequences & follow-ups:** The direction of [DEC-026](#dec-026) (AWS, many companies) is unchanged; only its timing moves. The design requirement is [NFR-MAINT-001](nfr.md#nfr-maint-001). Priority of the other Phase 2 items is open ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q6, Q7).
+
+
+### DEC-051
+**Phase 2 timeline and demo**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Project |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) D5, R2, R6 |
+| Impacts | [scope.md](scope.md) BO3; [Test Strategy](../05-testing/test-strategy.md) (Phase 2 demo scenarios, later) |
+| Supersedes / Superseded by | — |
+
+**Context:** The PoC ended with one demo and no interim release ([DEC-017](#dec-017)).
+
+**Decision:** Phase 2 starts on 2027-03-01 and lasts about 6 months. It ends with a demo of the new features; no interim release is planned.
+
+**Rationale:** Stated by the Product Owner.
+
+**Consequences & follow-ups:** The demo date, the go-live date and the budget are open ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q1).
+

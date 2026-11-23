@@ -1,17 +1,17 @@
 ---
 title: Non-Functional Requirements
-version: "0.3"           # 1.0 = first customer-approved version
+version: "0.4"           # 1.0 = first customer-approved version
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)", "Product Owner (Customer)"]
-last_updated: 2026-12-05
-related: [MTG-20261121, MTG-20261128, MTG-20261205, DEC-003, DEC-026]
+last_updated: 2027-03-01
+related: [MTG-20261121, MTG-20261128, MTG-20261205, MTG-20270301, DEC-003, DEC-026, DEC-048, DEC-050, NFR-MAINT-001]
 ---
 
 # Non-Functional Requirements
 
 ## 1. Introduction
-- This version covers the Proof of Concept (PoC) phase ([DEC-003](decision-log.md#dec-003)).
+- This version covers the Proof of Concept (PoC) phase ([DEC-003](decision-log.md#dec-003)) and the Workload Profile of Phase 2 ([DEC-048](decision-log.md#dec-048)); quality targets for Phase 2 are open ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q8).
 - Requirement statements use RFC 2119 keywords: **MUST**, **SHOULD**, **MAY**.
 - **Priority:** Must (release blocker) · Should (important, can be deferred with agreement) · Could (nice to have).
 - **Status:** proposed (not yet agreed) · agreed (confirmed by the customer) · withdrawn.
@@ -24,20 +24,21 @@ Volumes below are design information, not PoC acceptance criteria ([MTG-20261205
 
 | Parameter | Value | Source |
 |---|---|---|
-| Total named users | TBD | MTG-20261114 Q4 (counts not given) |
+| Total named users | Phase 2: about 30 (Accounting Members and Accounting Managers of about 3 companies) | [MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) R7 |
 | Peak concurrent users | TBD | — |
 | Peak request rate | TBD | — |
-| Business transactions per day | PoC: ≤ 1,000 invoices/day (one company). After the PoC: 1,000–2,000 invoices/day per company, many companies | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) R6 |
+| Business transactions per day | PoC: ≤ 1,000 invoices/day (one company). Phase 2 demo: about 3 companies × 1,000 invoices/day ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) R7). Later: 1,000–2,000 invoices/day per company, many companies | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) R6 |
 | Peak periods | TBD | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) Q1 |
 | Data volume at go-live | TBD | — |
 | Annual data growth | TBD | — |
-| Operating hours | Business hours (assumption; time zone TBD) | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) R9, Q2 |
-| User locations | TBD | MTG-20261114 Q1 |
+| Operating hours | Business hours, Singapore time (SGT, UTC+8) | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) R9; [MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) R8 |
+| User locations | Singapore time zone; locations TBD | MTG-20261114 Q1; [MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) R8 |
 
 ## 3. Summary
 | ID | Title | Priority | Status |
 |---|---|---|---|
 | [NFR-SCAL-001](#nfr-scal-001) | Scalable design beyond the PoC | Must | agreed |
+| [NFR-MAINT-001](#nfr-maint-001) | Ready for real extraction and AWS | Must | agreed |
 | [NFR-SEC-001](#nfr-sec-001) | Sign-in with simple user accounts | Must | agreed |
 | [NFR-USAB-001](#nfr-usab-001) | English user interface | Must | agreed |
 
@@ -88,7 +89,20 @@ None agreed for the PoC. Data residency and retention are open (MTG-20261114 Q28
 None agreed for the PoC.
 
 ### 4.7 Maintainability & Operability (MAINT)
-None agreed for the PoC.
+
+#### NFR-MAINT-001
+**Ready for real extraction and AWS**
+
+| Field | Value |
+|---|---|
+| Requirement | The Phase 2 design MUST let a real OCR / AI extraction service and the deployment on AWS be added after the Phase 2 demo without changing the matching and workflow logic. |
+| Metric & target | Extraction stays behind the Extraction Port ([ADR-0001](../02-architecture/adr/0001-isolate-extraction-and-erp-behind-ports.md)); file storage, message queue, database, identity provider and mail are reached only through adapters and environment settings; no local-only assumptions in the code |
+| Conditions | Every ADR and feature spec of Phase 2 |
+| Priority | Must |
+| Verification | Review (architecture review of each Phase 2 ADR and feature spec) |
+| Source | [MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) R9; [DEC-050](decision-log.md#dec-050) |
+| Status | agreed |
+| Related | [NFR-SCAL-001](#nfr-scal-001), [DEC-026](decision-log.md#dec-026) |
 
 ### 4.8 Usability & Accessibility (USAB)
 
@@ -130,3 +144,4 @@ None agreed for the PoC. Later ERP integration is a constraint: [CON-03](../02-a
 | 0.1 | 2026-11-21 | Solution Architect (our company) | Initial draft for the PoC: NFR-SEC-001, NFR-USAB-001 | [DEC-003](decision-log.md#dec-003) |
 | 0.2 | 2026-11-28 | Solution Architect (our company) | NFR-SCAL-001 added | — ([MTG-20261128](meetings/2026-11-28-poc-flow-review.md) R11) |
 | 0.3 | 2026-12-05 | Solution Architect (our company) | Workload Profile filled; NFR-SCAL-001 target set | [DEC-026](decision-log.md#dec-026) |
+| 0.4 | 2027-03-01 | Solution Architect (our company) | Workload Profile for Phase 2: users, invoices per day, Singapore time; NFR-MAINT-001 added | [DEC-048](decision-log.md#dec-048) ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) R7, R8) |
