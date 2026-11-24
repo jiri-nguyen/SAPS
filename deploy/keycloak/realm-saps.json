@@ -1,0 +1,318 @@
+{
+  "realm": "saps",
+  "displayName": "Smart-AP-Suite",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 28800,
+  "roles": {
+    "realm": [
+      {
+        "name": "ACCOUNTING_MEMBER",
+        "description": "Handles exceptions and gives the final review of invoices"
+      },
+      {
+        "name": "ACCOUNTING_MANAGER",
+        "description": "Approves invoices above the threshold and changes the matching settings"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "companies",
+      "path": "/companies",
+      "subGroups": [
+        {
+          "name": "vn",
+          "path": "/companies/vn",
+          "attributes": {
+            "company_code": [
+              "vn"
+            ]
+          }
+        },
+        {
+          "name": "sg",
+          "path": "/companies/sg",
+          "attributes": {
+            "company_code": [
+              "sg"
+            ]
+          }
+        },
+        {
+          "name": "my",
+          "path": "/companies/my",
+          "attributes": {
+            "company_code": [
+              "my"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "saps-web",
+      "name": "SAPS Web App and SAPS API",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${KEYCLOAK_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "${WEB_APP_ORIGIN}/v1/session/callback"
+      ],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "${WEB_APP_ORIGIN}/*",
+        "backchannel.logout.url": "http://api:8000/v1/session/backchannel-logout",
+        "backchannel.logout.session.required": "true"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "groups",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "full.path": "true"
+          }
+        },
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "member1@vn.example.com",
+      "email": "member1@vn.example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Accounting",
+      "lastName": "Member 1",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${SEED_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/companies/vn"
+      ],
+      "realmRoles": [
+        "ACCOUNTING_MEMBER"
+      ]
+    },
+    {
+      "username": "member2@vn.example.com",
+      "email": "member2@vn.example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Accounting",
+      "lastName": "Member 2",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${SEED_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/companies/vn"
+      ],
+      "realmRoles": [
+        "ACCOUNTING_MEMBER"
+      ]
+    },
+    {
+      "username": "manager1@vn.example.com",
+      "email": "manager1@vn.example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Accounting",
+      "lastName": "Manager 1",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${SEED_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/companies/vn"
+      ],
+      "realmRoles": [
+        "ACCOUNTING_MANAGER"
+      ]
+    },
+    {
+      "username": "member1@sg.example.com",
+      "email": "member1@sg.example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Accounting",
+      "lastName": "Member 1",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${SEED_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/companies/sg"
+      ],
+      "realmRoles": [
+        "ACCOUNTING_MEMBER"
+      ]
+    },
+    {
+      "username": "member2@sg.example.com",
+      "email": "member2@sg.example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Accounting",
+      "lastName": "Member 2",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${SEED_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/companies/sg"
+      ],
+      "realmRoles": [
+        "ACCOUNTING_MEMBER"
+      ]
+    },
+    {
+      "username": "manager1@sg.example.com",
+      "email": "manager1@sg.example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Accounting",
+      "lastName": "Manager 1",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${SEED_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/companies/sg"
+      ],
+      "realmRoles": [
+        "ACCOUNTING_MANAGER"
+      ]
+    },
+    {
+      "username": "member1@my.example.com",
+      "email": "member1@my.example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Accounting",
+      "lastName": "Member 1",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${SEED_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/companies/my"
+      ],
+      "realmRoles": [
+        "ACCOUNTING_MEMBER"
+      ]
+    },
+    {
+      "username": "member2@my.example.com",
+      "email": "member2@my.example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Accounting",
+      "lastName": "Member 2",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${SEED_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/companies/my"
+      ],
+      "realmRoles": [
+        "ACCOUNTING_MEMBER"
+      ]
+    },
+    {
+      "username": "manager1@my.example.com",
+      "email": "manager1@my.example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Accounting",
+      "lastName": "Manager 1",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${SEED_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/companies/my"
+      ],
+      "realmRoles": [
+        "ACCOUNTING_MANAGER"
+      ]
+    }
+  ]
+}

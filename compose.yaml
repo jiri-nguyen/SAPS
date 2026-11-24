@@ -1,4 +1,4 @@
-# Smart-AP-Suite PoC — local stack (CON-01, ADR-0003, ADR-0004, ADR-0006). Start: docker compose up -d --build --wait
+# Smart-AP-Suite local stack (CON-01, ADR-0003, ADR-0004, ADR-0006, ADR-0010). Start: docker compose up -d --build --wait
 name: saps
 
 x-app-env: &app-env
@@ -23,6 +23,49 @@ services:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       retries: 20
+
+  db-init:                 # one-shot: database and role of Keycloak in the SAPS Database (SAPS-43)
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-saps}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saps-local}
+      POSTGRES_DB: ${POSTGRES_DB:-saps}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak-local}
+    volumes: ["./deploy/keycloak/init-db.sh:/init-db.sh:ro"]
+    command: ["sh", "/init-db.sh"]
+    restart: "no"
+    depends_on:
+      db: { condition: service_healthy }
+
+  keycloak:                # Identity Provider: Keycloak, realm `saps` with the companies as groups (ADR-0010)
+    image: quay.io/keycloak/keycloak:26.3.5
+    command: ["start", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin-local}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak-local}
+      # One issuer: the browser reaches Keycloak at the public URL, containers at http://keycloak:8080 (ADR-0011).
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8080}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      # Placeholders `${...}` of the realm file (deploy/keycloak/realm-saps.json); no secret is in the repository.
+      WEB_APP_ORIGIN: ${WEB_APP_ORIGIN:-http://localhost:5173}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-saps-web-local-secret}
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD:?Set SEED_USER_PASSWORD in .env (password of the demo users)}
+    ports: ["8080:8080"]
+    volumes: ["./deploy/keycloak/realm-saps.json:/opt/keycloak/data/import/realm-saps.json:ro"]
+    depends_on:
+      db-init: { condition: service_completed_successfully }
+    healthcheck:           # the image has no curl: read /health/ready of the management port with bash
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"status\": \"UP\"' <&3"]
+      start_period: 120s
+      start_interval: 3s
+      interval: 15s
+      retries: 10
 
   redis:                   # SAPS Message Broker
     image: redis:7.2-alpine
