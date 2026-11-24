@@ -23,7 +23,7 @@ Scope: see [Scope Statement](../../01-requirements/scope.md).
 
 | ID | Use case | Primary actor | Scope item | Backlog |
 |---|---|---|---|---|
-| UC-01 | Sign in | Accounting Member, Accounting Manager | SCP-IN-12 | [SAPS-27](https://linear.app/jiringuyen/issue/SAPS-27) |
+| UC-01 | Sign in | Accounting Member, Accounting Manager | SCP-IN-12, SCP-IN-18 | [SAPS-27](https://linear.app/jiringuyen/issue/SAPS-27), [SAPS-44](https://linear.app/jiringuyen/issue/SAPS-44) |
 | UC-02 | Upload invoice | Accounting Member | SCP-IN-01, SCP-IN-02 | [SAPS-17](https://linear.app/jiringuyen/issue/SAPS-17) |
 | UC-03 | Handle exception | Accounting Member | SCP-IN-04 | [SAPS-20](https://linear.app/jiringuyen/issue/SAPS-20) |
 | UC-04 | Approve invoice | Accounting Manager | SCP-IN-06 | [SAPS-22](https://linear.app/jiringuyen/issue/SAPS-22) |

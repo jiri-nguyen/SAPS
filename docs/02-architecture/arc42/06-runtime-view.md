@@ -3,7 +3,7 @@ title: "§6 Runtime View"
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)", "Product Owner (Customer)"]
-last_updated: 2026-12-15
+last_updated: 2027-03-01
 related: [DEC-003, DEC-004, DEC-005, DEC-006, DEC-007, DEC-008, DEC-009, DEC-010, DEC-012, DEC-013, DEC-014, DEC-016, DEC-021, ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006]
 ---
 
@@ -19,6 +19,7 @@ The business flow was approved by the Product Owner in
 |---|---|---|---|
 | 6.2 | Invoice processing end to end (PoC) | UC-02 to UC-06, UC-08 ([§1](01-introduction-and-goals.md#use-cases)) | — |
 | 6.3 | Recovery of stuck invoices (sweeper) | — (system) | — |
+| — | Sign-in through Keycloak, token refresh, back-channel logout | UC-01 | [SAPS-44](../../03-features/SAPS-44-single-sign-on.md) §3.2 |
 
 ## 6.2 Invoice processing end to end (PoC)
 **Trigger:** An Accounting Member uploads an invoice file in the SAPS Web App.
