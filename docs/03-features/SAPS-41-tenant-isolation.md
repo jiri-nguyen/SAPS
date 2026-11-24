@@ -1,7 +1,7 @@
 ---
 id: "SAPS-41"
 title: "SAPS-41 — Tenant isolation with row-level security"
-status: draft            # draft | in-review | approved | deprecated
+status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2027-03-01
@@ -191,8 +191,8 @@ the new keys keep working because the key is stored per invoice.
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | Three connection URLs and two role passwords in `.env` (§3.8): acceptable for the local demo, with a secret store on AWS later? | Solution Architect / Tech Lead | before implementation | open |
-| Q2 | Accept old worker messages without company for one release only (EC-05), then remove the fallback? | Solution Architect / Tech Lead | before implementation | open |
+| Q1 | Three connection URLs and two role passwords in `.env` (§3.8): acceptable for the local demo, with a secret store on AWS later? | Solution Architect / Tech Lead | before implementation | answered: yes; a secret store on AWS later (2027-03-01) |
+| Q2 | Accept old worker messages without company for one release only (EC-05), then remove the fallback? | Solution Architect / Tech Lead | before implementation | answered: yes, removed in the release after Phase 2 (2027-03-01) |
 
 ## 8. Documentation Checklist
 - [x] API spec: no change
