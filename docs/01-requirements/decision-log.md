@@ -63,6 +63,12 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, 
 | [DEC-049](#dec-049) | 2027-03-01 | Single Sign-On with Keycloak | Technical | confirmed |
 | [DEC-050](#dec-050) | 2027-03-01 | Phase 2 priorities; OCR / AI and AWS after the Phase 2 demo | Project | confirmed |
 | [DEC-051](#dec-051) | 2027-03-01 | Phase 2 timeline and demo | Project | confirmed |
+| [DEC-052](#dec-052) | 2027-03-01 | Phase 2 demo on 2027-08-30 | Project | confirmed |
+| [DEC-053](#dec-053) | 2027-03-01 | Local Docker Compose environment for the Phase 2 demo | Technical | confirmed |
+| [DEC-054](#dec-054) | 2027-03-01 | Users and roles managed in Keycloak | Business | confirmed |
+| [DEC-055](#dec-055) | 2027-03-01 | Mailbox intake rules | Business | confirmed |
+| [DEC-056](#dec-056) | 2027-03-01 | One company per user; settings, vendors and ERP data per company | Business | confirmed |
+| [DEC-057](#dec-057) | 2027-03-01 | Invoice list and search rules | Business | confirmed |
 
 ## 2. Decisions
 
@@ -1262,4 +1268,135 @@ history of changes and no history screen. The application log records the old an
 **Rationale:** Stated by the Product Owner.
 
 **Consequences & follow-ups:** The demo date, the go-live date and the budget are open ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q1).
+
+### DEC-052
+**Phase 2 demo on 2027-08-30**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Project |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301-2](meetings/2027-03-01-phase-2-requirements.md) D1, R1 |
+| Impacts | [scope.md](scope.md) BO3; refines [DEC-051](#dec-051) |
+| Supersedes / Superseded by | — |
+
+**Context:** [DEC-051](#dec-051) set the start and the length of Phase 2 but not the demo date.
+
+**Decision:** The Phase 2 demo takes place on 2027-08-30. The go-live date is decided later.
+
+**Rationale:** Stated by the Product Owner.
+
+**Consequences & follow-ups:** Go-live date and budget stay open ([MTG-20270301-2](meetings/2027-03-01-phase-2-requirements.md) Q1).
+
+
+### DEC-053
+**Local Docker Compose environment for the Phase 2 demo**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Technical |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301-2](meetings/2027-03-01-phase-2-requirements.md) D2, R2 |
+| Impacts | [scope.md](scope.md) SCP-IN-10; arc42 §7 Deployment View |
+| Supersedes / Superseded by | — |
+
+**Context:** AWS moves after the Phase 2 demo ([DEC-050](#dec-050)); the PoC ran locally with Docker Compose ([DEC-003](#dec-003)).
+
+**Decision:** The Phase 2 demo runs locally with Docker Compose like the PoC, extended with a Keycloak container and a local test mail server. The deployment on AWS follows after the demo.
+
+**Rationale:** Proposed by the Solution Architect, accepted by the Product Owner; keeps the Phase 2 design ready for AWS ([NFR-MAINT-001](nfr.md#nfr-maint-001)).
+
+**Consequences & follow-ups:** Keycloak and the test mail server are added to `compose.yaml`; the choice of the test mail server is part of the mailbox intake ADR.
+
+
+### DEC-054
+**Users and roles managed in Keycloak**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301-2](meetings/2027-03-01-phase-2-requirements.md) D3, R3 |
+| Impacts | [scope.md](scope.md) SCP-IN-18; [DEC-049](#dec-049) |
+| Supersedes / Superseded by | — |
+
+**Context:** Single Sign-On uses Keycloak ([DEC-049](#dec-049)); the PoC created demo users with a seed script.
+
+**Decision:** The team runs Keycloak for the Phase 2 demo. Users and their roles (Accounting Member, Accounting Manager) are managed in the Keycloak admin console. The Web App has no user management screens and no system administrator role that sees all companies in Phase 2.
+
+**Rationale:** Proposed by the Solution Architect, accepted by the Product Owner.
+
+**Consequences & follow-ups:** One realm for all companies or one per company is open ([MTG-20270301-2](meetings/2027-03-01-phase-2-requirements.md) Q2).
+
+
+### DEC-055
+**Mailbox intake rules**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301-2](meetings/2027-03-01-phase-2-requirements.md) D4, R4 |
+| Impacts | [scope.md](scope.md) SCP-IN-19 |
+| Supersedes / Superseded by | — |
+
+**Context:** Invoices can arrive by mail in Phase 2 ([DEC-048](#dec-048)).
+
+**Decision:** Each company has its own mailbox; the real mail system later is Outlook (Microsoft 365). The mailbox that receives a mail tells the company of its invoices. Only PDF, PNG and JPG attachments are taken; each attachment is one invoice. A mail without a valid attachment is skipped and logged. The sender is not checked in Phase 2.
+
+**Rationale:** Stated by the Product Owner; formats and the handling of mails without invoices proposed by the Solution Architect and accepted.
+
+**Consequences & follow-ups:** An ADR chooses the mail access (Microsoft Graph for Outlook, a local test mail server for the demo, both behind a port).
+
+
+### DEC-056
+**One company per user; settings, vendors and ERP data per company**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301-2](meetings/2027-03-01-phase-2-requirements.md) D5, R5 |
+| Impacts | [scope.md](scope.md) SCP-IN-20, SCP-IN-09, SCP-IN-13; [ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md) |
+| Supersedes / Superseded by | — |
+
+**Context:** The system serves several companies in Phase 2 ([DEC-048](#dec-048)); the PoC data model already carries a tenant on every table ([ADR-0007](../02-architecture/adr/0007-prepare-data-model-for-tenants.md)).
+
+**Decision:** A user belongs to exactly one company. Matching settings, vendors and ERP data are kept per company.
+
+**Rationale:** Stated by the Product Owner; settings, vendors and ERP data per company proposed by the Solution Architect and accepted.
+
+**Consequences & follow-ups:** The dummy ERP data must be split per company until the ERP integration (SCP-IN-15). The database model is open ([MTG-20270301-2](meetings/2027-03-01-phase-2-requirements.md) Q3).
+
+
+### DEC-057
+**Invoice list and search rules**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301-2](meetings/2027-03-01-phase-2-requirements.md) D6, R6 |
+| Impacts | [scope.md](scope.md) SCP-IN-22 |
+| Supersedes / Superseded by | — |
+
+**Context:** Completed and Rejected invoices disappear from the Web App ([DEC-048](#dec-048)).
+
+**Decision:** Accounting Members and Accounting Managers see all invoices of their own company in every status. Filters: status, vendor, invoice number, invoice date range, upload date range, total amount range, PO number and intake channel (upload or mail). Newest first, 20 per page. No export.
+
+**Rationale:** Proposed by the Solution Architect, accepted by the Product Owner.
+
+**Consequences & follow-ups:** A feature spec describes the screen and the API (`listInvoices` filters).
 

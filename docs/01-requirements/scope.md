@@ -1,11 +1,11 @@
 ---
 title: Scope Statement
-version: "0.7"           # 1.0 = first customer-approved version
+version: "0.8"           # 1.0 = first customer-approved version
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Solution Architect (our company)", "Product Owner (Customer)"]
 last_updated: 2027-03-01
-related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-003, DEC-004, DEC-011, DEC-012, DEC-013, DEC-014, DEC-015, DEC-016, DEC-017, DEC-018, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024, DEC-025, DEC-026, DEC-031, DEC-032, DEC-033, DEC-034, DEC-039, DEC-041, DEC-047, DEC-048, DEC-049, DEC-050, DEC-051, MTG-20270301]
+related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-003, DEC-004, DEC-011, DEC-012, DEC-013, DEC-014, DEC-015, DEC-016, DEC-017, DEC-018, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024, DEC-025, DEC-026, DEC-031, DEC-032, DEC-033, DEC-034, DEC-039, DEC-041, DEC-047, DEC-048, DEC-049, DEC-050, DEC-051, DEC-052, DEC-053, DEC-054, DEC-055, DEC-056, DEC-057, MTG-20270301, MTG-20270301-2]
 ---
 
 # Scope Statement
@@ -27,7 +27,7 @@ Backlog items live in the Linear project
 |---|---|---|
 | BO1 | Automate the AP flow and grow into an AP system serving many customer companies on AWS ([DEC-026](decision-log.md#dec-026)) | TBD |
 | BO2 | Prove the automated AP business flow in a PoC | All flows run successfully in the demo on 2027-02-22: every scenario in the demo scenario catalog, i.e. happy paths per invoice type and one scenario per exception type EX1–EX10 ([DEC-033](decision-log.md#dec-033), [DEC-020](decision-log.md#dec-020), [DEC-017](decision-log.md#dec-017)) — **met** ([DEC-047](decision-log.md#dec-047)) |
-| BO3 | Extend the AP system for several customer companies in Phase 2 ([DEC-048](decision-log.md#dec-048), [DEC-051](decision-log.md#dec-051)) | The new features run in the Phase 2 demo for about 3 companies; demo date TBD ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q1) |
+| BO3 | Extend the AP system for several customer companies in Phase 2 ([DEC-048](decision-log.md#dec-048), [DEC-051](decision-log.md#dec-051)) | The new features run in the Phase 2 demo for about 3 companies; demo on 2027-08-30 ([DEC-052](decision-log.md#dec-052)) |
 
 ## 3. In Scope
 
@@ -48,11 +48,11 @@ All PoC items are priority Must (AS2, confirmed). Priorities of Phase 2 items fo
 | SCP-IN-13 | Matching settings | The Accounting Manager can change the price tolerance (default 0.5 USD) and the approval threshold (default 300 USD) | Must | [SAPS-28](https://linear.app/jiringuyen/issue/SAPS-28) | [DEC-015](decision-log.md#dec-015) |
 | SCP-IN-14 | Invoice rejection | The Accounting Manager (at approval) or an Accounting Member (during exception handling or at final review) can reject an invoice; Rejected is a final state | Must | [SAPS-29](https://linear.app/jiringuyen/issue/SAPS-29) | [DEC-014](decision-log.md#dec-014) |
 | SCP-IN-16 | Automated checks for non-PO invoices | Phase 2 (from SCP-OUT-07); the checks are to be defined | TBD ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q7) | TBD | [DEC-048](decision-log.md#dec-048) |
-| SCP-IN-18 | Single Sign-On | Phase 2 (from SCP-OUT-10): users sign in through Keycloak ([DEC-049](decision-log.md#dec-049)); replaces the simple user accounts of SCP-IN-12 | Must; first ([DEC-050](decision-log.md#dec-050)) | TBD | [DEC-048](decision-log.md#dec-048), [DEC-049](decision-log.md#dec-049) |
-| SCP-IN-19 | Invoice intake from a mailbox | Phase 2 (from SCP-OUT-11): invoices sent to a dedicated mailbox enter the flow like an upload | Must; first ([DEC-050](decision-log.md#dec-050)) | TBD | [DEC-048](decision-log.md#dec-048) |
-| SCP-IN-20 | Multi-tenancy | Phase 2 (from SCP-OUT-12): the system serves several customer companies, about 3 in the Phase 2 demo, with their data separated | Must; first ([DEC-050](decision-log.md#dec-050)) | TBD | [DEC-048](decision-log.md#dec-048) |
+| SCP-IN-18 | Single Sign-On | Phase 2 (from SCP-OUT-10): users sign in through Keycloak ([DEC-049](decision-log.md#dec-049)); replaces the simple user accounts of SCP-IN-12; users and roles are managed in the Keycloak admin console, no user management screens ([DEC-054](decision-log.md#dec-054)) | Must; first ([DEC-050](decision-log.md#dec-050)) | TBD | [DEC-048](decision-log.md#dec-048), [DEC-049](decision-log.md#dec-049) |
+| SCP-IN-19 | Invoice intake from a mailbox | Phase 2 (from SCP-OUT-11): one mailbox per company (Outlook later); PDF, PNG and JPG attachments enter the flow like an upload, one attachment = one invoice; mails without a valid attachment are skipped and logged ([DEC-055](decision-log.md#dec-055)) | Must; first ([DEC-050](decision-log.md#dec-050)) | TBD | [DEC-048](decision-log.md#dec-048) |
+| SCP-IN-20 | Multi-tenancy | Phase 2 (from SCP-OUT-12): the system serves several customer companies, about 3 in the Phase 2 demo; a user belongs to one company; matching settings, vendors and ERP data per company ([DEC-056](decision-log.md#dec-056)) | Must; first ([DEC-050](decision-log.md#dec-050)) | TBD | [DEC-048](decision-log.md#dec-048) |
 | SCP-IN-21 | GR-based invoice verification | Phase 2 (from SCP-OUT-13): invoice lines refer to a delivery order / goods receipt | TBD ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q7) | TBD | [DEC-048](decision-log.md#dec-048) |
-| SCP-IN-22 | Invoice list and search | Phase 2 (new): users see and search all invoices of their company, also after processing (Completed, Rejected) | TBD ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q6) | TBD | [DEC-048](decision-log.md#dec-048) |
+| SCP-IN-22 | Invoice list and search | Phase 2 (new): Accounting Members and Accounting Managers see and search all invoices of their company in every status, with filters; no export ([DEC-057](decision-log.md#dec-057)) | TBD ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q6) | TBD | [DEC-048](decision-log.md#dec-048), [DEC-057](decision-log.md#dec-057) |
 
 ### 3.2 Integrations
 | ID | Item | Description | Priority | Backlog epic | Source |
@@ -64,7 +64,7 @@ All PoC items are priority Must (AS2, confirmed). Priorities of Phase 2 items fo
 ### 3.3 Infrastructure & Environments
 | ID | Item | Description | Priority | Backlog epic | Source |
 |---|---|---|---|---|---|
-| SCP-IN-10 | Local PoC environment | The PoC runs on a local machine with Docker Compose; no cloud environment | Must | [SAPS-26](https://linear.app/jiringuyen/issue/SAPS-26) | [DEC-003](decision-log.md#dec-003); [ADR-0003](../02-architecture/adr/0003-use-postgresql-and-docker-compose.md) |
+| SCP-IN-10 | Local PoC environment | The PoC ran on a local machine with Docker Compose; the Phase 2 demo also runs locally, with a Keycloak container and a local test mail server added; no cloud environment ([DEC-053](decision-log.md#dec-053)) | Must | [SAPS-26](https://linear.app/jiringuyen/issue/SAPS-26) | [DEC-003](decision-log.md#dec-003); [ADR-0003](../02-architecture/adr/0003-use-postgresql-and-docker-compose.md) |
 
 ### 3.4 Deliverables & Services
 | ID | Item | Description | Priority | Backlog epic | Source |
@@ -111,7 +111,7 @@ Constraints are listed in [arc42 §2 Constraints](../02-architecture/arc42/02-co
 ## 8. Acceptance Approach
 - PoC acceptance: all flows run successfully in the demo on 2027-02-22 (BO2, [DEC-020](decision-log.md#dec-020)).
 - PoC accepted on 2027-03-01 ([DEC-047](decision-log.md#dec-047)).
-- Phase 2 acceptance: demo of the new features at the end of Phase 2 (BO3, [DEC-051](decision-log.md#dec-051)); demo scenarios TBD.
+- Phase 2 acceptance: demo of the new features on 2027-08-30 (BO3, [DEC-051](decision-log.md#dec-051), [DEC-052](decision-log.md#dec-052)); demo scenarios TBD.
 - Sign-off by: Product Owner (Customer) ([DEC-011](decision-log.md#dec-011)).
 - Test approach and demo scenario catalog: [Test Strategy](../05-testing/test-strategy.md).
 
@@ -141,3 +141,4 @@ Scope-relevant questions are tracked and answered in the meeting minutes listed 
 | 0.5 | 2026-12-08 | Solution Architect (our company) | SCP-IN-03, -04 and BO2 changed (EX10, quantity rule); SCP-OUT-13 added | [DEC-031](decision-log.md#dec-031) to [DEC-034](decision-log.md#dec-034) |
 | 0.6 | 2026-12-11 | Solution Architect (our company) | SCP-OUT-14, -15 added | [DEC-039](decision-log.md#dec-039), [DEC-041](decision-log.md#dec-041) |
 | 0.7 | 2027-03-01 | Solution Architect (our company) | PoC accepted (BO2 met); Phase 2 `[CR]`: BO3, SCP-IN-15 to -22 added; SCP-OUT-02, -07, -08, -10, -11, -12, -13 withdrawn (moved into scope); SCP-OUT-01, -09 after the Phase 2 demo | [DEC-047](decision-log.md#dec-047) to [DEC-051](decision-log.md#dec-051) |
+| 0.8 | 2027-03-01 | Solution Architect (our company) | BO3 demo date; SCP-IN-10, -18, -19, -20, -22 detailed | [DEC-052](decision-log.md#dec-052) to [DEC-057](decision-log.md#dec-057) |
