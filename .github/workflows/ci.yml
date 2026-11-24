@@ -122,10 +122,10 @@ jobs:
           body="{\"username\":\"member1@vn.example.com\",\"password\":\"$password\"}"
           code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
           test "$(code -X POST -H 'Content-Type: application/json' -d "$body" "$base")" = 403
-          curl -fsS -c jar -H "$origin" -H 'Content-Type: application/json' -d "$body" "$base" | grep -q ACCOUNTING_MEMBER
-          curl -fsS -b jar "$base" | grep -q '"displayName":"Accounting Member 1"'
-          test "$(code -b jar -c jar -X DELETE -H "$origin" "$base")" = 204
-          test "$(code -b jar "$base")" = 401
+          curl -fsS -c signin-jar -H "$origin" -H 'Content-Type: application/json' -d "$body" "$base" | grep -q ACCOUNTING_MEMBER
+          curl -fsS -b signin-jar "$base" | grep -q '"displayName":"Accounting Member 1"'
+          test "$(code -b signin-jar -c signin-jar -X DELETE -H "$origin" "$base")" = 204
+          test "$(code -b signin-jar "$base")" = 401
       - name: Whole invoice flow from upload to Completed (SAPS-17 … SAPS-23)
         run: |
           base=http://localhost:5173/v1
@@ -253,6 +253,27 @@ jobs:
           done
           test "$state" = "PENDING_REVIEW " || { echo "invoice is '$state'"; docker compose logs worker; exit 1; }
           curl -fsS -b sg-jar -H "$origin" -X POST "$base/invoices/$id/confirmation" | grep -q '"status":"COMPLETED"'
+      - name: Keycloak realm with the demo companies (SAPS-43)
+        run: |
+          kc=http://localhost:8080
+          password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
+          admin_user="$(grep '^KEYCLOAK_ADMIN_USERNAME=' .env | cut -d= -f2)"
+          admin_password="$(grep '^KEYCLOAK_ADMIN_PASSWORD=' .env | cut -d= -f2)"
+          field() { python3 -c 'import json, sys; d = json.load(sys.stdin); print(eval(sys.argv[1]))' "$1"; }
+          test "$(curl -fsS $kc/realms/saps/.well-known/openid-configuration | field 'd["issuer"]')" = "$kc/realms/saps"
+          token="$(curl -fsS -d client_id=admin-cli -d grant_type=password --data-urlencode "username=$admin_user" \
+            --data-urlencode "password=$admin_password" $kc/realms/master/protocol/openid-connect/token | field 'd["access_token"]')"
+          api() { curl -fsS -H "Authorization: Bearer $token" "$kc/admin/realms/saps$1"; }
+          test "$(api '/users?max=100' | field 'len(d)')" = 9
+          test "$(api '' | field '(d["bruteForceProtected"], d["registrationAllowed"])')" = "(True, False)"
+          test "$(api '/clients?clientId=saps-web' | field '(d[0]["publicClient"], d[0]["directAccessGrantsEnabled"], d[0]["standardFlowEnabled"])')" = "(False, False, True)"
+          test "$(api '/groups?search=sg' | field '[g["path"] for s in d for g in s.get("subGroups", [])]')" = "['/companies/sg']"
+          uid="$(api '/users?username=member1@sg.example.com&exact=true' | field 'd[0]["id"]')"
+          test "$(api "/users/$uid/groups" | field '[g["path"] for g in d]')" = "['/companies/sg']"
+          test "$(api "/users/$uid/role-mappings/realm" | field '[r["name"] for r in d]')" = "['ACCOUNTING_MEMBER']"
+          # the imported demo password works (direct grant of the built-in admin-cli client, only to prove the import)
+          curl -fsS -d client_id=admin-cli -d grant_type=password --data-urlencode "username=member1@sg.example.com" \
+            --data-urlencode "password=$password" $kc/realms/saps/protocol/openid-connect/token | grep -q access_token
       - name: SAPS API → SAPS Message Broker → SAPS Worker
         run: |
           docker compose exec -T api python -c "from saps.worker.actors import ping; ping.send('ci-smoke')"

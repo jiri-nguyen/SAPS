@@ -63,10 +63,11 @@ cd SAPS
 
 # 2. Configuration (local test values only)
 cp .env.example .env
-#    Then set SEED_USER_PASSWORD in .env to a value of your choice (password of the demo users).
+#    Then set SEED_USER_PASSWORD in .env to a value of your choice (password of the demo users, also in Keycloak;
+#    `docker compose` refuses to start without it).
 
-# 3. Build and start all six containers; the SAPS API runs Alembic migrations, then the seed, on start.
-#    --wait returns when every container is healthy.
+# 3. Build and start all containers (Keycloak included, SAPS-43); the SAPS API runs Alembic migrations, then the seed, on start.
+#    --wait returns when every container is healthy; Keycloak needs about a minute on the first start.
 docker compose up -d --build --wait
 
 # 4. Optional: install the git hooks (gitleaks, ruff, eslint/prettier)
@@ -128,6 +129,11 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   panel lists the notification (unread ones are highlighted); click it to open the invoice and mark it read, or **Mark all as read**.
   As `manager1@vn.example.com`, the bell shows the approval request of DS-03; clicking it opens the approval screen. Members are told about
   exceptions and final reviews, managers about approvals; rejecting and completing an invoice notify nobody.
+- Keycloak ([SAPS-43](https://linear.app/jiringuyen/issue/SAPS-43)): open `http://localhost:8080/realms/saps/account` and sign in as
+  `member1@sg.example.com` with the `SEED_USER_PASSWORD`. The admin console is `http://localhost:8080/admin` (user and password
+  `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` of `.env`, master realm); realm `saps` has the groups `/companies/vn`,
+  `/companies/sg`, `/companies/my`, the roles Accounting Member and Accounting Manager and the 9 demo users of
+  `fixtures/companies.json`. The SAPS Web App does not sign in through Keycloak yet ([SAPS-44](https://linear.app/jiringuyen/issue/SAPS-44)).
 - Sweeper ([SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37)): `docker compose stop worker`, upload `ds-17-rejected-at-review.pdf` as
   `member1@vn.example.com` (it stays Uploaded), `docker compose exec redis redis-cli FLUSHALL` (the message is lost), `docker compose start worker`.
   After `SWEEPER_STUCK_AFTER_SECONDS` (60 s by default) the next tick sends it again: the invoice reaches Pending review, its
@@ -286,6 +292,10 @@ All settings are environment variables, read in `backend/src/saps/config.py`. `.
 | `WEB_APP_ORIGIN` | Allowed `Origin` for state-changing requests (CSRF check) — `http://localhost:5173` locally | `.env.example` |
 | `SESSION_IDLE_TIMEOUT_MINUTES`, `SESSION_ABSOLUTE_TIMEOUT_HOURS` | Session timeouts — defaults 30 and 8 ([ADR-0008](../02-architecture/adr/0008-use-session-cookies-for-authentication.md)) | `.env.example` |
 | `SESSION_COOKIE_SECURE` | `Secure` flag on the session cookie — `false` only for local HTTP | `.env.example` |
+| `KEYCLOAK_PUBLIC_URL` | URL at which the browser reaches Keycloak; the issuer of the tokens — default `http://localhost:8080` | `.env.example` |
+| `KEYCLOAK_DB_PASSWORD` | Password of the role `keycloak` (database `keycloak`, created by the `db-init` service) | `.env.example` |
+| `KEYCLOAK_ADMIN_USERNAME`, `KEYCLOAK_ADMIN_PASSWORD` | Bootstrap administrator of Keycloak (master realm) | `.env.example` |
+| `KEYCLOAK_CLIENT_SECRET` | Secret of the client `saps-web` (replaces the placeholder of the realm file at import) | `.env.example` |
 | `SEED_USER_PASSWORD` | Password of the seeded demo users; empty → seed skipped (log `seed_skipped`) | set locally; CI generates a random value |
 
 - Never commit `.env`; gitleaks runs as a pre-commit hook.
@@ -321,6 +331,8 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 | Port 5432, 6379, 8333 or 8000 already in use | Another local service | Stop it, or change the host port in `compose.yaml` |
 | Invoice stays in Uploaded or Matching | SAPS Worker not running, or message lost | `docker compose logs worker`; the sweeper re-sends after `SWEEPER_STUCK_AFTER_SECONDS` (`RESEND` in the invoice history, log `sweeper_resent`); `sweeper_failed` means the tick failed (database or broker down) and the next tick tries again; `RESEND_LIMIT` in the history and `sweeper_gave_up` in the log mean the sweeper stopped after `SWEEPER_MAX_RESENDS` re-sends and the invoice needs an operator; EX1 with "Processing failed after the last retry" means `process_invoice` failed on every retry ([SAPS-38](https://linear.app/jiringuyen/issue/SAPS-38)) |
 | A query as `saps_app` returns no rows | No company set on the transaction (row-level security, fail closed) | Run `SELECT set_config('app.tenant_id', '<tenant id>', true);` first in the same transaction, or query as the owner (`DATABASE_URL`) for diagnosis |
+| `docker compose` says `Set SEED_USER_PASSWORD in .env` | The demo password is required because Keycloak imports the demo users with it | Set `SEED_USER_PASSWORD` in `.env` |
+| Keycloak shows old users or groups after you edited `companies.json` | The realm file is imported only once (existing realms are kept) | Run `make keycloak-realm` in `backend/`, commit the file, and recreate the volume (`docker compose down -v`) or change the realm in the admin console |
 | `MissingGreenlet` / lazy-load error | Lazy loading in async SQLAlchemy code | Load relationships explicitly (`selectinload`) |
 | Presigned URL returns 403 | Wrong S3 credentials or clock skew | Check `S3_*` settings; restart the stack |
 | `docker compose up --wait` takes about 40 s | SAPS File Storage becomes healthy only when SeaweedFS can store files (`/dir/assign`); the SAPS API waits for it | Expected; without the wait the first upload would hang 7–20 s |

@@ -75,6 +75,7 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-033, A
 | Job Queue Port | Component | Interface for sending and receiving processing jobs; Dramatiq on Redis in the PoC ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)). | L3 |
 | MuleSoft APIs | External System | Customer integration layer exposing SAP purchasing data (APIs or MCP Tools) after the PoC ([CON-03](02-constraints.md)). | L1, L2 |
 | SAP ERP | External System | SAP ECC or SAP S/4HANA holding purchase orders, goods receipts and vendors; reached through MuleSoft APIs. | L1, L2 |
+| Keycloak | Container | Identity provider for single sign-on: realm `saps`, a group per company, realm roles Accounting Member and Accounting Manager ([ADR-0010](../adr/0010-use-one-keycloak-realm-with-company-groups.md), [ADR-0011](../adr/0011-sign-in-through-keycloak-with-a-server-side-session.md)). | L2 |
 | SAPS API | Container | Python/FastAPI backend: upload, invoice workflow, approvals, settings, notifications ([ADR-0002](../adr/0002-use-python-fastapi-and-react.md)). | L2, L3 |
 | SAPS Database | Container | PostgreSQL database: invoices, matching results and workflow state ([ADR-0003](../adr/0003-use-postgresql-and-docker-compose.md)). | L2 |
 | SAPS File Storage | Container | SeaweedFS object storage with S3 API for uploaded invoice files ([ADR-0006](../adr/0006-store-invoice-files-in-seaweedfs.md)). | L2 |

@@ -14,3 +14,7 @@ frontend/dist/
 frontend/coverage/
 playwright-report/
 test-results/
+
+# curl cookie jars of local smoke runs
+jar
+*-jar

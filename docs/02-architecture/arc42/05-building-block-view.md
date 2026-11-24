@@ -12,7 +12,7 @@ related: [ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006]
 ## 5.1 Level 1 – Containers
 ![C4 L2 – Containers](../diagrams/c4/c4-l2-containers.drawio.svg)
 
-All containers run locally with Docker Compose in the PoC ([CON-01](02-constraints.md), [ADR-0003](../adr/0003-use-postgresql-and-docker-compose.md)).
+All containers run locally with Docker Compose in the PoC and in the Phase 2 demo ([CON-01](02-constraints.md), [DEC-053](../../01-requirements/decision-log.md#dec-053), [ADR-0003](../adr/0003-use-postgresql-and-docker-compose.md)).
 SAPS API and SAPS Worker share one Python codebase ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)).
 
 | Container | Type | Technology | Responsibility | Repository | API |
@@ -23,6 +23,7 @@ SAPS API and SAPS Worker share one Python codebase ([ADR-0004](../adr/0004-proce
 | SAPS Message Broker | Queue | Redis, AOF persistence ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)) | Queues processing messages | — | — |
 | SAPS File Storage | Object storage | SeaweedFS 4.53, S3 API ([ADR-0006](../adr/0006-store-invoice-files-in-seaweedfs.md)) | Stores uploaded invoice files | — | S3 API |
 | SAPS Database | Database | PostgreSQL ([ADR-0003](../adr/0003-use-postgresql-and-docker-compose.md)) | Invoices, workflow state, approvals, events, notifications, users ([data model](../data-model.md)) | — | — |
+| Keycloak | Identity provider | Keycloak 26, data in the database `keycloak` of the SAPS Database container ([ADR-0010](../adr/0010-use-one-keycloak-realm-with-company-groups.md), [ADR-0011](../adr/0011-sign-in-through-keycloak-with-a-server-side-session.md)) | Single sign-on: realm `saps`, a group per company, roles Accounting Member and Accounting Manager, client `saps-web` of the SAPS API ([SAPS-43](https://linear.app/jiringuyen/issue/SAPS-43)) | `deploy/keycloak/` | OpenID Connect |
 
 ## 5.2 Level 2 – Components
 
