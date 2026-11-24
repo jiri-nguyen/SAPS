@@ -58,7 +58,9 @@ def upgrade() -> None:
     op.add_column("user_session", sa.Column("idp_session_id", sa.String(255), nullable=True))
     op.add_column("user_session", sa.Column("refresh_token_encrypted", sa.Text(), nullable=True))
     op.add_column("user_session", sa.Column("id_token_encrypted", sa.Text(), nullable=True))
-    op.add_column("user_session", sa.Column("access_token_expires_at", sa.DateTime(timezone=True), nullable=True))
+    op.add_column(
+        "user_session", sa.Column("access_token_expires_at", sa.DateTime(timezone=True), nullable=True)
+    )
     op.create_index("ix_user_session_idp_session_id", "user_session", ["idp_session_id"])
 
     op.execute(f"DROP FUNCTION IF EXISTS {OLD_USER_LOOKUP}")
@@ -104,7 +106,12 @@ def downgrade() -> None:
     _own(OLD_USER_LOOKUP)
 
     op.drop_index("ix_user_session_idp_session_id", table_name="user_session")
-    for name in ("access_token_expires_at", "id_token_encrypted", "refresh_token_encrypted", "idp_session_id"):
+    for name in (
+        "access_token_expires_at",
+        "id_token_encrypted",
+        "refresh_token_encrypted",
+        "idp_session_id",
+    ):
         op.drop_column("user_session", name)
     # Passwords cannot come back: '!' matches no password; run the PoC seed again to set them.
     op.add_column(
