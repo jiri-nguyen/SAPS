@@ -217,7 +217,8 @@ async def test_the_lookup_functions_return_one_row_with_its_company(
         ).one()
         user_row = (
             await conn.execute(
-                text("SELECT * FROM saps_find_user_for_sign_in(:u)"), {"u": a.world.alice.username}
+                text("SELECT * FROM saps_find_user_for_sign_in('iss', 'sub', :u)"),
+                {"u": a.world.alice.username},
             )
         ).one()
         assert (await conn.execute(text("SELECT * FROM saps_find_session('nope')"))).first() is None
@@ -232,7 +233,8 @@ async def test_only_the_application_role_may_run_the_lookups(engine: AsyncEngine
             for row in await conn.execute(
                 text(
                     "SELECT grantee FROM information_schema.routine_privileges "
-                    "WHERE routine_name IN ('saps_find_session', 'saps_find_user_for_sign_in') "
+                    "WHERE routine_name IN "
+                    "('saps_find_session', 'saps_find_user_for_sign_in', 'saps_find_idp_sessions') "
                     "AND privilege_type = 'EXECUTE'"
                 )
             )

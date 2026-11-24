@@ -1,6 +1,7 @@
 """CSRF protection: state-changing requests must come from the SAPS Web App origin.
 
-ADR-0008, SAPS-27 BR-06.
+ADR-0008, SAPS-27 BR-06. Calls from the Identity Provider (back-channel logout, SAPS-44) come from no browser;
+they are exempt and protected by their signed token instead.
 """
 
 import json
@@ -13,12 +14,14 @@ UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 class OriginCheckMiddleware:
     """Pure ASGI middleware, so it runs before routing and before any request body is read."""
 
-    def __init__(self, app: ASGIApp, allowed_origin: str) -> None:
+    def __init__(self, app: ASGIApp, allowed_origin: str, exempt_paths: frozenset[str] = frozenset()) -> None:
         self.app = app
         self.allowed_origin = allowed_origin.rstrip("/")
+        self.exempt_paths = exempt_paths
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] == "http" and scope["method"] in UNSAFE_METHODS:
+        exempt = scope["type"] == "http" and scope["path"] in self.exempt_paths
+        if scope["type"] == "http" and scope["method"] in UNSAFE_METHODS and not exempt:
             headers = dict(scope["headers"])
             origin = headers.get(b"origin", b"").decode("latin-1").rstrip("/")
             if origin != self.allowed_origin:

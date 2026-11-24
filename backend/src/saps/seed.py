@@ -1,7 +1,8 @@
 """Idempotent seed of the demo companies, their matching settings and users (SAPS-27 BR-09, SAPS-42 BR-02).
 
 Run: `python -m saps.seed` (the SAPS API container runs it after the migrations).
-Skipped when SEED_USER_PASSWORD is empty.
+Skipped when SEED_USER_PASSWORD is empty: that is the password of the same demo users in Keycloak (SAPS-43);
+the SAPS Database keeps no password (SAPS-44).
 """
 
 import asyncio
@@ -17,7 +18,6 @@ from saps.adapters.persistence.db import session_factory, set_tenant
 from saps.adapters.persistence.models import MatchingSettings, Tenant, UserAccount
 from saps.config import get_settings
 from saps.logging_config import configure_logging
-from saps.ports.auth import PasswordHasher
 
 LEGACY_TENANT = (
     "PoC Customer"  # the single company of the PoC; becomes the first demo company (SAPS-42 BR-05)
@@ -33,14 +33,11 @@ DEFAULT_APPROVAL_THRESHOLD_USD = Decimal("300")  # DEC-009, DEC-015
 log = logging.getLogger("saps.seed")
 
 
-async def seed(
-    session: AsyncSession, password: str, hasher: PasswordHasher, companies: DemoCompanies
-) -> tuple[int, int]:
+async def seed(session: AsyncSession, companies: DemoCompanies) -> tuple[int, int]:
     """Create or update the demo companies, their matching settings and users; idempotent (SAPS-42 BR-02).
 
     Returns the number of companies and users seeded.
     """
-    password_hash = hasher.hash(password)
     users = 0
     for index, company in enumerate(companies.companies):
         tenant = (
@@ -88,16 +85,12 @@ async def seed(
                         username=demo_user.username,
                         display_name=demo_user.display_name,
                         role=demo_user.role,
-                        password_hash=password_hash,
+                        email=demo_user.username.lower(),
                     )
                 )
             else:
-                user.display_name, user.role, user.password_hash, user.is_active = (
-                    demo_user.display_name,
-                    demo_user.role,
-                    password_hash,
-                    True,
-                )
+                user.display_name, user.role, user.is_active = demo_user.display_name, demo_user.role, True
+                user.email = user.email or demo_user.username.lower()
             users += 1
         await session.flush()
     return len(companies.companies), users
@@ -114,16 +107,15 @@ async def _rename_legacy_users(session: AsyncSession, tenant_id: UUID, domain: s
         ).scalar_one_or_none()
         if user is not None:
             user.username = f"{username}@{domain}"
+            user.email = user.username
 
 
-async def _run(database_url: str, password: str) -> tuple[int, int]:
-    from saps.adapters.security.argon2_hasher import Argon2PasswordHasher
-
+async def _run(database_url: str) -> tuple[int, int]:
     companies = load_demo_companies(get_settings().fixtures_dir)
     engine = create_async_engine(database_url)
     try:
         async with session_factory(engine)() as session, session.begin():
-            return await seed(session, password, Argon2PasswordHasher(), companies)
+            return await seed(session, companies)
     finally:
         await engine.dispose()
 
@@ -135,7 +127,7 @@ def main() -> None:
     if not password:
         log.warning("seed_skipped", extra={"reason": "SEED_USER_PASSWORD is empty"})
         return
-    companies, users = asyncio.run(_run(settings.database_url, password))
+    companies, users = asyncio.run(_run(settings.database_url))
     log.info("seed_completed", extra={"companies": companies, "users": users})
 
 

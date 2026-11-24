@@ -45,7 +45,6 @@ class _AnyCompanyErp:
 
 
 ERP = _AnyCompanyErp(DummyErpAdapter(FIXTURES))
-NO_LOGIN = "!"
 
 
 def _file_info(file: Path) -> tuple[str, int]:
@@ -62,11 +61,11 @@ async def new_tenant(engine: AsyncEngine) -> tuple[uuid.UUID, uuid.UUID]:
         session.add(MatchingSettings(tenant_id=tenant.id))
         member = UserAccount(
             tenant_id=tenant.id, username=f"m-{uuid.uuid4().hex[:10]}", display_name="Member",
-            password_hash=NO_LOGIN, role=Role.ACCOUNTING_MEMBER,
+            role=Role.ACCOUNTING_MEMBER,
         )  # fmt: skip
         manager = UserAccount(
             tenant_id=tenant.id, username=f"g-{uuid.uuid4().hex[:10]}", display_name="Manager",
-            password_hash=NO_LOGIN, role=Role.ACCOUNTING_MANAGER,
+            role=Role.ACCOUNTING_MANAGER,
         )  # fmt: skip
         session.add_all([member, manager])
         await session.flush()
@@ -120,11 +119,11 @@ async def new_world(engine: AsyncEngine) -> World:
     async with session_factory(engine)() as session, session.begin():
         bob = UserAccount(
             tenant_id=tenant_id, username=f"b-{uuid.uuid4().hex[:10]}", display_name="Bob",
-            password_hash=NO_LOGIN, role=Role.ACCOUNTING_MEMBER,
+            role=Role.ACCOUNTING_MEMBER,
         )  # fmt: skip
         manager2 = UserAccount(
             tenant_id=tenant_id, username=f"h-{uuid.uuid4().hex[:10]}", display_name="Second Manager",
-            password_hash=NO_LOGIN, role=Role.ACCOUNTING_MANAGER,
+            role=Role.ACCOUNTING_MANAGER,
         )  # fmt: skip
         session.add_all([bob, manager2])
         await session.flush()

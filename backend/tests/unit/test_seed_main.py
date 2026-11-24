@@ -22,10 +22,10 @@ def test_seed_is_skipped_without_password(
 
 
 def test_seed_runs_when_a_password_is_set(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[tuple[str, str]] = []
+    calls: list[str] = []
 
-    async def fake_run(database_url: str, password: str) -> tuple[int, int]:
-        calls.append((database_url, password))
+    async def fake_run(database_url: str) -> tuple[int, int]:
+        calls.append(database_url)
         return 3, 9
 
     monkeypatch.setenv("SEED_USER_PASSWORD", "local-pw")
@@ -35,4 +35,4 @@ def test_seed_runs_when_a_password_is_set(monkeypatch: pytest.MonkeyPatch) -> No
         seed.main()
     finally:
         get_settings.cache_clear()
-    assert calls and calls[0][1] == "local-pw"
+    assert len(calls) == 1  # the password itself stays in Keycloak (SAPS-44)
