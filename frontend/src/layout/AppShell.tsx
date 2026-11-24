@@ -83,7 +83,7 @@ export function AppShell({
         <strong>Smart-AP-Suite</strong>
         <NotificationBell api={notifications} />
         <span data-testid="signed-in-user">
-          {user.displayName} ({ROLE_LABEL[user.role]})
+          {user.displayName} ({ROLE_LABEL[user.role]}){user.companyName ? ` · ${user.companyName}` : ""}
         </span>
         <button type="button" className="secondary" onClick={() => void signOut()}>
           Sign out

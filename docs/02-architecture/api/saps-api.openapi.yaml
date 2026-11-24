@@ -3,7 +3,7 @@
 openapi: 3.1.0
 info:
   title: SAPS API
-  version: "0.4.4"
+  version: "0.4.5"
   description: |
     HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload, the exception queue,
     approval, final review, notifications and matching settings.
@@ -699,12 +699,13 @@ components:
     # ---------- users ----------
     UserAccount:
       type: object
-      required: [id, username, displayName, role]
+      required: [id, username, displayName, role, companyName]
       properties:
         id: { type: string, format: uuid, readOnly: true }
         username: { type: string, maxLength: 100 }
         displayName: { type: string, maxLength: 200 }
         role: { $ref: "#/components/schemas/Role" }
+        companyName: { type: string, maxLength: 200, readOnly: true, description: "Name of the user's company, shown in the header (SAPS-42)" }
     UserAccountRef:
       type: object
       required: [id, displayName]
