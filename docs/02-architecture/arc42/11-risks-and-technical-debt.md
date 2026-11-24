@@ -78,7 +78,7 @@ Probability and impact are the Solution Architect's assessment; reviewed at each
 | Impact | The system must not hold data of a second company until isolation is designed and tested. |
 | Remediation | Post-PoC multi-tenancy ADR; implement and test the chosen isolation model before onboarding a second tenant. |
 | Effort | L |
-| Backlog | TBD — after the PoC demo |
+| Backlog | [SAPS-41](https://linear.app/jiringuyen/issue/SAPS-41) |
 | Status | open |
 
 ### TD-03
@@ -91,7 +91,7 @@ Probability and impact are the Solution Architect's assessment; reviewed at each
 | Impact | Password guessing is not limited; acceptable only without real users or network exposure. |
 | Remediation | Rate limiting per username and per IP, temporary lockout after repeated failures, or SSO through an identity provider (replaces ADR-0008). |
 | Effort | S |
-| Backlog | TBD — before any deployment beyond a local machine |
+| Backlog | [SAPS-43](https://linear.app/jiringuyen/issue/SAPS-43) |
 | Status | open |
 
 ### TD-04
