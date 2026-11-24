@@ -1,11 +1,11 @@
 ---
 title: Non-Functional Requirements
-version: "0.4"           # 1.0 = first customer-approved version
+version: "0.5"           # 1.0 = first customer-approved version
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)", "Product Owner (Customer)"]
 last_updated: 2027-03-01
-related: [MTG-20261121, MTG-20261128, MTG-20261205, MTG-20270301, DEC-003, DEC-026, DEC-048, DEC-050, NFR-MAINT-001]
+related: [MTG-20261121, MTG-20261128, MTG-20261205, MTG-20270301, DEC-003, DEC-026, DEC-048, DEC-050, NFR-MAINT-001, DEC-049, ADR-0011]
 ---
 
 # Non-Functional Requirements
@@ -39,7 +39,7 @@ Volumes below are design information, not PoC acceptance criteria ([MTG-20261205
 |---|---|---|---|
 | [NFR-SCAL-001](#nfr-scal-001) | Scalable design beyond the PoC | Must | agreed |
 | [NFR-MAINT-001](#nfr-maint-001) | Ready for real extraction and AWS | Must | agreed |
-| [NFR-SEC-001](#nfr-sec-001) | Sign-in with simple user accounts | Must | agreed |
+| [NFR-SEC-001](#nfr-sec-001) | Sign-in with Single Sign-On | Must | agreed |
 | [NFR-USAB-001](#nfr-usab-001) | English user interface | Must | agreed |
 
 ## 4. Requirements
@@ -69,18 +69,18 @@ None agreed for the PoC.
 ### 4.4 Security (SEC)
 
 #### NFR-SEC-001
-**Sign-in with simple user accounts**
+**Sign-in with Single Sign-On**
 
 | Field | Value |
 |---|---|
-| Requirement | Users MUST sign in with a simple user account managed by the application. Single Sign-On is not required in the PoC. |
-| Metric & target | Every function except sign-in requires a signed-in user |
-| Conditions | PoC, local environment |
+| Requirement | Users MUST sign in through the company Single Sign-On (Keycloak; later the group's Microsoft Entra ID behind it). The application MUST NOT store passwords. |
+| Metric & target | Every function except sign-in requires a signed-in user of exactly one company and exactly one role |
+| Conditions | Phase 2 and later (the PoC used simple user accounts) |
 | Priority | Must |
-| Verification | Demo |
-| Source | [MTG-20261121](meetings/2026-11-21-requirements-workshop.md) R22 |
+| Verification | Security test (integration tests of the sign-in rules); Demo |
+| Source | [MTG-20261121](meetings/2026-11-21-requirements-workshop.md) R22 (PoC version); [DEC-049](decision-log.md#dec-049), [DEC-059](decision-log.md#dec-059), [DEC-061](decision-log.md#dec-061) |
 | Status | agreed |
-| Related | [SCP-IN-12](scope.md), [SCP-OUT-10](scope.md) |
+| Related | [SCP-IN-18](scope.md#31-functional-capabilities), [ADR-0011](../02-architecture/adr/0011-sign-in-through-keycloak-with-a-server-side-session.md) |
 
 ### 4.5 Compliance & Data Protection (COMP)
 None agreed for the PoC. Data residency and retention are open (MTG-20261114 Q28, Q30).
@@ -145,3 +145,4 @@ None agreed for the PoC. Later ERP integration is a constraint: [CON-03](../02-a
 | 0.2 | 2026-11-28 | Solution Architect (our company) | NFR-SCAL-001 added | — ([MTG-20261128](meetings/2026-11-28-poc-flow-review.md) R11) |
 | 0.3 | 2026-12-05 | Solution Architect (our company) | Workload Profile filled; NFR-SCAL-001 target set | [DEC-026](decision-log.md#dec-026) |
 | 0.4 | 2027-03-01 | Solution Architect (our company) | Workload Profile for Phase 2: users, invoices per day, Singapore time; NFR-MAINT-001 added | [DEC-048](decision-log.md#dec-048) ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) R7, R8) |
+| 0.5 | 2027-03-01 | Solution Architect (our company) | NFR-SEC-001: Single Sign-On instead of simple user accounts | [DEC-049](decision-log.md#dec-049); [ADR-0011](../02-architecture/adr/0011-sign-in-through-keycloak-with-a-server-side-session.md) |
