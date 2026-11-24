@@ -192,7 +192,7 @@ the new keys keep working because the key is stored per invoice.
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
 | Q1 | Three connection URLs and two role passwords in `.env` (§3.8): acceptable for the local demo, with a secret store on AWS later? | Solution Architect / Tech Lead | before implementation | answered: yes; a secret store on AWS later (2027-03-01) |
-| Q2 | Accept old worker messages without company for one release only (EC-05), then remove the fallback? | Solution Architect / Tech Lead | before implementation | answered: yes, removed in the release after Phase 2 (2027-03-01) |
+| Q2 | Accept old worker messages without company for one release only (EC-05), then remove the fallback? | Solution Architect / Tech Lead | before implementation | answered: yes; accepted for one release, then the fallback is removed (2027-03-01) |
 
 ## 8. Documentation Checklist
 - [x] API spec: no change
