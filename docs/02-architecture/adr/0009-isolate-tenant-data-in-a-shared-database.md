@@ -1,7 +1,7 @@
 ---
 id: ADR-0009
 title: "ADR-0009: Isolate tenant data in one shared database with tenant_id and row-level security"
-status: proposed         # proposed | accepted | rejected | deprecated | superseded
+status: accepted         # proposed | accepted | rejected | deprecated | superseded
 date: 2027-03-01         # date of the latest status change
 owner: "Solution Architect (our company)"
 deciders: ["Product Owner (Customer)", "Solution Architect (our company)"]
@@ -9,7 +9,7 @@ consulted: ["Tech Lead (TBD)"]
 last_updated: 2027-03-01
 supersedes: ""
 superseded_by: ""
-related: [DEC-026, DEC-048, DEC-050, DEC-056, NFR-SCAL-001, NFR-MAINT-001, ADR-0003, ADR-0004, ADR-0005, ADR-0007, ADR-0010, TD-02, MTG-20270301-2]
+related: [DEC-026, DEC-048, DEC-050, DEC-056, DEC-058, DEC-060, NFR-SCAL-001, NFR-MAINT-001, ADR-0003, ADR-0004, ADR-0005, ADR-0007, ADR-0010, TD-02, MTG-20270301-2]
 ---
 
 # ADR-0009: Isolate tenant data in one shared database with tenant_id and row-level security
@@ -27,7 +27,7 @@ enforcement ([ADR-0007](0007-prepare-data-model-for-tenants.md), technical debt 
 The Product Owner asked for the options of the database model before deciding
 ([MTG-20270301-2](../../01-requirements/meetings/2027-03-01-phase-2-requirements.md) Q3).
 
-Information from the Product Owner while preparing the decision (to be recorded in the next minutes):
+Information from the Product Owner ([MTG-20270301-3](../../01-requirements/meetings/2027-03-01-tenancy-and-identity.md), [DEC-060](../../01-requirements/decision-log.md#dec-060)):
 - The companies are subsidiaries of one group, in several countries; about 3 now, more subsidiaries later.
 - No legal or contractual need to keep a subsidiary's data physically apart; no plan to sell or split off a subsidiary;
   no group-wide reporting across subsidiaries; the same retention and infrastructure for all.
@@ -55,12 +55,11 @@ Information from the Product Owner while preparing the decision (to be recorded 
 4. One database per company
 
 ## Decision Outcome
-**Proposed option:** "Shared database, `tenant_id` filter in the application and PostgreSQL row-level security", because it
+**Chosen option:** "Shared database, `tenant_id` filter in the application and PostgreSQL row-level security", because it
 builds on the data the PoC already has, keeps one schema and one migration history, scales to many companies with no
-per-company infrastructure, and adds a second, database-enforced barrier against a forgotten filter. To be decided with the
-Product Owner in the next meeting.
+per-company infrastructure, and adds a second, database-enforced barrier against a forgotten filter.
 
-Rules if accepted:
+Rules:
 - Every tenant-owned table gets `ENABLE` and `FORCE ROW LEVEL SECURITY` and a policy `tenant_id = current_setting('app.tenant_id')::uuid`.
 - The SAPS API and SAPS Worker connect with a role that does not own the tables (RLS applies); each transaction sets the
   company with `SET LOCAL app.tenant_id` (safe with connection pooling, it ends with the transaction).
@@ -108,6 +107,6 @@ Rules if accepted:
 - Bad, because it changes much more code before the demo on 2027-08-30.
 
 ## More Information
-- Options prepared for [MTG-20270301-2](../../01-requirements/meetings/2027-03-01-phase-2-requirements.md) Q3; the customer agreement will be recorded as a `DEC-*`.
+- Options prepared for [MTG-20270301-2](../../01-requirements/meetings/2027-03-01-phase-2-requirements.md) Q3; chosen by the Product Owner in [MTG-20270301-3](../../01-requirements/meetings/2027-03-01-tenancy-and-identity.md): [DEC-058](../../01-requirements/decision-log.md#dec-058).
 - Related identity decision: [ADR-0010](0010-use-one-keycloak-realm-with-company-groups.md) (one realm with a group per company fits options 1–3).
-- > **Assumption:** the countries of the subsidiaries do not require invoice data to stay in the country; if they do, the deployment per region above applies. To be confirmed by the Product Owner with the group legal / IT before the deployment on AWS.
+- > **Assumption:** the countries of the subsidiaries do not require invoice data to stay in the country; if they do, the deployment per region above applies. To be confirmed by the Product Owner with the group legal / IT before the deployment on AWS ([MTG-20270301-3](../../01-requirements/meetings/2027-03-01-tenancy-and-identity.md) Q1).

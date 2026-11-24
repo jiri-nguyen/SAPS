@@ -1,7 +1,7 @@
 ---
 id: ADR-0010
 title: "ADR-0010: Use one Keycloak realm with a group per company; broker Microsoft Entra ID later"
-status: proposed         # proposed | accepted | rejected | deprecated | superseded
+status: accepted         # proposed | accepted | rejected | deprecated | superseded
 date: 2027-03-01         # date of the latest status change
 owner: "Solution Architect (our company)"
 deciders: ["Product Owner (Customer)", "Solution Architect (our company)"]
@@ -9,7 +9,7 @@ consulted: ["Tech Lead (TBD)"]
 last_updated: 2027-03-01
 supersedes: ""
 superseded_by: ""
-related: [DEC-026, DEC-049, DEC-053, DEC-054, DEC-056, NFR-SEC-001, NFR-MAINT-001, ADR-0008, ADR-0009, MTG-20270301-2]
+related: [DEC-026, DEC-049, DEC-053, DEC-054, DEC-056, DEC-059, DEC-060, DEC-061, NFR-SEC-001, NFR-MAINT-001, ADR-0008, ADR-0009, MTG-20270301-2]
 ---
 
 # ADR-0010: Use one Keycloak realm with a group per company; broker Microsoft Entra ID later
@@ -20,7 +20,7 @@ Keycloak in Docker Compose ([DEC-053](../../01-requirements/decision-log.md#dec-
 their roles in the Keycloak admin console ([DEC-054](../../01-requirements/decision-log.md#dec-054)); no real Entra ID is
 used for the demo. Each user belongs to exactly one company ([DEC-056](../../01-requirements/decision-log.md#dec-056)).
 
-Information from the Product Owner while preparing the decision (to be recorded in the next minutes):
+Information from the Product Owner ([MTG-20270301-3](../../01-requirements/meetings/2027-03-01-tenancy-and-identity.md), [DEC-060](../../01-requirements/decision-log.md#dec-060), [DEC-061](../../01-requirements/decision-log.md#dec-061)):
 - The companies are subsidiaries of one group, in several countries; about 3 now, more subsidiaries later.
 - All subsidiaries sign in with **one shared Microsoft Entra ID** of the group; each subsidiary has its own e-mail domain
   (for example `vn.xxx.com`, `sg.xxx.com`).
@@ -47,12 +47,12 @@ with local users and later with the group's Entra ID?
 3. One realm per company
 
 ## Decision Outcome
-**Proposed option:** "One realm; one group per company", because one shared Entra ID cannot be split into one identity
+**Chosen option:** "One realm; one group per company", because one shared Entra ID cannot be split into one identity
 provider per company, so the main strength of Organizations and of realms per company does not apply; a group per company
 is the simplest model the team can manage in the admin console, and later Entra ID groups can fill the same Keycloak groups
-with a built-in mapper. To be decided with the Product Owner in the next meeting.
+with a built-in mapper.
 
-Rules if accepted:
+Rules:
 - One realm `saps`; one client for the SAPS Web App / SAPS API.
 - One group per company under `/companies` (for example `/companies/vn`); the `Tenant` row stores the group path and the
   company's e-mail domains. The token carries the groups (group membership mapper).
@@ -104,6 +104,6 @@ The SAPS API keeps receiving tokens from the same Keycloak issuer, so its code d
 - Bad, because every new subsidiary needs a new realm configured the same way; more admin work and drift risk.
 
 ## More Information
-- Options prepared for [MTG-20270301-2](../../01-requirements/meetings/2027-03-01-phase-2-requirements.md) Q2; the customer agreement will be recorded as a `DEC-*`.
-- > **Assumption:** the e-mail domain of a user identifies the subsidiary (one domain per subsidiary). To be confirmed by the Product Owner with the group IT.
+- Options prepared for [MTG-20270301-2](../../01-requirements/meetings/2027-03-01-phase-2-requirements.md) Q2; chosen by the Product Owner in [MTG-20270301-3](../../01-requirements/meetings/2027-03-01-tenancy-and-identity.md): [DEC-059](../../01-requirements/decision-log.md#dec-059).
+- One e-mail domain per subsidiary: confirmed by the Product Owner ([DEC-061](../../01-requirements/decision-log.md#dec-061)).
 - [NFR-SEC-001](../../01-requirements/nfr.md#nfr-sec-001) ("simple user accounts") needs a new version once SSO is decided in detail.

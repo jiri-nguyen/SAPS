@@ -19,5 +19,5 @@ related: [ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, 
 | [ADR-0006](../adr/0006-store-invoice-files-in-seaweedfs.md) | Store invoice files in SeaweedFS through the S3 API | accepted | 2026-12-01 | — |
 | [ADR-0007](../adr/0007-prepare-data-model-for-tenants.md) | Prepare the PoC data model for tenants; defer the multi-tenancy model | accepted | 2026-12-05 | — |
 | [ADR-0008](../adr/0008-use-session-cookies-for-authentication.md) | Use server-side sessions in HttpOnly cookies for PoC authentication | accepted | 2026-12-05 | — |
-| [ADR-0009](../adr/0009-isolate-tenant-data-in-a-shared-database.md) | Isolate tenant data in one shared database with tenant_id and row-level security | proposed | 2027-03-01 | — |
-| [ADR-0010](../adr/0010-use-one-keycloak-realm-with-company-groups.md) | Use one Keycloak realm with a group per company; broker Microsoft Entra ID later | proposed | 2027-03-01 | — |
+| [ADR-0009](../adr/0009-isolate-tenant-data-in-a-shared-database.md) | Isolate tenant data in one shared database with tenant_id and row-level security | accepted | 2027-03-01 | — |
+| [ADR-0010](../adr/0010-use-one-keycloak-realm-with-company-groups.md) | Use one Keycloak realm with a group per company; broker Microsoft Entra ID later | accepted | 2027-03-01 | — |

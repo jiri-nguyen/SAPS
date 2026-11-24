@@ -69,6 +69,10 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, 
 | [DEC-055](#dec-055) | 2027-03-01 | Mailbox intake rules | Business | confirmed |
 | [DEC-056](#dec-056) | 2027-03-01 | One company per user; settings, vendors and ERP data per company | Business | confirmed |
 | [DEC-057](#dec-057) | 2027-03-01 | Invoice list and search rules | Business | confirmed |
+| [DEC-058](#dec-058) | 2027-03-01 | Tenant data in one shared database with row-level security | Technical | confirmed |
+| [DEC-059](#dec-059) | 2027-03-01 | One Keycloak realm with a group per company; Entra ID brokered later | Technical | confirmed |
+| [DEC-060](#dec-060) | 2027-03-01 | Customers are subsidiaries of one group in several countries | Business | confirmed |
+| [DEC-061](#dec-061) | 2027-03-01 | One shared Entra ID; one e-mail domain per subsidiary | Business | confirmed |
 
 ## 2. Decisions
 
@@ -1399,4 +1403,91 @@ history of changes and no history screen. The application log records the old an
 **Rationale:** Proposed by the Solution Architect, accepted by the Product Owner.
 
 **Consequences & follow-ups:** A feature spec describes the screen and the API (`listInvoices` filters).
+
+### DEC-058
+**Tenant data in one shared database with row-level security**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Technical |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20270301-3](meetings/2027-03-01-tenancy-and-identity.md) D1, R1 |
+| Impacts | [ADR-0009](../02-architecture/adr/0009-isolate-tenant-data-in-a-shared-database.md); [scope.md](scope.md) SCP-IN-20; TD-02 |
+| Supersedes / Superseded by | — |
+
+**Context:** The database model for several companies was open ([MTG-20270301-2](meetings/2027-03-01-phase-2-requirements.md) Q3); the options are in [ADR-0009](../02-architecture/adr/0009-isolate-tenant-data-in-a-shared-database.md).
+
+**Decision:** All companies share one database; every tenant-owned table keeps `tenant_id` and gets PostgreSQL row-level security in addition to the filter in the application ([ADR-0009](../02-architecture/adr/0009-isolate-tenant-data-in-a-shared-database.md)).
+
+**Rationale:** No legal need for physical separation, the same retention and infrastructure for all subsidiaries, and more subsidiaries later ([DEC-060](#dec-060)): the shared model costs the least and builds on the PoC data.
+
+**Consequences & follow-ups:** If data-residency rules or customers outside the group appear, the same stack is deployed per region or per customer group. Data residency is open ([MTG-20270301-3](meetings/2027-03-01-tenancy-and-identity.md) Q1).
+
+
+### DEC-059
+**One Keycloak realm with a group per company; Entra ID brokered later**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Technical |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20270301-3](meetings/2027-03-01-tenancy-and-identity.md) D2, R3 |
+| Impacts | [ADR-0010](../02-architecture/adr/0010-use-one-keycloak-realm-with-company-groups.md); [scope.md](scope.md) SCP-IN-18; [DEC-054](#dec-054) |
+| Supersedes / Superseded by | — |
+
+**Context:** One Keycloak realm or one per company was open ([MTG-20270301-2](meetings/2027-03-01-phase-2-requirements.md) Q2); all subsidiaries share one Entra ID ([DEC-061](#dec-061)).
+
+**Decision:** One Keycloak realm; one group per company; roles Accounting Member and Accounting Manager as realm roles. The SAPS API accepts a user only with exactly one company group whose e-mail domain matches. Microsoft Entra ID is added later as an identity provider of the realm (Keycloak stays the broker), so the SAPS code does not change ([ADR-0010](../02-architecture/adr/0010-use-one-keycloak-realm-with-company-groups.md)).
+
+**Rationale:** With one shared Entra ID, realms or Organizations per company bring no benefit; groups are the simplest model to manage in the admin console.
+
+**Consequences & follow-ups:** The sign-in flow of the SAPS Web App with Keycloak is a separate ADR.
+
+
+### DEC-060
+**Customers are subsidiaries of one group in several countries**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301-3](meetings/2027-03-01-tenancy-and-identity.md) D3, R2 |
+| Impacts | Refines [DEC-026](#dec-026); [ADR-0009](../02-architecture/adr/0009-isolate-tenant-data-in-a-shared-database.md); [nfr.md](nfr.md) Workload Profile |
+| Supersedes / Superseded by | — |
+
+**Context:** [DEC-026](#dec-026) describes the product as an AP system for many customer companies.
+
+**Decision:** The companies served are subsidiaries of one group, in several countries: about 3 now, more subsidiaries later. There is no legal or contractual need to keep a subsidiary's data physically apart, no plan to sell or split off a subsidiary, no group-wide reporting across subsidiaries, and the same retention and infrastructure for all. Customers outside the group are a possible later direction, not certain.
+
+**Rationale:** Stated by the Product Owner.
+
+**Consequences & follow-ups:** Whether the countries require invoice data to stay in the country is open ([MTG-20270301-3](meetings/2027-03-01-tenancy-and-identity.md) Q1).
+
+
+### DEC-061
+**One shared Entra ID; one e-mail domain per subsidiary**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301-3](meetings/2027-03-01-tenancy-and-identity.md) D4, R3 |
+| Impacts | [ADR-0010](../02-architecture/adr/0010-use-one-keycloak-realm-with-company-groups.md); [DEC-049](#dec-049), [DEC-054](#dec-054) |
+| Supersedes / Superseded by | — |
+
+**Context:** Single Sign-On uses Keycloak ([DEC-049](#dec-049)); the group's own identity system was not known.
+
+**Decision:** All subsidiaries sign in with one shared Microsoft Entra ID of the group. Each subsidiary has its own e-mail domain (for example `vn.xxx.com`, `sg.xxx.com`). Integration with Entra ID comes in a later phase; the Phase 2 demo uses local Keycloak users.
+
+**Rationale:** Stated by the Product Owner.
+
+**Consequences & follow-ups:** The e-mail domain of a user identifies the subsidiary and is checked by the SAPS API ([DEC-059](#dec-059)).
 
