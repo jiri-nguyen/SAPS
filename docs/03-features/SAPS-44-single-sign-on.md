@@ -1,7 +1,7 @@
 ---
 id: "SAPS-44"
 title: "SAPS-44 — Single Sign-On with Keycloak"
-status: draft            # draft | in-review | approved | deprecated
+status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2027-03-01
