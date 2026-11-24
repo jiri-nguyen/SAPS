@@ -15,12 +15,14 @@ const MEMBER: UserAccount = {
   username: "member1",
   displayName: "Accounting Member 1",
   role: "ACCOUNTING_MEMBER",
+  companyName: "Demo Vietnam",
 };
 const MANAGER: UserAccount = {
   id: "2",
   username: "manager1",
   displayName: "Accounting Manager 1",
   role: "ACCOUNTING_MANAGER",
+  companyName: "Demo Vietnam",
 };
 const pending = () => new Promise<never>(() => {});
 
@@ -68,7 +70,7 @@ describe("App", () => {
     await signInAs(" member1 ");
     expect(api.signIn).toHaveBeenCalledWith("member1", "pw");
     expect(await screen.findByTestId("signed-in-user")).toHaveTextContent(
-      "Accounting Member 1 (Accounting Member)",
+      "Accounting Member 1 (Accounting Member) · Demo Vietnam", // the company (SAPS-42 TS-06)
     );
     const menu = screen.getByRole("navigation", { name: "Main menu" });
     expect(menu).toHaveTextContent("Upload invoices");

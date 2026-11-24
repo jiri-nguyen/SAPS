@@ -9,6 +9,7 @@ Synthetic data only (public repository, DEC-028). One folder per demo scenario o
 | `<scenario>/invoices/<name>.json` | Dummy Extraction Adapter: the extraction result of one sample (source of truth) | [SAPS-18](../../docs/03-features/SAPS-18-dummy-invoice-extraction.md) |
 | `<scenario>/invoices/<name>.pdf` / `.png` / `.jpg` | The file to upload in the demo; generated from the JSON | SAPS-18 |
 | `<scenario>/unregistered/` | Rendered files that are **not** in the sample set (DS-07 → EX1) | SAPS-18 |
+| `companies.json` | Seed, Dummy ERP Adapter: demo companies, their users and the ERP fixture files each company uses | [SAPS-42](../../docs/03-features/SAPS-42-companies-and-demo-data.md) |
 | `manifest.json`, `schema/extracted-invoice.schema.json` | Generated: SHA-256 → sample, and the JSON schema of a result | SAPS-18 |
 
 `erp.json` format (validated when the SAPS Worker loads it, see `saps/adapters/erp/dummy_erp.py`):
@@ -27,7 +28,8 @@ Synthetic data only (public repository, DEC-028). One folder per demo scenario o
 ```
 
 - Quantities and prices are strings (exact decimals). PO numbers are 7 digits starting with `0` (trade) or `1` (non-trade).
-- PO and goods receipt numbers are unique across all scenarios; all scenarios are loaded together.
+- Every demo company lists its ERP files in `companies.json` (`"erp": ["ds-*/erp/*.json"]`; company-only files may live in
+  `companies/<code>/erp/`). PO and goods receipt numbers are unique within a company; each company has its own copy.
 - Scenarios without ERP data: DS-07, DS-08 (no PO), DS-10 (unknown PO `0199999`), DS-15 (uses DS-01), DS-19.
 
 ## Invoice samples

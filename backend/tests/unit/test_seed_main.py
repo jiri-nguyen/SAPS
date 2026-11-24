@@ -24,8 +24,9 @@ def test_seed_is_skipped_without_password(
 def test_seed_runs_when_a_password_is_set(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[str, str]] = []
 
-    async def fake_run(database_url: str, password: str) -> None:
+    async def fake_run(database_url: str, password: str) -> tuple[int, int]:
         calls.append((database_url, password))
+        return 3, 9
 
     monkeypatch.setenv("SEED_USER_PASSWORD", "local-pw")
     monkeypatch.setattr(seed, "_run", fake_run)

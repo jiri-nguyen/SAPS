@@ -19,7 +19,7 @@ from saps.config import get_settings
 from saps.domain.invoices import InvoiceStatus, InvoiceType, NotificationType
 from saps.domain.users import Role
 from tests.integration.db_urls import use_database
-from tests.integration.pipeline import FIXTURES, process, uploaded
+from tests.integration.pipeline import ERP, FIXTURES, process, uploaded
 
 pytestmark = pytest.mark.integration
 
@@ -146,7 +146,12 @@ async def _tenant_of(engine: AsyncEngine, invoice_id: uuid.UUID) -> uuid.UUID:
 async def test_worker_job_runs_extraction_and_matching(
     engine: AsyncEngine, database_url: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from saps.worker import jobs
     from saps.worker.jobs import run_processing
+
+    monkeypatch.setattr(
+        jobs, "erp_adapter", lambda name, fixtures_dir: ERP
+    )  # test companies use the vn catalogue
 
     invoice_id = await uploaded(engine, FIXTURES / "ds-17/invoices/ds-17-rejected-at-review.pdf")
     use_database(monkeypatch, database_url)

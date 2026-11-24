@@ -38,10 +38,17 @@ class UserAccount(CamelModel):
     username: str
     display_name: str
     role: Role
+    company_name: str
 
     @classmethod
     def from_user(cls, user: CurrentUser) -> UserAccount:
-        return cls(id=user.user_id, username=user.username, display_name=user.display_name, role=user.role)
+        return cls(
+            id=user.user_id,
+            username=user.username,
+            display_name=user.display_name,
+            role=user.role,
+            company_name=user.company_name,
+        )
 
 
 class _ReadModel(CamelModel):

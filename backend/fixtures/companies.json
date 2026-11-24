@@ -1,0 +1,46 @@
+{
+  "companies": [
+    {
+      "code": "vn",
+      "name": "Demo Vietnam",
+      "email_domain": "vn.example.com",
+      "keycloak_group": "/companies/vn",
+      "mailbox_address": "ap@vn.example.com",
+      "time_zone": "Asia/Ho_Chi_Minh",
+      "users": [
+        {"username": "member1@vn.example.com", "display_name": "Accounting Member 1", "role": "ACCOUNTING_MEMBER"},
+        {"username": "member2@vn.example.com", "display_name": "Accounting Member 2", "role": "ACCOUNTING_MEMBER"},
+        {"username": "manager1@vn.example.com", "display_name": "Accounting Manager 1", "role": "ACCOUNTING_MANAGER"}
+      ],
+      "erp": ["ds-*/erp/*.json"]
+    },
+    {
+      "code": "sg",
+      "name": "Demo Singapore",
+      "email_domain": "sg.example.com",
+      "keycloak_group": "/companies/sg",
+      "mailbox_address": "ap@sg.example.com",
+      "time_zone": "Asia/Singapore",
+      "users": [
+        {"username": "member1@sg.example.com", "display_name": "Accounting Member 1", "role": "ACCOUNTING_MEMBER"},
+        {"username": "member2@sg.example.com", "display_name": "Accounting Member 2", "role": "ACCOUNTING_MEMBER"},
+        {"username": "manager1@sg.example.com", "display_name": "Accounting Manager 1", "role": "ACCOUNTING_MANAGER"}
+      ],
+      "erp": ["ds-*/erp/*.json"]
+    },
+    {
+      "code": "my",
+      "name": "Demo Malaysia",
+      "email_domain": "my.example.com",
+      "keycloak_group": "/companies/my",
+      "mailbox_address": "ap@my.example.com",
+      "time_zone": "Asia/Kuala_Lumpur",
+      "users": [
+        {"username": "member1@my.example.com", "display_name": "Accounting Member 1", "role": "ACCOUNTING_MEMBER"},
+        {"username": "member2@my.example.com", "display_name": "Accounting Member 2", "role": "ACCOUNTING_MEMBER"},
+        {"username": "manager1@my.example.com", "display_name": "Accounting Manager 1", "role": "ACCOUNTING_MANAGER"}
+      ],
+      "erp": ["ds-*/erp/*.json"]
+    }
+  ]
+}

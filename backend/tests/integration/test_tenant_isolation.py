@@ -18,7 +18,7 @@ from saps.domain.invoices import ApprovalDecision, InvoiceStatus, NotificationTy
 from tests.fakes import MemoryQueue
 from tests.integration.api_world import Api
 from tests.integration.db_urls import use_database
-from tests.integration.pipeline import FIXTURES, World, new_world, process, uploaded
+from tests.integration.pipeline import ERP, FIXTURES, World, new_world, process, uploaded
 
 pytestmark = pytest.mark.integration
 
@@ -301,7 +301,12 @@ async def test_an_upload_stores_the_file_under_the_company_and_queues_it(api: Ap
 async def test_worker_jobs_run_as_the_company_of_the_message(
     engine: AsyncEngine, database_url: str, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
+    from saps.worker import jobs
     from saps.worker.jobs import run_processing
+
+    monkeypatch.setattr(
+        jobs, "erp_adapter", lambda name, fixtures_dir: ERP
+    )  # test companies use the vn catalogue
 
     a, b = await _company(engine), await _company(engine)
     with_company = await uploaded(

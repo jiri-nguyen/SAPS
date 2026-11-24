@@ -9,18 +9,21 @@ export const MEMBER: UserAccount = {
   username: "member1",
   displayName: "Accounting Member 1",
   role: "ACCOUNTING_MEMBER",
+  companyName: "Demo Vietnam",
 };
 export const OTHER: UserAccount = {
   id: "u-other",
   username: "member2",
   displayName: "Accounting Member 2",
   role: "ACCOUNTING_MEMBER",
+  companyName: "Demo Vietnam",
 };
 export const MANAGER: UserAccount = {
   id: "u-manager",
   username: "manager1",
   displayName: "Accounting Manager 1",
   role: "ACCOUNTING_MANAGER",
+  companyName: "Demo Vietnam",
 };
 
 const ref = (user: UserAccount) => ({ id: user.id, displayName: user.displayName });

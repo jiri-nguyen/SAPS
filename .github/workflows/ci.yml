@@ -119,7 +119,7 @@ jobs:
           base=http://localhost:5173/v1/session
           origin="Origin: http://localhost:5173"
           password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
-          body="{\"username\":\"member1\",\"password\":\"$password\"}"
+          body="{\"username\":\"member1@vn.example.com\",\"password\":\"$password\"}"
           code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
           test "$(code -X POST -H 'Content-Type: application/json' -d "$body" "$base")" = 403
           curl -fsS -c jar -H "$origin" -H 'Content-Type: application/json' -d "$body" "$base" | grep -q ACCOUNTING_MEMBER
@@ -132,7 +132,7 @@ jobs:
           origin="Origin: http://localhost:5173"
           password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
           curl -fsS -c upload-jar -H "$origin" -H 'Content-Type: application/json' \
-            -d "{\"username\":\"member1\",\"password\":\"$password\"}" "$base/session" > /dev/null
+            -d "{\"username\":\"member1@vn.example.com\",\"password\":\"$password\"}" "$base/session" > /dev/null
           upload() {  # $1 file, $2 Idempotency-Key → invoice id
             curl -fsS -b upload-jar -H "$origin" -H "Idempotency-Key: $2" \
               -F "file=@$1;type=application/pdf" "$base/invoices" \
@@ -169,7 +169,7 @@ jobs:
           ds03="$(upload backend/fixtures/ds-03/invoices/ds-03-above-threshold.pdf "ci-ds03-$GITHUB_RUN_ID")"
           wait_for "$ds03" PENDING_APPROVAL ""   # above the approval threshold (SAPS-19)
           curl -fsS -c manager-jar -H "$origin" -H 'Content-Type: application/json' \
-            -d "{\"username\":\"manager1\",\"password\":\"$password\"}" "$base/session" > /dev/null
+            -d "{\"username\":\"manager1@vn.example.com\",\"password\":\"$password\"}" "$base/session" > /dev/null
           test "$(curl -s -o /dev/null -w '%{http_code}' -b upload-jar -H "$origin" -H 'Content-Type: application/json' -d '{"decision":"APPROVED"}' "$base/invoices/$ds03/approval")" = 403   # a member cannot decide
           test "$(curl -s -o /dev/null -w '%{http_code}' -b manager-jar -H "$origin" -H 'Content-Type: application/json' -d '{"decision":"REJECTED"}' "$base/invoices/$ds03/approval")" = 422
           curl -fsS -b manager-jar -H "$origin" -H 'Content-Type: application/json' -d '{"decision":"APPROVED"}' "$base/invoices/$ds03/approval" | grep -q '"status":"PENDING_REVIEW"'   # SAPS-22
@@ -183,7 +183,7 @@ jobs:
           origin="Origin: http://localhost:5173"
           password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
           code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
-          for who in member1:settings-member manager1:settings-manager; do
+          for who in member1@vn.example.com:settings-member manager1@vn.example.com:settings-manager; do
             curl -fsS -c "${who#*:}-jar" -H "$origin" -H 'Content-Type: application/json' \
               -d "{\"username\":\"${who%%:*}\",\"password\":\"$password\"}" "$base/session" > /dev/null
           done
@@ -214,7 +214,7 @@ jobs:
           code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
           for who in member1 manager1; do
             curl -fsS -c "notify-$who-jar" -H "$origin" -H 'Content-Type: application/json' \
-              -d "{\"username\":\"$who\",\"password\":\"$password\"}" "$base/session" > /dev/null
+              -d "{\"username\":\"$who@vn.example.com\",\"password\":\"$password\"}" "$base/session" > /dev/null
           done
           field() { python3 -c 'import json, sys; d = json.load(sys.stdin); print(eval(sys.argv[1]))' "$1"; }
           list() { curl -fsS -b "notify-$1-jar" "$base/notifications$2"; }
@@ -235,6 +235,24 @@ jobs:
           test "$(list member1 '' | field 'd["unreadCount"]')" = 0
           test "$(list manager1 '' | field 'd["unreadCount"]')" -gt 0   # read state is per user
           test "$(code "$base/notifications")" = 401
+      - name: Two demo companies keep their invoices apart (SAPS-42)
+        run: |
+          base=http://localhost:5173/v1
+          origin="Origin: http://localhost:5173"
+          password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
+          curl -fsS -c sg-jar -H "$origin" -H 'Content-Type: application/json' \
+            -d "{\"username\":\"member1@sg.example.com\",\"password\":\"$password\"}" "$base/session" | grep -q '"companyName":"Demo Singapore"'
+          test "$(curl -fsS -b sg-jar "$base/invoices?pageSize=100" | python3 -c 'import json, sys; print(len(json.load(sys.stdin)["items"]))')" = 0   # nothing of Demo Vietnam
+          id="$(curl -fsS -b sg-jar -H "$origin" -H "Idempotency-Key: ci-sg-$GITHUB_RUN_ID" \
+            -F "file=@backend/fixtures/ds-01/invoices/ds-01-trade-po.pdf;type=application/pdf" "$base/invoices" \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])')"
+          for i in $(seq 1 30); do   # DS-01 is Completed in Demo Vietnam: no EX9 and no quantity used up here
+            state="$(curl -fsS -b sg-jar "$base/invoices/$id" | python3 -c 'import json, sys; i = json.load(sys.stdin); print(i["status"], ",".join(e["code"] for e in i["exceptions"]))')"
+            [ "$state" = "PENDING_REVIEW " ] && break
+            sleep 1
+          done
+          test "$state" = "PENDING_REVIEW " || { echo "invoice is '$state'"; docker compose logs worker; exit 1; }
+          curl -fsS -b sg-jar -H "$origin" -X POST "$base/invoices/$id/confirmation" | grep -q '"status":"COMPLETED"'
       - name: SAPS API → SAPS Message Broker → SAPS Worker
         run: |
           docker compose exec -T api python -c "from saps.worker.actors import ping; ping.send('ci-smoke')"
@@ -250,7 +268,7 @@ jobs:
           origin="Origin: http://localhost:5173"
           password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
           curl -fsS -c sweeper-jar -H "$origin" -H 'Content-Type: application/json' \
-            -d "{\"username\":\"member1\",\"password\":\"$password\"}" "$base/session" > /dev/null
+            -d "{\"username\":\"member1@vn.example.com\",\"password\":\"$password\"}" "$base/session" > /dev/null
           docker compose stop worker   # nobody takes the message
           id="$(curl -fsS -b sweeper-jar -H "$origin" -H "Idempotency-Key: ci-lost-$GITHUB_RUN_ID" \
             -F "file=@backend/fixtures/ds-17/invoices/ds-17-rejected-at-review.pdf;type=application/pdf" "$base/invoices" \

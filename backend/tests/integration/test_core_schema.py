@@ -47,7 +47,9 @@ async def db(database_url: str) -> AsyncIterator[AsyncSession]:
 
 
 async def _member(db: AsyncSession) -> UserAccount:
-    return (await db.execute(select(UserAccount).where(UserAccount.username == "member1"))).scalar_one()
+    return (
+        await db.execute(select(UserAccount).where(UserAccount.username == "member1@vn.example.com"))
+    ).scalar_one()
 
 
 def _invoice(user: UserAccount, idempotency_key: str | None = None) -> Invoice:
@@ -97,7 +99,7 @@ async def test_an_invoice_graph_round_trips(db: AsyncSession) -> None:
                 invoice_id=invoice.id,
                 status_to=InvoiceStatus.UPLOADED,
                 action="UPLOAD",
-                actor="member1",
+                actor="member1@vn.example.com",
                 details={"fileName": "sample.pdf"},
             ),
             Notification(

@@ -139,7 +139,7 @@ Conventions:
 - Expected volume: demo scale in the PoC (tens of invoices); production volume TBD (MTG-20261114 Q5).
 
 ### Tenant
-A customer company served by Smart-AP-Suite ([ADR-0007](adr/0007-prepare-data-model-for-tenants.md)). The PoC has exactly one tenant, created by the first migration.
+A customer company (in Phase 2: a subsidiary of the group, [DEC-060](../01-requirements/decision-log.md#dec-060)) served by Smart-AP-Suite ([ADR-0007](adr/0007-prepare-data-model-for-tenants.md)). The seed creates the demo companies of `fixtures/companies.json` ([SAPS-42](../03-features/SAPS-42-companies-and-demo-data.md)).
 
 | Property | Value |
 |---|---|
@@ -147,13 +147,18 @@ A customer company served by Smart-AP-Suite ([ADR-0007](adr/0007-prepare-data-mo
 | Owning container | SAPS API |
 | Lifecycle | simple CRUD (seeded in the PoC) |
 | Retention | TBD (Q2) |
-| Expected volume | 1 in the PoC; many after the PoC ([DEC-026](../01-requirements/decision-log.md#dec-026)) |
+| Expected volume | 3 in the Phase 2 demo; more subsidiaries later ([DEC-026](../01-requirements/decision-log.md#dec-026), [DEC-060](../01-requirements/decision-log.md#dec-060)) |
 
 | Attribute | Type | Null | Key | Class. | Description |
 |---|---|---|---|---|---|
 | id | uuid | No | PK | Internal | Surrogate key |
 | name | string(200) | No | UK | Confidential | Customer company name |
 | is_active | boolean | No | — | Internal | Inactive tenants cannot sign in |
+| code | string(20) | No | UK | Internal | Short company code (`vn`, `sg`, `my`); selects the company's ERP data ([SAPS-42](../03-features/SAPS-42-companies-and-demo-data.md)) |
+| email_domain | string(255) | Yes | UK | Internal | E-mail domain of the company's users ([DEC-061](../01-requirements/decision-log.md#dec-061)) |
+| keycloak_group | string(255) | Yes | UK | Internal | Keycloak group of the company, e.g. `/companies/vn` ([ADR-0010](adr/0010-use-one-keycloak-realm-with-company-groups.md)) |
+| mailbox_address | string(320) | Yes | UK | Internal | Mailbox whose invoices belong to the company ([DEC-055](../01-requirements/decision-log.md#dec-055)) |
+| time_zone | string(64) | No | — | Internal | IANA time zone, default `UTC` (processing calendar, [DEC-062](../01-requirements/decision-log.md#dec-062)) |
 
 ### UserAccount
 A person who signs in: an Accounting Member or an Accounting Manager ([NFR-SEC-001](../01-requirements/nfr.md#nfr-sec-001)).

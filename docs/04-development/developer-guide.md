@@ -83,9 +83,15 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
 ```
 
 ### 2.4 Verify the Setup
+- Demo companies ([SAPS-42](../03-features/SAPS-42-companies-and-demo-data.md)): the seed creates Demo Vietnam,
+  Demo Singapore and Demo Malaysia from `backend/fixtures/companies.json`, each with `member1@`, `member2@` and `manager1@`
+  its domain (`vn.example.com`, `sg.example.com`, `my.example.com`), all with the `SEED_USER_PASSWORD`. The header shows the
+  company name. A PoC database keeps its data as Demo Vietnam (`member1` … are renamed; `manager2` stays). Every company uses
+  the demo ERP catalogue on its own: DS-01 can be completed in each company, and an invoice of one company is never seen in
+  another.
 - Open `http://localhost:5173` — the sign-in page shows "Smart-AP-Suite" and "SAPS API: ok".
-- Sign in as `member1` with the `SEED_USER_PASSWORD` from `.env`: the header shows "Accounting Member 1 (Accounting Member)"
-  and the menu shows Upload invoices, Exception queue and Review queue. Sign out, then sign in as `manager1`: the menu shows
+- Sign in as `member1@vn.example.com` (Demo Vietnam) with the `SEED_USER_PASSWORD` from `.env`: the header shows "Accounting Member 1 (Accounting Member)"
+  and the menu shows Upload invoices, Exception queue and Review queue. Sign out, then sign in as `manager1@vn.example.com`: the menu shows
   Approval queue and Matching settings ([SAPS-27](https://linear.app/jiringuyen/issue/SAPS-27)).
   A changed `SEED_USER_PASSWORD` applies after `docker compose up -d --wait api`.
 - `curl http://localhost:8000/ready` returns `{"status":"ready","database":true}`.
@@ -94,36 +100,36 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   `docker compose logs worker` shows `ping_received` with `correlation_id` `check`.
 - `cd backend && uv run pytest` and `cd frontend && npm test` — all tests pass.
 - Upload, extraction and matching ([SAPS-17](https://linear.app/jiringuyen/issue/SAPS-17), [SAPS-18](https://linear.app/jiringuyen/issue/SAPS-18), [SAPS-19](https://linear.app/jiringuyen/issue/SAPS-19)):
-  as `member1`, open **Upload invoices** and drop `backend/fixtures/ds-01/invoices/ds-01-trade-po.pdf`; the row shows the
+  as `member1@vn.example.com`, open **Upload invoices** and drop `backend/fixtures/ds-01/invoices/ds-01-trade-po.pdf`; the row shows the
   progress, then Pending review. Then upload `ds-15/invoices/ds-15-duplicate-scan.png` (same vendor and invoice number):
   Exception with EX9 and EX7 ([SAPS-23](https://linear.app/jiringuyen/issue/SAPS-23)).
   `ds-12-price-outside-tolerance.pdf` ends in Exception (EX6); any file outside the sample set,
   e.g. `ds-07/unregistered/ds-07-unknown-invoice.pdf`, ends in Exception (EX1). `docker compose logs worker` shows
   `extraction_completed` and `matching_completed`.
-- Exception handling ([SAPS-20](https://linear.app/jiringuyen/issue/SAPS-20)): as `member1`, upload `ds-12-price-outside-tolerance.pdf`
+- Exception handling ([SAPS-20](https://linear.app/jiringuyen/issue/SAPS-20)): as `member1@vn.example.com`, upload `ds-12-price-outside-tolerance.pdf`
   and `ds-08-non-po.pdf`, open **Exception queue**, **Claim** DS-12, **Correct data** (unit price `20.00`), **Save**: the page
-  shows "Re-matching in progress", then Pending review. Claim DS-08 and **Accept as is**: Pending approval. As `manager1`, the
+  shows "Re-matching in progress", then Pending review. Claim DS-08 and **Accept as is**: Pending approval. As `manager1@vn.example.com`, the
   Exception queue is read-only; open a claimed invoice and **Release claim**.
-- Approval ([SAPS-22](https://linear.app/jiringuyen/issue/SAPS-22)): as `manager1`, open **Approval queue** (DS-08 after it was accepted, or
-  `ds-03-above-threshold.pdf` uploaded by `member1`), open the invoice (the accepted EX2 shows who accepted it and when) and
+- Approval ([SAPS-22](https://linear.app/jiringuyen/issue/SAPS-22)): as `manager1@vn.example.com`, open **Approval queue** (DS-08 after it was accepted, or
+  `ds-03-above-threshold.pdf` uploaded by `member1@vn.example.com`), open the invoice (the accepted EX2 shows who accepted it and when) and
   **Approve** (Pending review, members are notified) or **Reject** with a comment (Rejected, no notification). A member sees that the
   invoice waits for a manager and has no decision buttons.
-- Final review ([SAPS-21](https://linear.app/jiringuyen/issue/SAPS-21)): as `member2`, open **Review queue**, open DS-01 and **Confirm**
-  (Completed: ready for posting), or DS-17 and **Reject** with a reason. The whole demo chain: `member1` uploads DS-03 →
-  `manager1` approves → `member2` confirms (the review screen shows the approval).
-- Matching settings ([SAPS-28](https://linear.app/jiringuyen/issue/SAPS-28), DS-18): as `member1`, the menu has no **Matching settings**.
-  As `manager1`, open **Matching settings**: it shows 0.50 and 300.00 and who changed them last (`system` at first). Enter a price
-  tolerance of `1.00` and **Save settings**: "Saved. The new values apply to the next matching runs." Then, as `member1`, upload
+- Final review ([SAPS-21](https://linear.app/jiringuyen/issue/SAPS-21)): as `member2@vn.example.com`, open **Review queue**, open DS-01 and **Confirm**
+  (Completed: ready for posting), or DS-17 and **Reject** with a reason. The whole demo chain: `member1@vn.example.com` uploads DS-03 →
+  `manager1@vn.example.com` approves → `member2@vn.example.com` confirms (the review screen shows the approval).
+- Matching settings ([SAPS-28](https://linear.app/jiringuyen/issue/SAPS-28), DS-18): as `member1@vn.example.com`, the menu has no **Matching settings**.
+  As `manager1@vn.example.com`, open **Matching settings**: it shows 0.50 and 300.00 and who changed them last (`system` at first). Enter a price
+  tolerance of `1.00` and **Save settings**: "Saved. The new values apply to the next matching runs." Then, as `member1@vn.example.com`, upload
   `ds-18/invoices/ds-18-settings-tolerance.pdf` (50.80 against the PO price 50.00): Pending review instead of Exception (EX6).
   Invoices processed earlier keep the tolerance they were processed with. A negative value or a tolerance with more than 4
   decimals (threshold: 2) is refused. Set 0.50 again afterwards; uploading DS-18 twice raises EX9.
-- Notifications ([SAPS-24](https://linear.app/jiringuyen/issue/SAPS-24)): as `member1`, upload `ds-12-price-outside-tolerance.pdf`
+- Notifications ([SAPS-24](https://linear.app/jiringuyen/issue/SAPS-24)): as `member1@vn.example.com`, upload `ds-12-price-outside-tolerance.pdf`
   and `ds-03-above-threshold.pdf`. Within 15 s the bell in the top bar shows 1 unread (the exception of DS-12). Open the bell: the
   panel lists the notification (unread ones are highlighted); click it to open the invoice and mark it read, or **Mark all as read**.
-  As `manager1`, the bell shows the approval request of DS-03; clicking it opens the approval screen. Members are told about
+  As `manager1@vn.example.com`, the bell shows the approval request of DS-03; clicking it opens the approval screen. Members are told about
   exceptions and final reviews, managers about approvals; rejecting and completing an invoice notify nobody.
 - Sweeper ([SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37)): `docker compose stop worker`, upload `ds-17-rejected-at-review.pdf` as
-  `member1` (it stays Uploaded), `docker compose exec redis redis-cli FLUSHALL` (the message is lost), `docker compose start worker`.
+  `member1@vn.example.com` (it stays Uploaded), `docker compose exec redis redis-cli FLUSHALL` (the message is lost), `docker compose start worker`.
   After `SWEEPER_STUCK_AFTER_SECONDS` (60 s by default) the next tick sends it again: the invoice reaches Pending review, its
   history shows `RESEND` by `system`, and `docker compose logs worker` shows `sweeper_resent`.
 

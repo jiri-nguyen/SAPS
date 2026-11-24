@@ -27,6 +27,7 @@ def _user_record(user: UserAccount, tenant: Tenant) -> UserRecord:
         password_hash=user.password_hash,
         is_active=user.is_active,
         tenant_is_active=tenant.is_active,
+        company_name=tenant.name,
     )
 
 

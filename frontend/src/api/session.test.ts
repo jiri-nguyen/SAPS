@@ -3,7 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "./client";
 import { createSessionApi } from "./session";
 
-const USER = { id: "1", username: "member1", displayName: "Accounting Member 1", role: "ACCOUNTING_MEMBER" };
+const USER = {
+  id: "1",
+  username: "member1",
+  displayName: "Accounting Member 1",
+  role: "ACCOUNTING_MEMBER",
+  companyName: "Demo Vietnam",
+};
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 

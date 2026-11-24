@@ -407,6 +407,8 @@ export interface components {
             username: string;
             displayName: string;
             role: components["schemas"]["Role"];
+            /** @description Name of the user's company, shown in the header (SAPS-42) */
+            readonly companyName: string;
         };
         UserAccountRef: {
             /** Format: uuid */

@@ -18,6 +18,7 @@ class UserRecord:
     password_hash: str
     is_active: bool
     tenant_is_active: bool
+    company_name: str = ""  # SAPS-42
 
 
 @dataclass(frozen=True)
