@@ -15,6 +15,7 @@ from saps.domain.invoices import (
     InvoiceType,
     MatchStatus,
 )
+from saps.domain.mail_intake import IntakeChannel
 
 
 @dataclass(frozen=True)
@@ -68,6 +69,16 @@ class ApprovalView:
 
 
 @dataclass(frozen=True)
+class InvoiceSource:
+    """How the invoice entered the system (SAPS-45)."""
+
+    channel: IntakeChannel
+    mail_from: str | None = None
+    mail_subject: str | None = None
+    mail_received_at: datetime | None = None
+
+
+@dataclass(frozen=True)
 class InvoiceView:
     id: UUID
     status: InvoiceStatus
@@ -84,7 +95,8 @@ class InvoiceView:
     price_tolerance_applied: Decimal | None
     approval_threshold_applied: Decimal | None
     assigned_to: UserRef | None
-    uploaded_by: UserRef
+    uploaded_by: UserRef | None  # None for an invoice received by mail
+    source: InvoiceSource
     file: InvoiceFile
     rejected_reason: str | None
     lines: Sequence[InvoiceLineView]
@@ -98,12 +110,14 @@ class InvoiceView:
 class NewUpload:
     invoice_id: UUID
     tenant_id: UUID
-    uploaded_by: UUID
+    uploaded_by: UUID | None
     actor: str
     file: InvoiceFile
     storage_key: str
     idempotency_key: str
     uploaded_at: datetime
+    channel: IntakeChannel = IntakeChannel.UPLOAD
+    inbound_mail_id: UUID | None = None
 
 
 @dataclass(frozen=True)

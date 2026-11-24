@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     sweeper_stuck_after_seconds: int = Field(default=60, gt=0)
     sweeper_max_resends: int = Field(default=3, gt=0)
 
+    # Invoice intake from company mailboxes (SAPS-45, ADR-0012): `none` or `imap` (`graph` later, SAPS-53).
+    mail_adapter: str = "none"
+    mail_poll_seconds: int = Field(default=60, gt=0)
+    mail_batch_size: int = Field(default=50, gt=0)
+    imap_host: str = "localhost"
+    imap_port: int = Field(default=3143, gt=0)
+    imap_ssl: bool = False
+    imap_password: SecretStr = SecretStr("")
+
     # SAPS File Storage (ADR-0006)
     s3_endpoint_url: str = "http://localhost:8333"
     s3_bucket: str = "invoices"

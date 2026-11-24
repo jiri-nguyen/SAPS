@@ -17,6 +17,7 @@ from saps.domain.invoices import (
     MatchStatus,
     NotificationType,
 )
+from saps.domain.mail_intake import IntakeChannel
 from saps.domain.matching import MatchingRules
 from saps.domain.users import CurrentUser, Role
 from saps.ports.invoices import InvoiceEventView, InvoiceSummaryView, InvoiceView
@@ -103,6 +104,15 @@ class Approval(_ReadModel):
     decided_at: datetime
 
 
+class InvoiceSource(_ReadModel):
+    """OpenAPI `InvoiceSource` (SAPS-45)."""
+
+    channel: IntakeChannel
+    mail_from: str | None = None
+    mail_subject: str | None = None
+    mail_received_at: datetime | None = None
+
+
 class Invoice(_ReadModel):
     """OpenAPI `Invoice`."""
 
@@ -121,7 +131,8 @@ class Invoice(_ReadModel):
     price_tolerance_applied: Decimal | None
     approval_threshold_applied: Decimal | None
     assigned_to: UserAccountRef | None
-    uploaded_by: UserAccountRef
+    uploaded_by: UserAccountRef | None
+    source: InvoiceSource
     file: InvoiceFile
     rejected_reason: str | None
     lines: list[InvoiceLine]

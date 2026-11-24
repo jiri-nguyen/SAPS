@@ -6,7 +6,7 @@ from typing import BinaryIO
 from uuid import UUID
 
 from saps.domain.invoices import InvoiceStatus
-from saps.ports.invoices import DuplicateIdempotencyKeyError, InvoiceView, NewUpload, UserRef
+from saps.ports.invoices import DuplicateIdempotencyKeyError, InvoiceSource, InvoiceView, NewUpload, UserRef
 
 NOW = datetime(2026, 12, 15, 9, 0, tzinfo=UTC)
 
@@ -87,7 +87,8 @@ class MemoryInvoices:
             id=upload.invoice_id,
             status=InvoiceStatus.UPLOADED,
             currency="USD",
-            uploaded_by=UserRef(upload.uploaded_by, "Accounting Member 1"),
+            uploaded_by=UserRef(upload.uploaded_by, "Accounting Member 1") if upload.uploaded_by else None,
+            source=InvoiceSource(channel=upload.channel),
             file=upload.file,
             lines=[],
             exceptions=[],

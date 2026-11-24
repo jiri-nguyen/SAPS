@@ -48,7 +48,7 @@ from saps.application.invoices import (
     open_invoice_file,
 )
 from saps.application.review import ReviewService
-from saps.application.upload import IncomingFile, UploadInvoiceService
+from saps.application.upload import IncomingFile, UploadInvoiceService, UploadSource
 from saps.domain.exception_handling import LineData
 from saps.domain.invoice_files import (
     HEADER_BYTES,
@@ -105,7 +105,7 @@ async def upload_invoice(
     started = time.perf_counter()
     incoming = await _inspect(file)
     try:
-        result = await service.upload(user, idempotency_key, incoming)
+        result = await service.upload(UploadSource.of_user(user), idempotency_key, incoming)
     except FileRejectedError as exc:
         log.info("upload_rejected", extra={"reason": type(exc).__name__, "tenant_id": str(user.tenant_id)})
         raise HTTPException(_REJECTION_STATUS[type(exc)], str(exc)) from exc

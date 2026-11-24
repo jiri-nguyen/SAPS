@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from tests.integration.api_world import Api, make_api
 from tests.integration.db_urls import APP_DB_PASSWORD, SYSTEM_DB_PASSWORD, app_url, system_url
+from tests.integration.mail_server import mail_server  # noqa: F401  (session fixture)
 
 BACKEND = Path(__file__).parents[2]
 
