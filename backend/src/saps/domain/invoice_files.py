@@ -61,8 +61,9 @@ def clean_file_name(name: str | None) -> str:
     return base[:_MAX_NAME] or "invoice"
 
 
-def storage_key(invoice_id: UUID, sha256: str) -> str:
-    """ADR-0006: `invoices/{invoice_id}/{sha256}`; contains no user input (§3.7)."""
+def storage_key(tenant_id: UUID, invoice_id: UUID, sha256: str) -> str:
+    """ADR-0006 with the company first (SAPS-41 BR-06): `tenants/{tenant_id}/invoices/{invoice_id}/{sha256}`;
+    contains no user input (§3.7). Keys of older invoices are stored per invoice and stay valid."""
     if not _SHA256.fullmatch(sha256):
         raise ValueError("sha256 must be 64 lower-case hex characters")
-    return f"invoices/{invoice_id}/{sha256}"
+    return f"tenants/{tenant_id}/invoices/{invoice_id}/{sha256}"

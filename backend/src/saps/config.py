@@ -13,8 +13,14 @@ class Settings(BaseSettings):
     # `.env` is read from the repository root (when run from backend/) and from the working directory.
     model_config = SettingsConfigDict(env_file=("../.env", ".env"), env_file_encoding="utf-8", extra="ignore")
 
-    # SAPS Database (ADR-0003, ADR-0005)
+    # SAPS Database (ADR-0003, ADR-0005). `database_url` is the table owner (migrations, seed); the running
+    # SAPS API and worker jobs use `app_database_url` (row-level security applies), the sweeper
+    # `system_database_url` (SAPS-41).
     database_url: str = "postgresql+psycopg://saps:saps@localhost:5432/saps"
+    app_database_url: str = "postgresql+psycopg://saps_app:saps-app-local@localhost:5432/saps"
+    system_database_url: str = "postgresql+psycopg://saps_system:saps-system-local@localhost:5432/saps"
+    app_db_password: SecretStr = SecretStr("saps-app-local")
+    system_db_password: SecretStr = SecretStr("saps-system-local")
 
     # SAPS Message Broker and SAPS Worker (ADR-0004)
     redis_url: str = "redis://localhost:6379/0"

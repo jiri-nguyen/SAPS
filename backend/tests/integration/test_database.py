@@ -4,6 +4,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from tests.integration.conftest import alembic
+from tests.integration.db_urls import use_database
 
 pytestmark = pytest.mark.integration
 
@@ -24,7 +25,7 @@ async def test_ready_is_ok_with_a_reachable_database(
     from saps.api.main import create_app
     from saps.config import get_settings
 
-    monkeypatch.setenv("DATABASE_URL", database_url)
+    use_database(monkeypatch, database_url)
     get_settings.cache_clear()
     try:
         async with AsyncClient(transport=ASGITransport(app=create_app()), base_url="http://test") as client:

@@ -33,7 +33,7 @@ async def test_upload_stores_the_file_creates_the_invoice_and_queues_it() -> Non
     result = await _service(repo, storage, queue).upload(USER, "key-1", _file())
     assert result.created and result.queued
     upload = repo.uploads[result.invoice.id]
-    assert upload.storage_key == f"invoices/{result.invoice.id}/{SHA}"
+    assert upload.storage_key == f"tenants/{USER.tenant_id}/invoices/{result.invoice.id}/{SHA}"
     assert storage.objects[upload.storage_key] == (PDF_BYTES, "application/pdf")
     assert (upload.actor, upload.uploaded_by, upload.uploaded_at) == ("member1", USER.user_id, NOW)
     assert upload.file.name == "inv.pdf" and upload.file.size_bytes == len(PDF_BYTES)

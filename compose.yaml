@@ -3,6 +3,10 @@ name: saps
 
 x-app-env: &app-env
   DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-saps}:${POSTGRES_PASSWORD:-saps-local}@db:5432/${POSTGRES_DB:-saps}
+  APP_DB_PASSWORD: ${APP_DB_PASSWORD:-saps-app-local}
+  SYSTEM_DB_PASSWORD: ${SYSTEM_DB_PASSWORD:-saps-system-local}
+  APP_DATABASE_URL: postgresql+psycopg://saps_app:${APP_DB_PASSWORD:-saps-app-local}@db:5432/${POSTGRES_DB:-saps}
+  SYSTEM_DATABASE_URL: postgresql+psycopg://saps_system:${SYSTEM_DB_PASSWORD:-saps-system-local}@db:5432/${POSTGRES_DB:-saps}
   REDIS_URL: redis://redis:6379/0
   S3_ENDPOINT_URL: http://seaweedfs:8333
 

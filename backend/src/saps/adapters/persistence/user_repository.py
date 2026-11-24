@@ -1,12 +1,18 @@
-"""SQLAlchemy implementation of the UserRepository port (SAPS-27)."""
+"""SQLAlchemy implementation of the UserRepository port (SAPS-27).
+
+Sign-in and session lookups happen before the company is known: they find the row through the SECURITY DEFINER
+functions of SAPS-41 (BR-05), then set the company on the transaction, so everything else runs under row-level
+security.
+"""
 
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from saps.adapters.persistence.db import set_tenant
 from saps.adapters.persistence.models import Tenant, UserAccount, UserSession
 from saps.ports.auth import SessionRecord, UserRecord
 
@@ -29,6 +35,14 @@ class SqlUserRepository:
         self._session = session
 
     async def find_user_by_username(self, username: str) -> UserRecord | None:
+        found_user = (
+            await self._session.execute(
+                select(func.saps_find_user_for_sign_in(username).table_valued("tenant_id"))
+            )
+        ).first()
+        if found_user is None:
+            return None
+        await set_tenant(self._session, found_user.tenant_id)
         row = await self._session.execute(
             select(UserAccount, Tenant).join(Tenant).where(UserAccount.username == username)
         )
@@ -52,6 +66,8 @@ class SqlUserRepository:
         await self._session.flush()
 
     async def find_session(self, token_hash: str) -> SessionRecord | None:
+        if not await self._enter_tenant_of_session(token_hash):
+            return None
         result = await self._session.execute(
             select(UserSession)
             .options(joinedload(UserSession.user).joinedload(UserAccount.tenant))
@@ -74,8 +90,19 @@ class SqlUserRepository:
         )
 
     async def revoke_session(self, token_hash: str, now: datetime) -> None:
+        if not await self._enter_tenant_of_session(token_hash):
+            return
         await self._session.execute(
             update(UserSession)
             .where(UserSession.token_hash == token_hash, UserSession.revoked_at.is_(None))
             .values(revoked_at=now)
         )
+
+    async def _enter_tenant_of_session(self, token_hash: str) -> bool:
+        found = (
+            await self._session.execute(select(func.saps_find_session(token_hash).table_valued("tenant_id")))
+        ).first()
+        if found is None:
+            return False
+        await set_tenant(self._session, found.tenant_id)
+        return True

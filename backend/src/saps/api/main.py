@@ -56,7 +56,7 @@ def create_app() -> FastAPI:
     @app.get("/ready", tags=["Health"], include_in_schema=False)
     async def get_ready(response: Response) -> Readiness:
         """Readiness for Docker Compose: the SAPS Database is reachable."""
-        db_ok = await database_is_reachable(get_engine(get_settings().database_url))
+        db_ok = await database_is_reachable(get_engine(get_settings().app_database_url))
         if not db_ok:
             response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return Readiness(status="ready" if db_ok else "not_ready", database=db_ok)

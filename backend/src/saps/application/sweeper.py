@@ -67,10 +67,10 @@ class SweeperService:
                         await repo.mark_gave_up(invoice)
                         result.gave_up.append(GaveUp(invoice.id, invoice.tenant_id, invoice.resends))
                         continue
-                    await self._queue.send_process_invoice(invoice.id)
+                    await self._queue.send_process_invoice(invoice.id, invoice.tenant_id)
                     message = PROCESS_MESSAGE
                 else:
-                    await self._queue.send_rematch_invoice(invoice.id)
+                    await self._queue.send_rematch_invoice(invoice.id, invoice.tenant_id)
                     message = REMATCH_MESSAGE
                 await repo.mark_resent(invoice, message)
                 result.resent.append(Resent(invoice.id, invoice.tenant_id, message))

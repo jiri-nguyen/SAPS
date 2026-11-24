@@ -71,8 +71,9 @@ Design rules:
   | `saps_system` | sweeper only | like `saps_app` plus `BYPASSRLS` |
 
 - **Policy** on each tenant-owned table: `ENABLE` and `FORCE ROW LEVEL SECURITY`; policy `tenant_isolation` for all
-  commands with `USING` and `WITH CHECK` `tenant_id = current_setting('app.tenant_id', true)::uuid`. An unset value is
-  `NULL`, so no row matches (BR-02).
+  commands with `USING` and `WITH CHECK` `tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid`. An
+  unset value is `NULL`, and a connection that had the setting before reports `''` afterwards; both mean no row
+  matches (BR-02).
 - **Setting the company:** every unit of work that touches tenant data receives the company explicitly and starts with
   `SELECT set_config('app.tenant_id', :tenant, true)` (transaction-local, safe with connection pools). There is no
   implicit global; a unit of work without a company sees nothing.
@@ -196,7 +197,7 @@ the new keys keep working because the key is stored per invoice.
 
 ## 8. Documentation Checklist
 - [x] API spec: no change
-- [ ] Data model: section "Tenant isolation" (roles, policy, functions)
-- [ ] Developer Guide: new variables, roles, how to run a query as a company
-- [ ] TD-02 resolved when this feature is merged
+- [x] Data model: section "Tenant isolation" (roles, policy, functions)
+- [x] Developer Guide: new variables, roles, how to run a query as a company
+- [x] TD-02 resolved
 - [ ] Release notes entry prepared

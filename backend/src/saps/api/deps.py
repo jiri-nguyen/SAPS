@@ -6,9 +6,9 @@ from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
-from saps.adapters.persistence.db import get_engine, session_factory
+from saps.adapters.persistence.db import get_engine, session_factory, set_tenant
 from saps.adapters.persistence.exception_repository import SqlExceptionUnitOfWork
 from saps.adapters.persistence.invoice_repository import SqlInvoiceRepository
 from saps.adapters.persistence.matching_settings_repository import SqlMatchingSettingsRepository
@@ -51,10 +51,15 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+def app_engine() -> AsyncEngine:
+    """The SAPS API connects as `saps_app`: row-level security applies to every query (SAPS-41)."""
+    return get_engine(get_settings().app_database_url)
+
+
 async def db_session() -> AsyncIterator[AsyncSession]:
-    """One transaction per request; committed when the request succeeds."""
-    engine = get_engine(get_settings().database_url)
-    async with session_factory(engine)() as session, session.begin():
+    """One transaction per request; committed when the request succeeds. The company is set once the user is
+    known (`tenant_session`); sign-in and session lookups set it themselves (SAPS-41 BR-05)."""
+    async with session_factory(app_engine())() as session, session.begin():
         yield session
 
 
@@ -81,6 +86,15 @@ async def current_user(request: Request, auth: Auth) -> CurrentUser:
 
 
 User = Annotated[CurrentUser, Depends(current_user)]
+
+
+async def tenant_session(session: DbSession, user: User) -> AsyncSession:
+    """The request's transaction, limited to the signed-in user's company (SAPS-41)."""
+    await set_tenant(session, user.tenant_id)
+    return session
+
+
+TenantDb = Annotated[AsyncSession, Depends(tenant_session)]
 
 
 def require_roles(*roles: Role) -> Callable[[CurrentUser], Awaitable[CurrentUser]]:
@@ -117,9 +131,9 @@ def job_queue() -> JobQueuePort:
     return DramatiqJobQueue(build_broker(get_settings()))
 
 
-async def invoice_repository() -> SqlInvoiceRepository:
-    """Async, so the engine is created on the request's event loop."""
-    return SqlInvoiceRepository(session_factory(get_engine(get_settings().database_url)))
+async def invoice_repository(user: User) -> SqlInvoiceRepository:
+    """Async, so the engine is created on the request's event loop; sessions of the user's company."""
+    return SqlInvoiceRepository(session_factory(app_engine(), user.tenant_id))
 
 
 async def invoice_reader(
@@ -140,32 +154,35 @@ async def upload_service(
 async def exception_service(
     repository: Annotated[SqlInvoiceRepository, Depends(invoice_repository)],
     queue: Annotated[JobQueuePort, Depends(job_queue)],
+    user: User,
 ) -> ExceptionHandlingService:
     """SAPS-20: one transaction per operation, with its own sessions (the row lock ends with it)."""
-    sessions = session_factory(get_engine(get_settings().database_url))
+    sessions = session_factory(app_engine(), user.tenant_id)
     return ExceptionHandlingService(SqlExceptionUnitOfWork(sessions), repository, queue, utc_now)
 
 
 async def approval_service(
     repository: Annotated[SqlInvoiceRepository, Depends(invoice_repository)],
+    user: User,
 ) -> ApprovalService:
     """SAPS-22: one transaction per decision; the invoice row lock makes the first decision win."""
-    sessions = session_factory(get_engine(get_settings().database_url))
+    sessions = session_factory(app_engine(), user.tenant_id)
     return ApprovalService(SqlExceptionUnitOfWork(sessions), repository, utc_now)
 
 
 async def review_service(
     repository: Annotated[SqlInvoiceRepository, Depends(invoice_repository)],
+    user: User,
 ) -> ReviewService:
     """SAPS-21: one transaction per confirmation; the invoice row lock makes the first action win."""
-    sessions = session_factory(get_engine(get_settings().database_url))
+    sessions = session_factory(app_engine(), user.tenant_id)
     return ReviewService(SqlExceptionUnitOfWork(sessions), repository, utc_now)
 
 
 # --- Matching settings (SAPS-28) ------------------------------------------------------------------------
 
 
-def matching_settings_service(session: DbSession) -> MatchingSettingsService:
+def matching_settings_service(session: TenantDb) -> MatchingSettingsService:
     """Runs in the request's transaction; the settings row lock ends with it."""
     return MatchingSettingsService(SqlMatchingSettingsRepository(session))
 
@@ -173,6 +190,6 @@ def matching_settings_service(session: DbSession) -> MatchingSettingsService:
 # --- Notifications (SAPS-24) ----------------------------------------------------------------------------
 
 
-def notification_service(session: DbSession) -> NotificationInboxService:
+def notification_service(session: TenantDb) -> NotificationInboxService:
     """Runs in the request's transaction; every operation is scoped to the caller."""
     return NotificationInboxService(SqlNotificationInbox(session), utc_now)

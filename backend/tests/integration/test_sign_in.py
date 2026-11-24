@@ -16,6 +16,7 @@ from saps.application.auth import hash_token
 from saps.config import get_settings
 from saps.seed import DEMO_TENANT
 from saps.seed import _run as run_seed
+from tests.integration.db_urls import use_database
 
 pytestmark = pytest.mark.integration
 
@@ -36,7 +37,7 @@ async def db(database_url: str) -> AsyncIterator[AsyncSession]:
 
 @pytest.fixture
 async def client(database_url: str, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[AsyncClient]:
-    monkeypatch.setenv("DATABASE_URL", database_url)
+    use_database(monkeypatch, database_url)
     monkeypatch.setenv("WEB_APP_ORIGIN", ORIGIN)
     monkeypatch.setenv("SESSION_COOKIE_SECURE", "false")  # the test client talks plain HTTP
     get_settings.cache_clear()

@@ -7,10 +7,14 @@ from functools import lru_cache
 from pathlib import Path
 from uuid import UUID
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
 from saps.adapters.erp.dummy_erp import DummyErpAdapter
 from saps.adapters.extraction.dummy_extraction import DummyExtractionAdapter
 from saps.adapters.persistence.db import get_engine, session_factory
 from saps.adapters.persistence.matching_repository import SqlMatchingRepository
+from saps.adapters.persistence.models import Invoice
 from saps.adapters.persistence.processing_repository import SqlProcessingRepository
 from saps.application.matching import MatchingService, MatchOutcome
 from saps.application.processing import FailedProcessingService, ProcessInvoiceService, ProcessOutcome
@@ -69,12 +73,35 @@ def _log_matching(outcome: MatchOutcome, started: float) -> None:
     )
 
 
-async def run_matching(invoice_id: UUID) -> MatchOutcome | None:
+async def tenant_of(invoice_id: UUID, tenant_id: UUID | None) -> UUID | None:
+    """The company of a job.
+
+    Messages sent before SAPS-41 carry no company: it is read once with the system role (EC-05; accepted for
+    one release). None when the invoice does not exist.
+    """
+    if tenant_id is not None:
+        return tenant_id
+    log.info("message_without_tenant", extra={"invoice_id": str(invoice_id)})
+    async with session_factory(get_engine(get_settings().system_database_url))() as session:
+        found: UUID | None = await session.scalar(select(Invoice.tenant_id).where(Invoice.id == invoice_id))
+    return found
+
+
+def _sessions(tenant_id: UUID) -> async_sessionmaker[AsyncSession]:
+    """Sessions of the job's company on the `saps_app` connection (SAPS-41)."""
+    return session_factory(get_engine(get_settings().app_database_url), tenant_id)
+
+
+async def run_matching(invoice_id: UUID, tenant_id: UUID | None = None) -> MatchOutcome | None:
     """Lock the invoice, match it and commit; a stale or duplicate message changes nothing (SAPS-19 EC-03)."""
     settings = get_settings()
     started = time.perf_counter()
     erp = erp_adapter(settings.erp_adapter, settings.fixtures_dir)
-    async with session_factory(get_engine(settings.database_url))() as session, session.begin():
+    tenant = await tenant_of(invoice_id, tenant_id)
+    if tenant is None:
+        log.info("matching_skipped", extra={"invoice_id": str(invoice_id)})
+        return None
+    async with _sessions(tenant)() as session, session.begin():
         outcome = await MatchingService(SqlMatchingRepository(session), erp, _utc_now).match(invoice_id)
     if outcome is None:
         log.info("matching_skipped", extra={"invoice_id": str(invoice_id)})
@@ -83,13 +110,17 @@ async def run_matching(invoice_id: UUID) -> MatchOutcome | None:
     return outcome
 
 
-async def run_processing(invoice_id: UUID) -> ProcessOutcome | None:
+async def run_processing(invoice_id: UUID, tenant_id: UUID | None = None) -> ProcessOutcome | None:
     """`process_invoice`: extraction, then matching, in one transaction (SAPS-18 BR-01, ADR-0004)."""
     settings = get_settings()
     started = time.perf_counter()
     extraction = extraction_adapter(settings.extraction_adapter, settings.fixtures_dir)
     erp = erp_adapter(settings.erp_adapter, settings.fixtures_dir)
-    async with session_factory(get_engine(settings.database_url))() as session, session.begin():
+    tenant = await tenant_of(invoice_id, tenant_id)
+    if tenant is None:
+        processing_log.info("processing_skipped", extra={"invoice_id": str(invoice_id)})
+        return None
+    async with _sessions(tenant)() as session, session.begin():
         matching = MatchingService(SqlMatchingRepository(session), erp, _utc_now)
         service = ProcessInvoiceService(SqlProcessingRepository(session), extraction, matching, _utc_now)
         outcome = await service.process(invoice_id)
@@ -112,14 +143,17 @@ async def run_processing(invoice_id: UUID) -> ProcessOutcome | None:
     return outcome
 
 
-async def run_failure(invoice_id: UUID, reason: str) -> bool:
+async def run_failure(invoice_id: UUID, reason: str, tenant_id: UUID | None = None) -> bool:
     """`process_invoice_failed`: EX1 after the last retry in a new transaction (SAPS-38).
 
     Never raises: a failure here is logged and the invoice stays in Uploaded for the sweeper (EC-04).
     """
-    settings = get_settings()
     try:
-        async with session_factory(get_engine(settings.database_url))() as session, session.begin():
+        tenant = await tenant_of(invoice_id, tenant_id)
+        if tenant is None:
+            processing_log.info("process_failure_skipped", extra={"invoice_id": str(invoice_id)})
+            return False
+        async with _sessions(tenant)() as session, session.begin():
             raised = await FailedProcessingService(SqlProcessingRepository(session), _utc_now).fail(
                 invoice_id, reason
             )

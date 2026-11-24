@@ -41,9 +41,11 @@ async def ping(correlation_id: str) -> None:
 
 
 @dramatiq.actor(time_limit=settings.actor_time_limit_ms)
-async def rematch_invoice(invoice_id: str) -> None:
-    """Re-match an invoice in status Matching after a matching field changed (SAPS-19 BR-14)."""
-    await run_matching(UUID(invoice_id))
+async def rematch_invoice(invoice_id: str, tenant_id: str | None = None) -> None:
+    """Re-match an invoice in status Matching after a matching field changed (SAPS-19 BR-14).
+
+    `tenant_id` is the invoice's company (SAPS-41); messages sent before SAPS-41 have none (EC-05)."""
+    await run_matching(UUID(invoice_id), _tenant(tenant_id))
 
 
 @dramatiq.actor(
@@ -53,9 +55,9 @@ async def rematch_invoice(invoice_id: str) -> None:
     max_backoff=settings.process_invoice_max_backoff_ms,
     on_retry_exhausted="process_invoice_failed",
 )
-async def process_invoice(invoice_id: str) -> None:
+async def process_invoice(invoice_id: str, tenant_id: str | None = None) -> None:
     """Sent by uploadInvoice (SAPS-17) and the sweeper (SAPS-37); expects status Uploaded."""
-    await run_processing(UUID(invoice_id))
+    await run_processing(UUID(invoice_id), _tenant(tenant_id))
 
 
 @dramatiq.actor(max_retries=0, time_limit=settings.actor_time_limit_ms)
@@ -64,5 +66,11 @@ async def process_invoice_failed(message_data: dict[str, Any], retry_data: dict[
 
     Dramatiq passes the failed message; its `options["traceback"]` holds the last error (BR-02).
     """
-    invoice_id = UUID(str(message_data["args"][0]))
-    await run_failure(invoice_id, describe_failure(str(message_data.get("options", {}).get("traceback", ""))))
+    args = message_data["args"]
+    invoice_id = UUID(str(args[0]))
+    reason = describe_failure(str(message_data.get("options", {}).get("traceback", "")))
+    await run_failure(invoice_id, reason, _tenant(args[1] if len(args) > 1 else None))
+
+
+def _tenant(tenant_id: str | None) -> UUID | None:
+    return None if tenant_id is None else UUID(str(tenant_id))

@@ -261,7 +261,10 @@ All settings are environment variables, read in `backend/src/saps/config.py`. `.
 
 | Setting | Purpose | Local value source |
 |---|---|---|
-| `DATABASE_URL` | SAPS Database connection (psycopg async) | `.env.example` |
+| `DATABASE_URL` | SAPS Database connection as the table owner: migrations and seed only (psycopg async) | `.env.example` |
+| `APP_DATABASE_URL` | Connection of the SAPS API and worker jobs as `saps_app` (row-level security applies, [SAPS-41](../03-features/SAPS-41-tenant-isolation.md)) | `.env.example` |
+| `SYSTEM_DATABASE_URL` | Connection of the sweeper as `saps_system` (bypasses row-level security) | `.env.example` |
+| `APP_DB_PASSWORD`, `SYSTEM_DB_PASSWORD` | Passwords the migration sets for `saps_app` and `saps_system`; must match the two URLs above | `.env.example` |
 | `REDIS_URL` | SAPS Message Broker | `.env.example` |
 | `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | SAPS File Storage (S3 API) | `.env.example` (local test credentials) |
 | `DRAMATIQ_HEARTBEAT_TIMEOUT_MS` | Broker heartbeat timeout — default 30000 | `.env.example` |
@@ -311,6 +314,7 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 |---|---|---|
 | Port 5432, 6379, 8333 or 8000 already in use | Another local service | Stop it, or change the host port in `compose.yaml` |
 | Invoice stays in Uploaded or Matching | SAPS Worker not running, or message lost | `docker compose logs worker`; the sweeper re-sends after `SWEEPER_STUCK_AFTER_SECONDS` (`RESEND` in the invoice history, log `sweeper_resent`); `sweeper_failed` means the tick failed (database or broker down) and the next tick tries again; `RESEND_LIMIT` in the history and `sweeper_gave_up` in the log mean the sweeper stopped after `SWEEPER_MAX_RESENDS` re-sends and the invoice needs an operator; EX1 with "Processing failed after the last retry" means `process_invoice` failed on every retry ([SAPS-38](https://linear.app/jiringuyen/issue/SAPS-38)) |
+| A query as `saps_app` returns no rows | No company set on the transaction (row-level security, fail closed) | Run `SELECT set_config('app.tenant_id', '<tenant id>', true);` first in the same transaction, or query as the owner (`DATABASE_URL`) for diagnosis |
 | `MissingGreenlet` / lazy-load error | Lazy loading in async SQLAlchemy code | Load relationships explicitly (`selectinload`) |
 | Presigned URL returns 403 | Wrong S3 credentials or clock skew | Check `S3_*` settings; restart the stack |
 | `docker compose up --wait` takes about 40 s | SAPS File Storage becomes healthy only when SeaweedFS can store files (`/dir/assign`); the SAPS API waits for it | Expected; without the wait the first upload would hang 7–20 s |

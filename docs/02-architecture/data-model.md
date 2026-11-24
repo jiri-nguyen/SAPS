@@ -424,6 +424,19 @@ stateDiagram-v2
 | Completed | Final result confirmed | — |
 | Rejected | Invoice rejected; final state | — |
 
+### Tenant isolation
+Implemented in [SAPS-41](../03-features/SAPS-41-tenant-isolation.md) following [ADR-0009](adr/0009-isolate-tenant-data-in-a-shared-database.md)
+(migration `0006_tenant_row_level_security`).
+
+| Item | Value |
+|---|---|
+| Tenant-owned tables | `user_account`, `user_session`, `matching_settings`, `invoice`, `invoice_line`, `invoice_exception`, `approval`, `invoice_event`, `notification` (every table with `tenant_id`; a CI test checks this) |
+| Row-level security | `ENABLE` and `FORCE`; policy `tenant_isolation` for all commands: `tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid` in `USING` and `WITH CHECK` — no company set means no rows |
+| Roles | `saps` owner (migrations, seed); `saps_app` (SAPS API, worker jobs; subject to RLS); `saps_system` (sweeper only; `BYPASSRLS`) |
+| Company per transaction | `SELECT set_config('app.tenant_id', <tenant>, true)` at the start of every transaction (transaction-local) |
+| Lookups before the company is known | `saps_find_session(token_hash)` → (`session_id`, `tenant_id`); `saps_find_user_for_sign_in(username)` → (`user_id`, `tenant_id`); `SECURITY DEFINER`, owned by `saps_system`, executable by `saps_app` only |
+| File keys | New invoices: `tenants/{tenant_id}/invoices/{invoice_id}/{sha256}`; older keys stay valid |
+
 ## 6. Retention & Archival
 | Data category | Online retention | Archive | Deletion | Requirement |
 |---|---|---|---|---|
