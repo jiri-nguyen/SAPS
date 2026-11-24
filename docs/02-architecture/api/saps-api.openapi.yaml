@@ -3,9 +3,9 @@
 openapi: 3.1.0
 info:
   title: SAPS API
-  version: "0.5.0"
+  version: "0.6.0"
   description: |
-    HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload, the exception queue,
+    HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload and mail intake, the exception queue,
     approval, final review, notifications and matching settings.
 
     Owner container: SAPS API — see arc42 §5 (`docs/02-architecture/arc42/05-building-block-view.md`).
@@ -810,7 +810,7 @@ components:
     Invoice:
       type: object
       description: Invoice with lines, exceptions and approval (data model Invoice)
-      required: [id, status, currency, file, uploadedBy, lines, exceptions, createdAt, updatedAt]
+      required: [id, status, currency, file, uploadedBy, source, lines, exceptions, createdAt, updatedAt]
       properties:
         id: { type: string, format: uuid, readOnly: true }
         status: { $ref: "#/components/schemas/InvoiceStatus" }
@@ -829,7 +829,10 @@ components:
         priceToleranceApplied: { oneOf: [{ $ref: "#/components/schemas/UnitPrice" }, { type: "null" }] }
         approvalThresholdApplied: { oneOf: [{ $ref: "#/components/schemas/Amount" }, { type: "null" }] }
         assignedTo: { oneOf: [{ $ref: "#/components/schemas/UserAccountRef" }, { type: "null" }] }
-        uploadedBy: { $ref: "#/components/schemas/UserAccountRef" }
+        uploadedBy:
+          description: The user who uploaded the invoice; null for an invoice received by mail (SAPS-45)
+          oneOf: [{ $ref: "#/components/schemas/UserAccountRef" }, { type: "null" }]
+        source: { $ref: "#/components/schemas/InvoiceSource" }
         file: { $ref: "#/components/schemas/InvoiceFile" }
         rejectedReason: { type: [string, "null"], maxLength: 1000 }
         lines:
@@ -841,6 +844,15 @@ components:
         approval: { oneOf: [{ $ref: "#/components/schemas/Approval" }, { type: "null" }] }
         createdAt: { type: string, format: date-time, readOnly: true }
         updatedAt: { type: string, format: date-time, readOnly: true }
+    InvoiceSource:
+      type: object
+      description: How the invoice entered the system (SAPS-45)
+      required: [channel]
+      properties:
+        channel: { type: string, enum: [UPLOAD, MAIL] }
+        mailFrom: { type: [string, "null"], maxLength: 320, description: "Sender of the mail; MAIL only" }
+        mailSubject: { type: [string, "null"], maxLength: 500, description: "Subject of the mail; MAIL only" }
+        mailReceivedAt: { type: [string, "null"], format: date-time, description: "Date of the mail; MAIL only" }
     InvoiceLine:
       type: object
       required: [id, lineNumber, matchStatus]
