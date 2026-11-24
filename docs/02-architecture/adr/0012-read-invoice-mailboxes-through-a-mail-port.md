@@ -1,7 +1,7 @@
 ---
 id: ADR-0012
 title: "ADR-0012: Poll the company mailboxes from the SAPS Worker through a mail port (Microsoft Graph later, IMAP test server for the demo)"
-status: proposed         # proposed | accepted | rejected | deprecated | superseded
+status: accepted         # proposed | accepted | rejected | deprecated | superseded
 date: 2027-03-01         # date of the latest status change
 owner: "Solution Architect / Tech Lead (our company)"
 deciders: ["Solution Architect / Tech Lead (our company)"]
@@ -9,7 +9,7 @@ consulted: []
 last_updated: 2027-03-01
 supersedes: ""
 superseded_by: ""
-related: [DEC-048, DEC-053, DEC-055, DEC-056, DEC-061, NFR-MAINT-001, NFR-SCAL-001, ADR-0001, ADR-0004, ADR-0006, ADR-0009, SAPS-17, SAPS-37, SAPS-40, SAPS-45]
+related: [RSK-03, DEC-048, DEC-053, DEC-055, DEC-056, DEC-061, NFR-MAINT-001, NFR-SCAL-001, ADR-0001, ADR-0004, ADR-0006, ADR-0009, SAPS-17, SAPS-37, SAPS-40, SAPS-45]
 ---
 
 # ADR-0012: Poll the company mailboxes from the SAPS Worker through a mail port (Microsoft Graph later, IMAP test server for the demo)
@@ -49,7 +49,7 @@ how do mail attachments enter the invoice flow?
 **Local test mail server** (for option 1): GreenMail (SMTP and IMAP, mailboxes created on first use) or Mailpit (SMTP with a web UI, no IMAP).
 
 ## Decision Outcome
-**Proposed option:** "Mail port in the SAPS Worker, polled by a timer", with a **Microsoft Graph adapter** for Outlook later
+**Chosen option:** "Mail port in the SAPS Worker, polled by a timer", with a **Microsoft Graph adapter** for Outlook later
 and an **IMAP adapter** against a **GreenMail** container for the demo, because it keeps the intake logic independent of the
 mail system ([ADR-0001](0001-isolate-extraction-and-erp-behind-ports.md) style), needs no public endpoint, reuses the
 worker timer of the sweeper, and uses the access Microsoft recommends for Outlook (Graph with OAuth 2.0).
@@ -58,7 +58,7 @@ Rules:
 - **Mail port** (`MailboxPort`): list new mails of one mailbox, read a mail's attachments, mark a mail as done. Adapters:
   `imap` (demo, tests) and `graph` (Outlook, later). The adapter is chosen by configuration, like `EXTRACTION_ADAPTER`.
 - **Which mailbox belongs to which company:** the `Tenant` holds its mailbox address. The worker reads only these mailboxes.
-- **Polling:** a timer in each SAPS Worker process, started like the sweeper, every `MAIL_POLL_SECONDS` (proposal 60 s);
+- **Polling:** a timer in each SAPS Worker process, started like the sweeper, every `MAIL_POLL_SECONDS` (default 60 s);
   a PostgreSQL advisory lock per mailbox lets one process read a mailbox at a time.
 - **Intake:** each valid attachment goes through the same use case as an upload (size, type by magic bytes, storage,
   Invoice in Uploaded, `process_invoice`); the invoice records the channel `MAIL` and the mail's sender, subject and date.
@@ -73,7 +73,7 @@ Rules:
 - **Graph later:** one app registration in the group's Entra ID with the application permission to read and move mail,
   limited by Exchange to the companies' mailboxes; incremental reading with Graph delta queries; secrets from configuration.
 - **Attachments are untrusted input:** the same limits as uploads (size, type by content). Virus scanning is not in Phase 2
-  (recorded as a risk).
+  ([RSK-03](../arc42/11-risks-and-technical-debt.md#rsk-03)).
 
 ### Consequences
 - **Good:** The intake logic does not know whether mail comes from GreenMail or Outlook; switching is a configuration change.
@@ -115,4 +115,5 @@ Rules:
 
 ## More Information
 - Linear: [SAPS-40](https://linear.app/jiringuyen/issue/SAPS-40); implementation and data model: feature spec of [SAPS-45](https://linear.app/jiringuyen/issue/SAPS-45).
+- Accepted by the Solution Architect / Tech Lead on 2027-03-01, with `MAIL_POLL_SECONDS` = 60 s and risk [RSK-03](../arc42/11-risks-and-technical-debt.md#rsk-03).
 - Customer agreement: not required (implements [DEC-055](../../01-requirements/decision-log.md#dec-055)); the Graph app registration needs the group IT later.

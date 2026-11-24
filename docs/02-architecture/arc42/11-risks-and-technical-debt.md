@@ -17,6 +17,7 @@ Probability and impact are the Solution Architect's assessment; reviewed at each
 |---|---|---|---|---|---|
 | [RSK-01](#rsk-01) | Real SAP / MuleSoft data differs from the dummy data model | Medium | Medium | Solution Architect | open |
 | [RSK-02](#rsk-02) | The multi-tenancy model chosen after the PoC requires major changes | Medium | High | Solution Architect | open |
+| [RSK-03](#rsk-03) | Mail attachments are not scanned for malware in Phase 2 | Medium | Medium | Solution Architect | open |
 
 ### RSK-01
 **Real SAP / MuleSoft data differs from the dummy data model**
@@ -45,6 +46,20 @@ Probability and impact are the Solution Architect's assessment; reviewed at each
 | Owner | Solution Architect |
 | Status | open |
 | Source | [DEC-026](../../01-requirements/decision-log.md#dec-026), [ADR-0007](../adr/0007-prepare-data-model-for-tenants.md) |
+
+### RSK-03
+**Mail attachments are not scanned for malware in Phase 2**
+
+| Field | Value |
+|---|---|
+| Description | In Phase 2 invoices arrive by e-mail from senders that are not checked ([DEC-055](../../01-requirements/decision-log.md#dec-055)); attachments are stored and shown in the SAPS Web App without a malware scan ([ADR-0012](../adr/0012-read-invoice-mailboxes-through-a-mail-port.md)). |
+| Probability | Medium |
+| Impact | Medium — a harmful file could reach users who open the invoice file |
+| Mitigation | Accept only PDF, PNG and JPG; check the type by content (magic bytes) and the size, as for uploads; never execute files; serve files with their checked content type; plan a malware scan when moving to AWS. |
+| Contingency | Disable the mailbox intake of a company and remove the affected files. |
+| Owner | Solution Architect |
+| Status | open |
+| Source | [ADR-0012](../adr/0012-read-invoice-mailboxes-through-a-mail-port.md) |
 
 ## 11.2 Technical Debt
 
