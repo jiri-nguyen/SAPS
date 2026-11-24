@@ -5,7 +5,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2027-03-01
-related: [SCP-IN-19, DEC-048, DEC-053, DEC-055, DEC-056, NFR-MAINT-001, NFR-SCAL-001, ADR-0001, ADR-0004, ADR-0006, ADR-0009, ADR-0012, RSK-03, SAPS-17, SAPS-23, SAPS-37, SAPS-40, SAPS-41, SAPS-42]
+related: [MTG-20270301-6, SCP-IN-19, DEC-048, DEC-053, DEC-055, DEC-056, NFR-MAINT-001, NFR-SCAL-001, ADR-0001, ADR-0004, ADR-0006, ADR-0009, ADR-0012, RSK-03, SAPS-17, SAPS-23, SAPS-37, SAPS-40, SAPS-41, SAPS-42]
 ---
 
 # SAPS-45 — Invoice intake from company mailboxes
@@ -32,9 +32,9 @@ port ([DEC-053](../01-requirements/decision-log.md#dec-053), [NFR-MAINT-001](../
 | ID | Rule | Source |
 |---|---|---|
 | BR-01 | The mailbox that receives a mail sets the company of its invoices: the company whose `mailbox_address` it is. Only the mailboxes of active companies are read. The sender is not checked. | [DEC-055](../01-requirements/decision-log.md#dec-055), [SAPS-42](SAPS-42-companies-and-demo-data.md) |
-| BR-02 | Each attached PDF, PNG or JPG file is one invoice. The type is checked by content (magic bytes) and the size against `MAX_UPLOAD_SIZE_MB`, as for uploads (SAPS-17 BR-02, BR-03). Images embedded in the mail body (inline, e.g. a signature logo) are not attachments and are ignored (Q1). | DEC-055, SAPS-17 |
+| BR-02 | Each attached PDF, PNG or JPG file is one invoice. The type is checked by content (magic bytes) and the size against `MAX_UPLOAD_SIZE_MB`, as for uploads (SAPS-17 BR-02, BR-03). Images embedded in the mail body (inline, e.g. a signature logo) are not attachments and are ignored. ZIP files and forwarded mails (`.eml`) are unsupported attachments. | DEC-055, SAPS-17, [MTG-20270301-6](../01-requirements/meetings/2027-03-01-mailbox-intake.md) R1 |
 | BR-03 | A valid attachment enters the flow like an upload: file stored, invoice in status Uploaded with the `UPLOAD` event, `process_invoice` sent (SAPS-17 BR-05). Duplicate detection, matching, exceptions and notifications are unchanged. | [ADR-0012](../02-architecture/adr/0012-read-invoice-mailboxes-through-a-mail-port.md) |
-| BR-04 | A mail invoice has no uploading user; it records the channel `MAIL` and the mail's sender, subject and date. The SAPS Web App shows them on the invoice (Q2). | ADR-0012 |
+| BR-04 | A mail invoice has no uploading user; it records the channel `MAIL` and the mail's sender, subject and date. The invoice detail in the SAPS Web App shows them; the invoice lists are unchanged. | ADR-0012, [MTG-20270301-6](../01-requirements/meetings/2027-03-01-mailbox-intake.md) R2 |
 | BR-05 | Each mail is imported at most once: a record per mail (company, mail key) with a unique key, and an idempotency key per attachment derived from the mail key and the attachment's position. A crash at any point creates no second invoice and loses no mail. | ADR-0012, [ADR-0004](../02-architecture/adr/0004-process-invoices-in-background-worker.md) |
 | BR-06 | After its invoices are committed, a mail is moved to the folder `Processed`. A mail without any valid attachment is recorded as skipped with the reason, logged, and moved to the folder `Skipped`. Nobody is notified. | DEC-055 |
 | BR-07 | An attachment that fails the checks (type, size, empty) is skipped with its reason; the other attachments of the same mail go on. A mail with at least one invoice counts as processed. | ADR-0012 |
@@ -47,10 +47,10 @@ port ([DEC-053](../01-requirements/decision-log.md#dec-053), [NFR-MAINT-001](../
 | [NFR-SCAL-001](../01-requirements/nfr.md#nfr-scal-001) | About 1,000 invoices per company and day = about 1 mail per minute per mailbox in business hours; one 60 s tick with up to 50 mails per mailbox keeps up. |
 
 ### 2.3 Out of Scope
-- The Microsoft Graph adapter for Outlook (Q3: proposed as a separate backlog issue once the group gives access).
+- The Microsoft Graph adapter for Outlook: backlog issue [SAPS-53](https://linear.app/jiringuyen/issue/SAPS-53), started when the group IT gives access (Q3).
 - Checking or allow-listing senders (DEC-055); malware scanning ([RSK-03](../02-architecture/arc42/11-risks-and-technical-debt.md#rsk-03)).
 - A screen that lists skipped mails (they are logged; DEC-055).
-- Archives (ZIP), forwarded mails attached as `.eml`, and files inside them (Q1: skipped as unsupported attachments).
+- Files inside archives (ZIP) or forwarded mails (`.eml`); such attachments are skipped as unsupported (R1).
 - The processing calendar ([SAPS-52](https://linear.app/jiringuyen/issue/SAPS-52)) — it decides later when imported invoices are processed.
 
 ## 3. Design
@@ -61,7 +61,7 @@ port ([DEC-053](../01-requirements/decision-log.md#dec-053), [NFR-MAINT-001](../
 | SAPS Worker | modified | Mail intake timer (started like the sweeper); reads each company mailbox through the Mailbox Port, imports attachments with the upload use case |
 | SAPS API | modified | Invoice read model returns the intake channel and the mail details; the upload use case is shared with the worker |
 | SAPS Database | modified | New table `inbound_mail`; `invoice` gets `channel` and `inbound_mail_id`; `uploaded_by` becomes optional |
-| SAPS Web App | modified | Invoice detail shows "Received by mail from … · subject · date" (Q2) |
+| SAPS Web App | modified | Invoice detail shows "Received by mail from … · subject · date" (R2) |
 | Test Mail Server | new | GreenMail container (SMTP and IMAP) in Docker Compose for the demo and the tests; mailboxes are created on first use |
 
 Design rules:
@@ -143,7 +143,7 @@ sequenceDiagram
 | EC-01 | Mail with two PDFs and one JPG | Three invoices of the mailbox's company | log `mail_imported` (invoices: 3) |
 | EC-02 | Mail without attachments, or only unsupported ones (DOCX, ZIP, `.eml`) | Record `SKIPPED` (`no_valid_attachment`), mail moved to `Skipped`, nobody notified | log `mail_skipped` |
 | EC-03 | A `.pdf` name with other content, an empty file, or a file over the size limit | That attachment skipped with its reason (`unsupported_type`, `empty`, `too_large`); other attachments go on | attachment results on the record |
-| EC-04 | Signature logo or other inline image | Ignored, not counted as an attachment (Q1) | — |
+| EC-04 | Signature logo or other inline image | Ignored, not counted as an attachment (R1) | — |
 | EC-05 | Same PDF sent again in a new mail | New invoice; duplicate detection decides (EX7, [SAPS-23](SAPS-23-duplicate-invoice-detection.md)) | as for uploads |
 | EC-06 | Worker crashes after some invoices are committed | Next tick finds the mail and the `RECEIVED` record; the idempotency keys return the invoices already created; no duplicates | — |
 | EC-07 | Moving the mail fails (mail server error) | Record already final; next tick moves it again without importing | log `mail_move_failed` |
@@ -219,6 +219,7 @@ None. `process_invoice` is unchanged; the `UPLOAD` invoice event of a mail invoi
 | Decision | Rationale | ADR |
 |---|---|---|
 | Mailbox Port polled by a timer in the SAPS Worker; IMAP + GreenMail for the demo | No public endpoint; Outlook later behind the same port | [ADR-0012](../02-architecture/adr/0012-read-invoice-mailboxes-through-a-mail-port.md) |
+| IMAP sign-in with one shared `IMAP_PASSWORD` for the demo mailboxes (Q4) | GreenMail only; Outlook will use the Graph app registration (ADR-0012) | — |
 | `uploaded_by` optional plus `channel`, instead of a technical "mail" user per company | A technical user could be selected, assigned or notified like a person; the channel is explicit | — |
 | Upload use case shared by API and worker | Same checks, storage order and idempotency for both channels (BR-03) | — |
 | Record per mail plus idempotency key per attachment | Exactly-once import without a distributed transaction between the mail server and the database | ADR-0012 |
@@ -226,10 +227,10 @@ None. `process_invoice` is unchanged; the `UPLOAD` invoice event of a mail invoi
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | Which parts of a mail are invoices? Proposal: only attached PDF, PNG and JPG files; images inside the mail body (signature logos) are ignored; ZIP files and forwarded mails attached as `.eml` are skipped as unsupported (vendors attach the invoice file directly). | Product Owner (Customer) | before implementation | open |
-| Q2 | What does a user see of the mail? Proposal: the invoice detail shows "Received by mail from {sender} · {subject} · {date}"; the invoice lists show nothing new (search by channel can come with [SAPS-46](https://linear.app/jiringuyen/issue/SAPS-46)). | Product Owner (Customer) | before implementation | open |
-| Q3 | Microsoft Graph adapter now (tested only against recorded responses) or later? Proposal: later, as a new backlog issue **SAPS-53** "Outlook mailbox adapter (Microsoft Graph)", started when the group IT gives access; SAPS-45 delivers the port, the IMAP adapter and GreenMail. | Solution Architect / Tech Lead | before implementation | open |
-| Q4 | IMAP sign-in: one shared `IMAP_PASSWORD` for all demo mailboxes (GreenMail only)? Proposal: yes; per-mailbox credentials are not needed because Outlook will use the Graph app registration (ADR-0012). | Solution Architect / Tech Lead | before implementation | open |
+| Q1 | Which parts of a mail are invoices? Proposal: only attached PDF, PNG and JPG files; images inside the mail body (signature logos) are ignored; ZIP files and forwarded mails attached as `.eml` are skipped as unsupported (vendors attach the invoice file directly). | Product Owner (Customer) | before implementation | answered: proposal accepted ([MTG-20270301-6](../01-requirements/meetings/2027-03-01-mailbox-intake.md)) |
+| Q2 | What does a user see of the mail? Proposal: the invoice detail shows "Received by mail from {sender} · {subject} · {date}"; the invoice lists show nothing new (search by channel can come with [SAPS-46](https://linear.app/jiringuyen/issue/SAPS-46)). | Product Owner (Customer) | before implementation | answered: proposal accepted ([MTG-20270301-6](../01-requirements/meetings/2027-03-01-mailbox-intake.md)) |
+| Q3 | Microsoft Graph adapter now (tested only against recorded responses) or later? Proposal: later, as a new backlog issue **SAPS-53** "Outlook mailbox adapter (Microsoft Graph)", started when the group IT gives access; SAPS-45 delivers the port, the IMAP adapter and GreenMail. | Solution Architect / Tech Lead | before implementation | answered: proposal accepted (2027-03-01) |
+| Q4 | IMAP sign-in: one shared `IMAP_PASSWORD` for all demo mailboxes (GreenMail only)? Proposal: yes; per-mailbox credentials are not needed because Outlook will use the Graph app registration (ADR-0012). | Solution Architect / Tech Lead | before implementation | answered: proposal accepted (2027-03-01) |
 
 ## 8. Documentation Checklist
 - [ ] API spec 0.6.0 (`source`, nullable `uploadedBy`)
