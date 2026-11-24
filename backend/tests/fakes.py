@@ -37,17 +37,20 @@ class MemoryQueue:
     def __init__(self, fail: bool = False) -> None:
         self.sent: list[UUID] = []
         self.rematch: list[UUID] = []
+        self.tenant_of: dict[UUID, UUID] = {}  # invoice → the company carried by its message (SAPS-41)
         self.fail = fail
 
-    async def send_process_invoice(self, invoice_id: UUID) -> None:
+    async def send_process_invoice(self, invoice_id: UUID, tenant_id: UUID) -> None:
         if self.fail:
             raise ConnectionError("SAPS Message Broker unavailable")
         self.sent.append(invoice_id)
+        self.tenant_of[invoice_id] = tenant_id
 
-    async def send_rematch_invoice(self, invoice_id: UUID) -> None:
+    async def send_rematch_invoice(self, invoice_id: UUID, tenant_id: UUID) -> None:
         if self.fail:
             raise ConnectionError("SAPS Message Broker unavailable")
         self.rematch.append(invoice_id)
+        self.tenant_of[invoice_id] = tenant_id
 
 
 class MemoryInvoices:

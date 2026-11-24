@@ -20,6 +20,7 @@ from saps.config import get_settings
 from saps.domain.invoices import NotificationType
 from saps.domain.users import CurrentUser
 from tests.fakes import MemoryQueue, MemoryStorage
+from tests.integration.db_urls import use_database
 from tests.integration.pipeline import FIXTURES, World, new_world, process, rematch, uploaded
 
 ORIGIN = "http://localhost:5173"
@@ -118,7 +119,7 @@ class Api:
 async def make_api(
     engine: AsyncEngine, database_url: str, monkeypatch: pytest.MonkeyPatch
 ) -> AsyncIterator[Api]:
-    monkeypatch.setenv("DATABASE_URL", database_url)
+    use_database(monkeypatch, database_url)
     monkeypatch.setenv("WEB_APP_ORIGIN", ORIGIN)
     get_settings.cache_clear()
     world = await new_world(engine)

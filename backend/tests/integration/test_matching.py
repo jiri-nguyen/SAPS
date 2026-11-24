@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from decimal import Decimal as D
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
 from saps.adapters.persistence.db import dispose_engines, session_factory
@@ -28,6 +28,7 @@ from saps.domain.invoices import ExceptionCode as EX
 from saps.domain.invoices import ExceptionStatus, InvoiceStatus, InvoiceType, MatchStatus, NotificationType
 from saps.domain.matching import GoodsReceiptLine, PurchaseOrder, PurchaseOrderLine
 from saps.seed import _run as run_seed
+from tests.integration.db_urls import use_database
 
 pytestmark = pytest.mark.integration
 
@@ -250,13 +251,17 @@ async def test_worker_job_uses_the_dummy_erp_fixtures(
     from saps.worker.jobs import run_matching
 
     invoice_id = await _invoice(engine, "0100017", "5", price="9.00", total="45.00")  # ds-17 fixture
-    monkeypatch.setenv("DATABASE_URL", database_url)
+    use_database(monkeypatch, database_url)
     get_settings.cache_clear()
     caplog.set_level(logging.INFO, logger="saps.worker.matching")
     try:
-        outcome = await run_matching(invoice_id)
+        async with engine.connect() as conn:
+            tenant = (
+                await conn.execute(text("SELECT tenant_id FROM invoice WHERE id = :id"), {"id": invoice_id})
+            ).scalar_one()
+        outcome = await run_matching(invoice_id, tenant)
         assert outcome is not None and outcome.status is InvoiceStatus.PENDING_REVIEW
-        assert await run_matching(invoice_id) is None
+        assert await run_matching(invoice_id, tenant) is None
     finally:
         await dispose_engines()
         get_settings.cache_clear()

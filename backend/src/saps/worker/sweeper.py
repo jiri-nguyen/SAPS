@@ -24,7 +24,7 @@ log = logging.getLogger("saps.worker.sweeper")
 async def run_sweep(settings: Settings, queue: JobQueuePort) -> None:
     """One tick. Never raises: a failed tick is logged and the next one tries again (EC-03, EC-05)."""
     try:
-        sessions = session_factory(get_engine(settings.database_url))
+        sessions = session_factory(get_engine(settings.system_database_url))  # every company (SAPS-41 BR-04)
         service = SweeperService(
             SqlSweepUnitOfWork(sessions),
             queue,

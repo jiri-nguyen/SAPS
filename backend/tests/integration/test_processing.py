@@ -1,7 +1,9 @@
 """Integration: process_invoice on a real PostgreSQL with the real sample set and ERP fixtures (SAPS-18)."""
 
+import uuid
+
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from saps.adapters.persistence.db import dispose_engines, session_factory
@@ -16,6 +18,7 @@ from saps.adapters.persistence.models import (
 from saps.config import get_settings
 from saps.domain.invoices import InvoiceStatus, InvoiceType, NotificationType
 from saps.domain.users import Role
+from tests.integration.db_urls import use_database
 from tests.integration.pipeline import FIXTURES, process, uploaded
 
 pytestmark = pytest.mark.integration
@@ -132,21 +135,31 @@ async def test_demo_sample_first_outcome(
     assert (outcome.matching.status.value, tuple(c.value for c in outcome.matching.open_codes)) == expected
 
 
+async def _tenant_of(engine: AsyncEngine, invoice_id: uuid.UUID) -> uuid.UUID:
+    async with engine.connect() as conn:
+        tenant: uuid.UUID = (
+            await conn.execute(text("SELECT tenant_id FROM invoice WHERE id = :id"), {"id": invoice_id})
+        ).scalar_one()
+    return tenant
+
+
 async def test_worker_job_runs_extraction_and_matching(
     engine: AsyncEngine, database_url: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from saps.worker.jobs import run_processing
 
     invoice_id = await uploaded(engine, FIXTURES / "ds-17/invoices/ds-17-rejected-at-review.pdf")
-    monkeypatch.setenv("DATABASE_URL", database_url)
+    use_database(monkeypatch, database_url)
     get_settings.cache_clear()
     try:
-        outcome = await run_processing(invoice_id)
+        tenant = await _tenant_of(engine, invoice_id)
+        outcome = await run_processing(invoice_id, tenant)
         assert outcome is not None and outcome.matching is not None
         assert outcome.matching.status is InvoiceStatus.PENDING_REVIEW
-        assert await run_processing(invoice_id) is None
+        assert await run_processing(invoice_id, tenant) is None
         unknown = await uploaded(engine, FIXTURES / "ds-07/unregistered/ds-07-unknown-invoice.pdf")
-        assert (await run_processing(unknown)).matching is None  # type: ignore[union-attr]
+        outcome = await run_processing(unknown, await _tenant_of(engine, unknown))
+        assert outcome is not None and outcome.matching is None
     finally:
         await dispose_engines()
         get_settings.cache_clear()

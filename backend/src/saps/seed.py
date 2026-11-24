@@ -11,7 +11,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from saps.adapters.persistence.db import session_factory
+from saps.adapters.persistence.db import session_factory, set_tenant
 from saps.adapters.persistence.models import MatchingSettings, Tenant, UserAccount
 from saps.config import get_settings
 from saps.domain.users import Role
@@ -37,6 +37,9 @@ async def seed(session: AsyncSession, password: str, hasher: PasswordHasher) -> 
         tenant = Tenant(name=DEMO_TENANT)
         session.add(tenant)
         await session.flush()
+    # The rows below are tenant-owned: set the company, so this also works for a migration user that is not a
+    # superuser and therefore is subject to row-level security (SAPS-41, Amazon RDS).
+    await set_tenant(session, tenant.id)
 
     if await session.get(MatchingSettings, tenant.id) is None:
         session.add(

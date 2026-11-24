@@ -28,6 +28,7 @@ from saps.domain.invoices import ApprovalDecision, ExceptionCode, ExceptionStatu
 from saps.domain.users import CurrentUser
 from saps.seed import _run as run_seed
 from tests.fakes import JPEG_BYTES, PDF_BYTES, PNG_BYTES, MemoryQueue, MemoryStorage
+from tests.integration.db_urls import use_database
 
 pytestmark = pytest.mark.integration
 
@@ -44,7 +45,7 @@ class Stack:
 @pytest.fixture
 async def stack(database_url: str, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[Stack]:
     await run_seed(database_url, "upload-test-pw")
-    monkeypatch.setenv("DATABASE_URL", database_url)
+    use_database(monkeypatch, database_url)
     monkeypatch.setenv("WEB_APP_ORIGIN", ORIGIN)
     get_settings.cache_clear()
     engine = create_async_engine(database_url)
@@ -103,7 +104,9 @@ async def test_upload_creates_the_invoice_event_object_and_message(
         event = await session.scalar(select(InvoiceEvent).where(InvoiceEvent.invoice_id == invoice_id))
     assert invoice.status is InvoiceStatus.UPLOADED and invoice.file_content_type == content_type
     assert invoice.file_name == name and invoice.created_by == "member1"
-    assert invoice.file_storage_key == f"invoices/{invoice_id}/{invoice.file_sha256}"
+    assert (
+        invoice.file_storage_key == f"tenants/{invoice.tenant_id}/invoices/{invoice_id}/{invoice.file_sha256}"
+    )
     assert stack.storage.objects[invoice.file_storage_key] == (content, content_type)
     assert event is not None and (event.action, event.actor, event.status_to) == (
         "UPLOAD",

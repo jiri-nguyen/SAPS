@@ -128,7 +128,7 @@ class ExceptionHandlingService:
                 )
                 rematch = change.matching
         if rematch:
-            await self._queue_rematch(invoice_id)
+            await self._queue_rematch(invoice_id, user.tenant_id)
         return UpdateResult(await self._view(user, invoice_id), rematch)
 
     async def resolve(self, user: CurrentUser, invoice_id: UUID, if_match: str) -> InvoiceView:
@@ -191,9 +191,9 @@ class ExceptionHandlingService:
             raise InvoiceNotFoundError(invoice_id)
         return view
 
-    async def _queue_rematch(self, invoice_id: UUID) -> None:
+    async def _queue_rematch(self, invoice_id: UUID, tenant_id: UUID) -> None:
         try:
-            await self._queue.send_rematch_invoice(invoice_id)
+            await self._queue.send_rematch_invoice(invoice_id, tenant_id)
         except Exception:  # the invoice stays in Matching until the sweeper re-sends the message (EC-05)
             log.warning("rematch_not_sent", extra={"invoice_id": str(invoice_id)})
 

@@ -201,9 +201,11 @@ async def test_the_callback_actor_records_the_failure(monkeypatch: pytest.Monkey
     from saps.worker import actors
 
     calls: list[tuple[UUID, str]] = []
+    tenants: list[UUID | None] = []
 
-    async def record(invoice_id: UUID, reason: str) -> bool:
+    async def record(invoice_id: UUID, reason: str, tenant_id: UUID | None) -> bool:
         calls.append((invoice_id, reason))
+        tenants.append(tenant_id)
         return True
 
     monkeypatch.setattr(actors, "run_failure", record)
@@ -213,6 +215,9 @@ async def test_the_callback_actor_records_the_failure(monkeypatch: pytest.Monkey
     assert calls == [(invoice_id, f"{FAILURE_PREFIX}: OSError: disk")]
     await actors.process_invoice_failed.fn.__wrapped__({"args": [str(invoice_id)]}, {})  # no traceback at all
     assert calls[1] == (invoice_id, f"{FAILURE_PREFIX}: unknown error")
+    tenant_id = uuid4()
+    await actors.process_invoice_failed.fn.__wrapped__({"args": [str(invoice_id), str(tenant_id)]}, {})
+    assert tenants == [None, None, tenant_id]  # SAPS-41: the company of the failed message
 
 
 # TS-06 / EC-04: run_failure logs and never raises -------------------------------------------------------
@@ -254,7 +259,7 @@ class _Service:
 @pytest.fixture
 def no_database(monkeypatch: pytest.MonkeyPatch) -> type[_Service]:
     monkeypatch.setattr(jobs, "get_engine", lambda url: None)
-    monkeypatch.setattr(jobs, "session_factory", lambda engine: _Sessions)
+    monkeypatch.setattr(jobs, "session_factory", lambda engine, tenant_id=None: _Sessions)
     monkeypatch.setattr(jobs, "FailedProcessingService", _Service)
     return _Service
 
@@ -267,7 +272,7 @@ async def test_run_failure_logs_what_happened(
 ) -> None:
     caplog.set_level(logging.INFO, logger="saps.worker.processing")
     no_database.outcome = outcome
-    assert await jobs.run_failure(uuid4(), "reason") is outcome
+    assert await jobs.run_failure(uuid4(), "reason", uuid4()) is outcome
     assert [r.getMessage() for r in caplog.records] == [message]
 
 
@@ -275,7 +280,7 @@ async def test_a_failing_run_failure_is_logged_and_does_not_raise(
     no_database: type[_Service], caplog: pytest.LogCaptureFixture
 ) -> None:  # EC-04
     no_database.outcome = ConnectionError("database down")
-    assert await jobs.run_failure(uuid4(), "reason") is False
+    assert await jobs.run_failure(uuid4(), "reason", uuid4()) is False
     [record] = caplog.records
     assert (record.levelno, record.getMessage()) == (logging.ERROR, "process_failure_not_recorded")
 

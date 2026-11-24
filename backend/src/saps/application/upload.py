@@ -62,7 +62,7 @@ class UploadInvoiceService:
 
         content_type = check_file(file.size, file.head, self._max_size)  # raises FileRejectedError
         invoice_id = uuid4()
-        key = storage_key(invoice_id, file.sha256)
+        key = storage_key(user.tenant_id, invoice_id, file.sha256)
         await self._storage.put(key, file.data, content_type)  # EC-07: failure → nothing in the database
 
         upload = NewUpload(
@@ -84,7 +84,7 @@ class UploadInvoiceService:
             return UploadResult(await self._view(user, winner), created=False, queued=False)
 
         try:
-            await self._queue.send_process_invoice(invoice_id)
+            await self._queue.send_process_invoice(invoice_id, user.tenant_id)
             queued = True
         except Exception:  # EC-06: the invoice stays Uploaded until the sweeper re-sends the message
             queued = False

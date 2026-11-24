@@ -62,8 +62,12 @@ def test_file_name_is_cleaned(name: str | None, expected: str) -> None:
     assert clean_file_name(name) == expected
 
 
-def test_storage_key_contains_only_the_id_and_hash() -> None:
+def test_storage_key_contains_only_the_company_id_and_hash() -> None:  # SAPS-41 BR-06
+    tenant_id = UUID("87654321-4321-8765-4321-876543218765")
     invoice_id = UUID("12345678-1234-5678-1234-567812345678")
-    assert storage_key(invoice_id, "a" * 64) == f"invoices/{invoice_id}/{'a' * 64}"
+    assert (
+        storage_key(tenant_id, invoice_id, "a" * 64)
+        == f"tenants/{tenant_id}/invoices/{invoice_id}/{'a' * 64}"
+    )
     with pytest.raises(ValueError, match="sha256"):
-        storage_key(invoice_id, "../x")
+        storage_key(tenant_id, invoice_id, "../x")

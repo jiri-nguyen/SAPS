@@ -18,13 +18,14 @@ async def test_rematch_actor_runs_matching(monkeypatch: pytest.MonkeyPatch) -> N
 
     called: list[object] = []
 
-    async def fake_run(invoice_id: object) -> None:
-        called.append(invoice_id)
+    async def fake_run(invoice_id: object, tenant_id: object) -> None:
+        called.append((invoice_id, tenant_id))
 
     monkeypatch.setattr(actors, "run_matching", fake_run)
-    invoice_id = uuid4()
-    await actors.rematch_invoice.fn.__wrapped__(str(invoice_id))
-    assert called == [invoice_id]
+    invoice_id, tenant_id = uuid4(), uuid4()
+    await actors.rematch_invoice.fn.__wrapped__(str(invoice_id), str(tenant_id))
+    await actors.rematch_invoice.fn.__wrapped__(str(invoice_id))  # sent before SAPS-41 (EC-05)
+    assert called == [(invoice_id, tenant_id), (invoice_id, None)]
 
 
 def test_duplicate_logs(monkeypatch: pytest.MonkeyPatch) -> None:  # SAPS-23 §3.9
