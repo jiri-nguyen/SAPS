@@ -1,7 +1,7 @@
 ---
 id: ADR-0011
 title: "ADR-0011: Sign in through Keycloak in the SAPS API and keep a server-side session cookie"
-status: proposed         # proposed | accepted | rejected | deprecated | superseded
+status: accepted         # proposed | accepted | rejected | deprecated | superseded
 date: 2027-03-01         # date of the latest status change
 owner: "Solution Architect / Tech Lead (our company)"
 deciders: ["Solution Architect / Tech Lead (our company)"]
@@ -44,7 +44,7 @@ and the role of every request?
 3. **Authenticating reverse proxy** (for example oauth2-proxy) in front of the SAPS API, passing the user in HTTP headers
 
 ## Decision Outcome
-**Proposed option:** "Backend for frontend", because it keeps every token out of the browser, keeps the session, cookie
+**Chosen option:** "Backend for frontend", because it keeps every token out of the browser, keeps the session, cookie
 and CSRF rules of the PoC that are already built and tested, and needs no extra component.
 
 Rules:
@@ -110,9 +110,10 @@ Rules:
 
 ## More Information
 - Supersedes [ADR-0008](0008-use-session-cookies-for-authentication.md) (sign-in with passwords); its cookie, session and
-  CSRF rules are carried over above. When this ADR is accepted, ADR-0008 is set to `superseded`.
-- [NFR-SEC-001](../../01-requirements/nfr.md#nfr-sec-001) needs a new version (Single Sign-On instead of simple accounts);
-  proposed together with this ADR.
+  CSRF rules are carried over above.
+- Accepted by the Solution Architect / Tech Lead on 2027-03-01 together with the new version of
+  [NFR-SEC-001](../../01-requirements/nfr.md#nfr-sec-001) (Single Sign-On instead of simple accounts).
+- Customer agreement: not required (implements [DEC-049](../../01-requirements/decision-log.md#dec-049)).
 - References: OAuth 2.0 for Browser-Based Applications (IETF draft, backend-for-frontend pattern); OpenID Connect Core and
   RP-Initiated Logout; OWASP Session Management and CSRF Prevention Cheat Sheets.
 - Linear: [SAPS-39](https://linear.app/jiringuyen/issue/SAPS-39).

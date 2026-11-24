@@ -1,14 +1,14 @@
 ---
 id: ADR-0008
 title: "ADR-0008: Use server-side sessions in HttpOnly cookies for PoC authentication"
-status: accepted         # proposed | accepted | rejected | deprecated | superseded
-date: 2026-12-05         # date of the latest status change
+status: superseded         # proposed | accepted | rejected | deprecated | superseded
+date: 2027-03-01         # date of the latest status change
 owner: "Solution Architect / Tech Lead (our company)"
 deciders: ["Solution Architect / Tech Lead (our company)"]
 consulted: []
 last_updated: 2026-12-05
 supersedes: ""
-superseded_by: ""
+superseded_by: "ADR-0011"
 related: [NFR-SEC-001, SCP-OUT-10, CON-01, CON-02, DEC-026, ADR-0003, ADR-0007]
 ---
 
