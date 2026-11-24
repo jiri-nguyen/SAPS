@@ -77,6 +77,17 @@ Design rules:
 - **Origin check**: `sign-in` and `callback` are GET requests; `backchannel-logout` is called by Keycloak, not a browser, and
   is exempt from the `Origin` check — the signed logout token is its protection.
 - **Library**: a maintained OpenID Connect / JOSE library (chosen in the plan), no hand-written token validation.
+- **Web App texts** (Q1): the sign-in page shows the button **"Sign in with your company account"**. The reason in
+  `?signIn=` selects the message below; an unknown reason shows the `unavailable` text.
+
+  | Reason | Message |
+  |---|---|
+  | `cancelled` | Sign-in was cancelled. Try again. |
+  | `expired` | Your sign-in took too long or was started in another tab. Try again. |
+  | `no_company` | Your account is not assigned to exactly one company. Ask your administrator. |
+  | `wrong_domain` | Your e-mail address does not belong to your company. Ask your administrator. |
+  | `no_role` | Your account needs exactly one SAPS role. Ask your administrator. |
+  | `unavailable` | Sign-in is not available at the moment. Try again later. |
 - **Upgrade**: the migration drops `password_hash` and revokes all PoC sessions; users sign in again through Keycloak. The seed
   keeps creating companies, settings and demo users (without passwords); `SEED_USER_PASSWORD` stays the password of the demo
   users in Keycloak.
@@ -215,14 +226,16 @@ demo passwords.
 | Backend for frontend with the PoC session | Tokens stay out of the browser; the PoC cookie, CSRF and timeout rules stay | [ADR-0011](../02-architecture/adr/0011-sign-in-through-keycloak-with-a-server-side-session.md) |
 | `state`, `nonce` and PKCE verifier in an encrypted short-lived cookie | No table for half-finished sign-ins; works with several SAPS API instances | — |
 | Demo users linked by e-mail within their company at first sign-in | Keeps the history of the PoC users and the seeded demo data | — |
+| No local password sign-in, not even for developers (Q2) | One sign-in path; tests use a test OpenID provider, local runs use the Keycloak container | — |
+| Contract 0.5.0 with breaking changes, released together with the Web App (Q3) | The Web App is the only client of the session operations | — |
 | Sign-out returns the end-session URL (`200`) instead of redirecting | The Web App calls the API with `fetch`; the browser then navigates to Keycloak | — |
 
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | Text of the sign-in page and of the error messages (reasons of §3.3)? Proposal: button "Sign in with your company account"; messages in plain English per reason, e.g. "Your account has no company. Ask your administrator." | Product Owner (Customer) | before implementation | open |
-| Q2 | No local password sign-in kept as a fallback for developers (one sign-in path only)? Proposal: yes, none; tests use a test OpenID provider. | Solution Architect / Tech Lead | before implementation | open |
-| Q3 | Breaking contract change 0.5.0 (`createSession` removed, `deleteSession` returns `200`) in one release with the Web App? Proposal: yes. | Solution Architect / Tech Lead | before implementation | open |
+| Q1 | Text of the sign-in page and of the error messages (reasons of §3.3)? Proposal: button "Sign in with your company account"; messages in plain English per reason, e.g. "Your account has no company. Ask your administrator." | Product Owner (Customer) | before implementation | answered: proposal accepted (2027-03-01) |
+| Q2 | No local password sign-in kept as a fallback for developers (one sign-in path only)? Proposal: yes, none; tests use a test OpenID provider. | Solution Architect / Tech Lead | before implementation | answered: proposal accepted (2027-03-01) |
+| Q3 | Breaking contract change 0.5.0 (`createSession` removed, `deleteSession` returns `200`) in one release with the Web App? Proposal: yes. | Solution Architect / Tech Lead | before implementation | answered: proposal accepted (2027-03-01) |
 
 ## 8. Documentation Checklist
 - [ ] API spec 0.5.0
