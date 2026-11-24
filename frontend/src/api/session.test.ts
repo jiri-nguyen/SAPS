@@ -5,7 +5,7 @@ import { createSessionApi } from "./session";
 
 const USER = {
   id: "1",
-  username: "member1",
+  username: "member1@vn.example.com",
   displayName: "Accounting Member 1",
   role: "ACCOUNTING_MEMBER",
   companyName: "Demo Vietnam",
@@ -33,20 +33,14 @@ describe("session API", () => {
     await expect(api.getSession()).rejects.toBeInstanceOf(ApiError);
   });
 
-  it("signs in with POST and signs out with DELETE", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValueOnce(json(200, USER))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+  it("signs out with DELETE and returns the Identity Provider logout URL", async () => {
+    const logoutUrl = "http://localhost:8080/realms/saps/protocol/openid-connect/logout?x=1";
+    const fetchImpl = vi.fn().mockResolvedValueOnce(json(200, { logoutUrl }));
     const api = createSessionApi(fetchImpl);
-    expect(await api.signIn("member1", "pw")).toEqual(USER);
-    await api.signOut();
-    const [path, signIn] = fetchImpl.mock.calls[0] as [string, RequestInit];
-    const [, signOut] = fetchImpl.mock.calls[1] as [string, RequestInit];
+    expect(await api.signOut()).toBe(logoutUrl);
+    const [path, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
     expect(path).toBe("/v1/session");
-    expect(signIn.method).toBe("POST");
-    expect(JSON.parse(signIn.body as string)).toEqual({ username: "member1", password: "pw" });
-    expect(signOut.method).toBe("DELETE");
+    expect(init.method).toBe("DELETE");
   });
 
   it("uses the global fetch by default", () => {

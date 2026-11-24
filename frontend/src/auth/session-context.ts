@@ -5,7 +5,7 @@ import type { UserAccount } from "../api/session";
 export interface SessionState {
   /** `undefined` while the current session is being read. */
   user: UserAccount | null | undefined;
-  signIn(username: string, password: string): Promise<void>;
+  /** Ends the SAPS session, then sends the browser to the Identity Provider to end that session too. */
   signOut(): Promise<void>;
 }
 

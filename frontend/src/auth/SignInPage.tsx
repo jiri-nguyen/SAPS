@@ -1,62 +1,54 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 
-import { ApiError } from "../api/client";
-import { useSession } from "./session-context";
+import { browser } from "./browser";
 
-function messageFor(error: unknown): string {
-  if (error instanceof ApiError && error.status === 401) return "Invalid username or password.";
-  return "Sign-in failed. Please try again.";
+const SIGN_IN_URL = "/v1/session/sign-in";
+const REASON_PARAM = "signIn";
+
+/** One message per reason code of a refused sign-in (SAPS-44 §3.1). */
+const MESSAGES: Record<string, string> = {
+  cancelled: "Sign-in was cancelled. Try again.",
+  expired: "Your sign-in took too long or was started in another tab. Try again.",
+  no_company: "Your account is not assigned to exactly one company. Ask your administrator.",
+  wrong_domain: "Your e-mail address does not belong to your company. Ask your administrator.",
+  no_role: "Your account needs exactly one SAPS role. Ask your administrator.",
+  unavailable: "Sign-in is not available at the moment. Try again later.",
+};
+
+function reasonInUrl(): string | null {
+  return new URLSearchParams(window.location.search).get(REASON_PARAM);
 }
 
-export function SignInPage() {
-  const { signIn } = useSession();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+function messageFor(reason: string): string {
+  return MESSAGES[reason] ?? "Sign-in is not available at the moment. Try again later.";
+}
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+/** Sign-in through the company account in Keycloak (SAPS-44); the SAPS API runs the OpenID Connect flow. */
+export function SignInPage() {
+  const [reason] = useState(reasonInUrl);
+
+  useEffect(() => {
+    // Shown once: a reload or a bookmark does not repeat the message.
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has(REASON_PARAM)) return;
+    params.delete(REASON_PARAM);
+    const query = params.toString();
+    const url = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+    window.history.replaceState(window.history.state, "", url);
+  }, []);
+
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await signIn(username.trim(), password);
-    } catch (caught) {
-      setError(messageFor(caught));
-      setPassword("");
-      setBusy(false);
-    }
+    const returnTo = `${window.location.pathname}${window.location.hash}`;
+    browser.assign(`${SIGN_IN_URL}?returnTo=${encodeURIComponent(returnTo)}`);
   }
 
   return (
     <main className="sign-in">
       <h1>Smart-AP-Suite</h1>
-      <form onSubmit={(event) => void submit(event)} aria-label="Sign in">
-        <label>
-          Username
-          <input
-            name="username"
-            autoComplete="username"
-            required
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-        </label>
-        <label>
-          Password
-          <input
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-        {error !== null && <p role="alert">{error}</p>}
-        <button type="submit" disabled={busy}>
-          Sign in
-        </button>
+      <form onSubmit={submit} aria-label="Sign in">
+        {reason !== null && <p role="alert">{messageFor(reason)}</p>}
+        <button type="submit">Sign in with your company account</button>
       </form>
     </main>
   );

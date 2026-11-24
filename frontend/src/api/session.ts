@@ -6,11 +6,11 @@ export type Role = components["schemas"]["Role"];
 
 export interface SessionApi {
   getSession(): Promise<UserAccount | null>;
-  signIn(username: string, password: string): Promise<UserAccount>;
-  signOut(): Promise<void>;
+  /** Returns where the browser goes next to end the Identity Provider session (SAPS-44). */
+  signOut(): Promise<string>;
 }
 
-/** `getSession`, `createSession`, `deleteSession` of the SAPS API (SAPS-27). */
+/** `getSession` and `deleteSession` of the SAPS API; sign-in is a browser redirect (SAPS-44). */
 export function createSessionApi(fetchImpl: typeof fetch = fetch): SessionApi {
   return {
     async getSession() {
@@ -22,17 +22,10 @@ export function createSessionApi(fetchImpl: typeof fetch = fetch): SessionApi {
         throw error;
       }
     },
-    async signIn(username, password) {
-      const body: components["schemas"]["SessionCreate"] = { username, password };
-      const response = await apiFetch(
-        "/v1/session",
-        { method: "POST", body: JSON.stringify(body) },
-        fetchImpl,
-      );
-      return (await response.json()) as UserAccount;
-    },
     async signOut() {
-      await apiFetch("/v1/session", { method: "DELETE" }, fetchImpl);
+      const response = await apiFetch("/v1/session", { method: "DELETE" }, fetchImpl);
+      const body = (await response.json()) as components["schemas"]["SignOut"];
+      return body.logoutUrl;
     },
   };
 }
