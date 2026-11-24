@@ -66,7 +66,7 @@ Probability and impact are the Solution Architect's assessment; reviewed at each
 | ID | Title | Impact | Remediation effort | Status |
 |---|---|---|---|---|
 | [TD-01](#td-01) | Worker holds a database transaction for the whole job | M | M | open |
-| [TD-02](#td-02) | No tenant isolation in the PoC | H | L | open |
+| [TD-02](#td-02) | No tenant isolation in the PoC | H | L | resolved |
 | [TD-03](#td-03) | No account lockout or sign-in rate limiting | M | S | open |
 | [TD-04](#td-04) | No EX1 after the last retry of `process_invoice` | M | S | resolved |
 
@@ -94,7 +94,7 @@ Probability and impact are the Solution Architect's assessment; reviewed at each
 | Remediation | Post-PoC multi-tenancy ADR; implement and test the chosen isolation model before onboarding a second tenant. |
 | Effort | L |
 | Backlog | [SAPS-41](https://linear.app/jiringuyen/issue/SAPS-41) |
-| Status | open |
+| Status | resolved — [SAPS-41](../../03-features/SAPS-41-tenant-isolation.md): row-level security on every tenant-owned table ([ADR-0009](../adr/0009-isolate-tenant-data-in-a-shared-database.md)) |
 
 ### TD-03
 **No account lockout or sign-in rate limiting**
