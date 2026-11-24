@@ -73,6 +73,7 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, 
 | [DEC-059](#dec-059) | 2027-03-01 | One Keycloak realm with a group per company; Entra ID brokered later | Technical | confirmed |
 | [DEC-060](#dec-060) | 2027-03-01 | Customers are subsidiaries of one group in several countries | Business | confirmed |
 | [DEC-061](#dec-061) | 2027-03-01 | One shared Entra ID; one e-mail domain per subsidiary | Business | confirmed |
+| [DEC-062](#dec-062) | 2027-03-01 | [CR] Processing calendar per company | Scope | confirmed |
 
 ## 2. Decisions
 
@@ -1490,4 +1491,33 @@ history of changes and no history screen. The application log records the old an
 **Rationale:** Stated by the Product Owner.
 
 **Consequences & follow-ups:** The e-mail domain of a user identifies the subsidiary and is checked by the SAPS API ([DEC-059](#dec-059)).
+
+### DEC-062
+**[CR] Processing calendar per company**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Scope |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20270301-4](meetings/2027-03-01-processing-calendar.md) D1, R1 |
+| Impacts | [scope.md](scope.md) version 0.9: SCP-IN-23; invoice lifecycle (new status On hold); [SAPS-37](../03-features/SAPS-37-stuck-invoice-sweeper.md) sweeper; Phase 2 demo scenarios ([SAPS-47](https://linear.app/jiringuyen/issue/SAPS-47)) |
+| Supersedes / Superseded by | — |
+
+**Context:** The Product Owner wants companies to stop invoice processing in some periods, for example from the 25th of a
+month to the 5th of the next month, and on weekends. This was not in the Phase 2 scope ([DEC-048](#dec-048)).
+
+**Decision:** Accounting Managers set a processing calendar for their company:
+- Rule types: monthly day ranges (e.g. 25th → 5th of the next month), weekdays, and specific dates; in the company's local time zone; no times of day.
+- In a closed period, new invoices (upload or mail) are received but held with the new status On hold. Invoices already in exception handling, approval or final review are worked on as usual.
+- When the period ends, held invoices are processed automatically, oldest first. An Accounting Manager can release one held invoice at once ("process now").
+- The Web App shows a banner for a closed period; no notification when a period starts or ends.
+- Only the Accounting Manager of the company changes its calendar; changes apply at once, also to held invoices.
+- Part of the demo on 2027-08-30; built after the invoice list and search ([SAPS-46](https://linear.app/jiringuyen/issue/SAPS-46)).
+
+**Rationale:** Requested by the Product Owner; the details are the team's proposals, accepted in [MTG-20270301-4](meetings/2027-03-01-processing-calendar.md) (Q1–Q9).
+
+**Consequences & follow-ups:** Feature spec and Linear issue [SAPS-52](https://linear.app/jiringuyen/issue/SAPS-52). The
+new status On hold changes the invoice lifecycle; the sweeper ignores held invoices.
 

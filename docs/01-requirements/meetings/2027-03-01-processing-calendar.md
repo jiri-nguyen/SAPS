@@ -59,12 +59,12 @@ related: [MTG-20270301, DEC-062, DEC-048, DEC-050, DEC-052, DEC-056, DEC-060, SA
 ## 6. Decisions
 | # | Decision | Decided by | Logged as |
 |---|---|---|---|
-| D1 | `[CR]` Processing calendar per company in Phase 2 with the rules of §5 | Product Owner (Customer), on a proposal by the Solution Architect | proposed DEC-062 |
+| D1 | `[CR]` Processing calendar per company in Phase 2 with the rules of §5 | Product Owner (Customer), on a proposal by the Solution Architect | [DEC-062](../decision-log.md#dec-062) |
 
 ## 7. Requirements Captured
 | # | Information / requirement | Type | Proposed target | Status |
 |---|---|---|---|---|
-| R1 | Accounting Managers set a processing calendar for their company: periods in which invoices are not processed, e.g. from the 25th to the 5th of the next month, and weekends | Functional | `[CR]` DEC-062; scope.md new SCP-IN-23; Linear [SAPS-52](https://linear.app/jiringuyen/issue/SAPS-52); feature spec SAPS-52 | proposed |
+| R1 | Accounting Managers set a processing calendar for their company: periods in which invoices are not processed, e.g. from the 25th to the 5th of the next month, and weekends | Functional | `[CR]` [DEC-062](../decision-log.md#dec-062); scope.md 0.9 SCP-IN-23; Linear [SAPS-52](https://linear.app/jiringuyen/issue/SAPS-52); feature spec SAPS-52 | logged |
 
 ### 7.1 Conflicts with existing items
 | Existing item | Conflict | Proposal |
@@ -80,7 +80,7 @@ related: [MTG-20270301, DEC-062, DEC-048, DEC-050, DEC-052, DEC-056, DEC-060, SA
 | # | Action | Owner | Due | Status |
 |---|---|---|---|---|
 | A1 | Answer Q1–Q9 | Product Owner (Customer) | 2027-03-01 | done |
-| A2 | Propose the `[CR]` decision, SCP-IN-23 and the feature spec of SAPS-52 | Solution Architect (our company) | after A1 | open |
+| A2 | Record the `[CR]` decision and SCP-IN-23; write the feature spec of SAPS-52 | Solution Architect (our company) | before implementation | DEC-062, scope 0.9 done; spec open |
 
 ## 9. Open Questions
 | # | Question | Asked to | Due | Status |
