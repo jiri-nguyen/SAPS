@@ -1,7 +1,7 @@
 ---
 id: "SAPS-45"
 title: "SAPS-45 — Invoice intake from company mailboxes"
-status: draft            # draft | in-review | approved | deprecated
+status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2027-03-01
