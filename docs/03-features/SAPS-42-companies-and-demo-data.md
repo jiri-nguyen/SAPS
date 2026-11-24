@@ -148,8 +148,8 @@ sequenceDiagram
 | Q5 | Show the company name in the header of the Web App (small additive API change)? Proposal: yes. | Product Owner (Customer) | before implementation | answered: yes ([MTG-20270301-5](../01-requirements/meetings/2027-03-01-demo-companies.md)) |
 
 ## 8. Documentation Checklist
-- [ ] Data model: Tenant columns
-- [ ] Fixtures README: `companies.json`, company-only ERP folders
-- [ ] Developer Guide: demo companies and users
-- [ ] API spec 0.4.5 (`UserAccount.companyName`)
+- [x] Data model: Tenant columns
+- [x] Fixtures README: `companies.json`, company-only ERP folders
+- [x] Developer Guide: demo companies and users
+- [x] API spec 0.4.5 (`UserAccount.companyName`)
 - [ ] Release notes entry prepared
