@@ -58,6 +58,28 @@ describe("InvoiceDetailPage", () => {
     expect(screen.getByText("Claimed by nobody")).toBeInTheDocument();
   });
 
+  it("shows where an invoice received by mail came from, and nothing for an upload (SAPS-45)", async () => {
+    const mail = invoiceFixture({
+      uploadedBy: null,
+      source: {
+        channel: "MAIL",
+        mailFrom: "Vendor Ltd <billing@vendor.example.net>",
+        mailSubject: "March invoice",
+        mailReceivedAt: "2027-03-01T02:30:00Z",
+      },
+    });
+    const { unmount } = renderPage(
+      fakeExceptionApi({ getVersioned: vi.fn().mockResolvedValue(versioned(mail)) }),
+    );
+    expect(await screen.findByTestId("mail-source")).toHaveTextContent(
+      "Received by mail from Vendor Ltd <billing@vendor.example.net> · March invoice · 2027-03-01 02:30 UTC",
+    );
+    unmount();
+    renderPage(fakeExceptionApi());
+    await screen.findByText("ds-12.pdf");
+    expect(screen.queryByTestId("mail-source")).not.toBeInTheDocument();
+  });
+
   it("shows an image file as an image", async () => {
     const image = invoiceFixture({
       file: { name: "scan.png", contentType: "image/png", sizeBytes: 1, sha256: "b".repeat(64) },

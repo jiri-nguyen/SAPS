@@ -47,6 +47,7 @@ export function invoiceFixture(overrides: Partial<Invoice> = {}): Invoice {
     approvalThresholdApplied: "300.00",
     assignedTo: null,
     uploadedBy: ref(MEMBER),
+    source: { channel: "UPLOAD" },
     file: { name: "ds-12.pdf", contentType: "application/pdf", sizeBytes: 2000, sha256: "a".repeat(64) },
     rejectedReason: null,
     lines: [
