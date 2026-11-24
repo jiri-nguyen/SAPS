@@ -3,8 +3,8 @@ title: Developer Guide
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect / Tech Lead (our company)"
 reviewers: []
-last_updated: 2026-12-15
-related: [DEC-028, DEC-029, DEC-030, ADR-0001, ADR-0008, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, SAPS-26]
+last_updated: 2027-03-01
+related: [DEC-028, DEC-029, DEC-030, ADR-0001, ADR-0008, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0011, SAPS-26, SAPS-44]
 ---
 
 # Developer Guide
@@ -63,8 +63,9 @@ cd SAPS
 
 # 2. Configuration (local test values only)
 cp .env.example .env
-#    Then set SEED_USER_PASSWORD in .env to a value of your choice (password of the demo users, also in Keycloak;
-#    `docker compose` refuses to start without it).
+#    Then set in .env (`docker compose` refuses to start without them):
+#    - SEED_USER_PASSWORD: a value of your choice, the password of the demo users in Keycloak;
+#    - SESSION_ENCRYPTION_KEY: `openssl rand -base64 32 | tr '+/' '-_'` (encrypts the stored Keycloak tokens, SAPS-44).
 
 # 3. Build and start all containers (Keycloak included, SAPS-43); the SAPS API runs Alembic migrations, then the seed, on start.
 #    --wait returns when every container is healthy; Keycloak needs about a minute on the first start.
@@ -76,9 +77,10 @@ uvx pre-commit install
 
 For development with hot reload, run only the dependencies in Docker and the apps locally:
 ```bash
-docker compose up -d db redis seaweedfs
-cd backend && uv sync && uv run alembic upgrade head && uv run python -m saps.seed   # demo users (SAPS-27)
-uv run fastapi dev src/saps/api/main.py                      # SAPS API on :8000
+docker compose up -d db redis seaweedfs keycloak
+cd backend && uv sync && uv run alembic upgrade head && uv run python -m saps.seed   # demo companies and users
+uv run fastapi dev src/saps/api/main.py                      # SAPS API on :8000 (OIDC_* defaults: Keycloak on :8080;
+                                                             #   set OIDC_CLIENT_SECRET to KEYCLOAK_CLIENT_SECRET)
 uv run dramatiq saps.worker.actors --processes 1 --threads 4   # SAPS Worker (second terminal)
 cd ../frontend && npm ci && npm run dev                        # SAPS Web App on :5173, proxies /v1 and /health
 ```
@@ -86,15 +88,18 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
 ### 2.4 Verify the Setup
 - Demo companies ([SAPS-42](../03-features/SAPS-42-companies-and-demo-data.md)): the seed creates Demo Vietnam,
   Demo Singapore and Demo Malaysia from `backend/fixtures/companies.json`, each with `member1@`, `member2@` and `manager1@`
-  its domain (`vn.example.com`, `sg.example.com`, `my.example.com`), all with the `SEED_USER_PASSWORD`. The header shows the
+  its domain (`vn.example.com`, `sg.example.com`, `my.example.com`); their password is the `SEED_USER_PASSWORD` in Keycloak. The header shows the
   company name. A PoC database keeps its data as Demo Vietnam (`member1` … are renamed; `manager2` stays). Every company uses
   the demo ERP catalogue on its own: DS-01 can be completed in each company, and an invoice of one company is never seen in
   another.
-- Open `http://localhost:5173` — the sign-in page shows "Smart-AP-Suite" and "SAPS API: ok".
-- Sign in as `member1@vn.example.com` (Demo Vietnam) with the `SEED_USER_PASSWORD` from `.env`: the header shows "Accounting Member 1 (Accounting Member)"
-  and the menu shows Upload invoices, Exception queue and Review queue. Sign out, then sign in as `manager1@vn.example.com`: the menu shows
-  Approval queue and Matching settings ([SAPS-27](https://linear.app/jiringuyen/issue/SAPS-27)).
-  A changed `SEED_USER_PASSWORD` applies after `docker compose up -d --wait api`.
+- Open `http://localhost:5173` — the sign-in page shows "Smart-AP-Suite", the button "Sign in with your company account" and
+  "SAPS API: ok".
+- Single Sign-On ([SAPS-44](../03-features/SAPS-44-single-sign-on.md)): click the button; Keycloak shows its sign-in page. Sign in as
+  `member1@vn.example.com` (Demo Vietnam) with the `SEED_USER_PASSWORD` from `.env`: the header shows "Accounting Member 1 (Accounting Member)"
+  and the menu shows Upload invoices, Exception queue and Review queue. Sign out (this ends the Keycloak session too), then sign in as
+  `manager1@vn.example.com`: the menu shows Approval queue and Matching settings. In the Keycloak admin console, remove a user from its
+  company group: the next sign-in shows "Your account is not assigned to exactly one company"; an open session ends within 5 minutes
+  (the next token refresh). **Users → Sessions → Sign out** ends the SAPS session at once (back-channel logout).
 - `curl http://localhost:8000/ready` returns `{"status":"ready","database":true}`.
 - SAPS API → SAPS Message Broker → SAPS Worker:
   `docker compose exec api python -c "from saps.worker.actors import ping; ping.send('check')"`, then
@@ -133,7 +138,7 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   `member1@sg.example.com` with the `SEED_USER_PASSWORD`. The admin console is `http://localhost:8080/admin` (user and password
   `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` of `.env`, master realm); realm `saps` has the groups `/companies/vn`,
   `/companies/sg`, `/companies/my`, the roles Accounting Member and Accounting Manager and the 9 demo users of
-  `fixtures/companies.json`. The SAPS Web App does not sign in through Keycloak yet ([SAPS-44](https://linear.app/jiringuyen/issue/SAPS-44)).
+  `fixtures/companies.json`. Passwords, roles and company groups are changed here, not in the SAPS Database.
 - Sweeper ([SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37)): `docker compose stop worker`, upload `ds-17-rejected-at-review.pdf` as
   `member1@vn.example.com` (it stays Uploaded), `docker compose exec redis redis-cli FLUSHALL` (the message is lost), `docker compose start worker`.
   After `SWEEPER_STUCK_AFTER_SECONDS` (60 s by default) the next tick sends it again: the invoice reaches Pending review, its
@@ -247,8 +252,10 @@ The repository is public ([DEC-028](../01-requirements/decision-log.md#dec-028))
 arc42 §8 Cross-cutting Concepts is not written yet. Until then:
 - Errors: API errors use `application/problem+json` (RFC 9457).
 - Logging: structured JSON logs to stdout; include `invoice_id` and `tenant_id`; never log passwords or file contents.
-- Security: simple user accounts ([NFR-SEC-001](../01-requirements/nfr.md#nfr-sec-001)); server-side sessions in the HttpOnly cookie
-  `saps_session`, Argon2id password hashes, `Origin` check on state-changing requests ([ADR-0008](../02-architecture/adr/0008-use-session-cookies-for-authentication.md)).
+- Security: sign-in through Keycloak only, no passwords in the SAPS Database ([NFR-SEC-001](../01-requirements/nfr.md#nfr-sec-001),
+  [SAPS-44](../03-features/SAPS-44-single-sign-on.md)); the SAPS API is the OpenID Connect client and keeps a server-side session in the
+  HttpOnly cookie `saps_session` with the Keycloak tokens encrypted; `Origin` check on state-changing requests
+  ([ADR-0011](../02-architecture/adr/0011-sign-in-through-keycloak-with-a-server-side-session.md)). Never log tokens.
 - Configuration: environment variables only (§6).
 
 ### 5.4 APIs & Events
@@ -295,8 +302,11 @@ All settings are environment variables, read in `backend/src/saps/config.py`. `.
 | `KEYCLOAK_PUBLIC_URL` | URL at which the browser reaches Keycloak; the issuer of the tokens — default `http://localhost:8080` | `.env.example` |
 | `KEYCLOAK_DB_PASSWORD` | Password of the role `keycloak` (database `keycloak`, created by the `db-init` service) | `.env.example` |
 | `KEYCLOAK_ADMIN_USERNAME`, `KEYCLOAK_ADMIN_PASSWORD` | Bootstrap administrator of Keycloak (master realm) | `.env.example` |
-| `KEYCLOAK_CLIENT_SECRET` | Secret of the client `saps-web` (replaces the placeholder of the realm file at import) | `.env.example` |
-| `SEED_USER_PASSWORD` | Password of the seeded demo users; empty → seed skipped (log `seed_skipped`) | set locally; CI generates a random value |
+| `KEYCLOAK_CLIENT_SECRET` | Secret of the client `saps-web` (replaces the placeholder of the realm file at import); the SAPS API gets it as `OIDC_CLIENT_SECRET` in `compose.yaml` | `.env.example` |
+| `SESSION_ENCRYPTION_KEY` | Fernet key that encrypts the stored Keycloak tokens and the sign-in cookie; required by the SAPS API ([SAPS-44](../03-features/SAPS-44-single-sign-on.md)). Changing it ends all sessions | set locally; CI generates a random value |
+| `OIDC_DISCOVERY_URL`, `OIDC_ISSUER` | Discovery document as the SAPS API reaches Keycloak, and the issuer in the tokens (the public URL) — set in `compose.yaml` from `KEYCLOAK_PUBLIC_URL` | `compose.yaml` |
+| `OIDC_CLIENT_ID`, `OIDC_GROUPS_CLAIM`, `OIDC_ROLES_CLAIM` | Client and claim names — defaults `saps-web`, `groups`, `roles` ([ADR-0010](../02-architecture/adr/0010-use-one-keycloak-realm-with-company-groups.md)) | defaults |
+| `SEED_USER_PASSWORD` | Password of the demo users in Keycloak; empty → the demo seed is skipped (log `seed_skipped`) | set locally; CI generates a random value |
 
 - Never commit `.env`; gitleaks runs as a pre-commit hook.
 
@@ -337,7 +347,11 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 | Presigned URL returns 403 | Wrong S3 credentials or clock skew | Check `S3_*` settings; restart the stack |
 | `docker compose up --wait` takes about 40 s | SAPS File Storage becomes healthy only when SeaweedFS can store files (`/dir/assign`); the SAPS API waits for it | Expected; without the wait the first upload would hang 7–20 s |
 | Upload answers 413 / 415 / 400 | File above `MAX_UPLOAD_SIZE_MB`, not PDF / JPEG / PNG by content, or empty | Use a supported file; the type is checked by content, not by name |
-| Sign-in always fails with "Invalid username or password" | `SEED_USER_PASSWORD` was empty when the SAPS API started (log `seed_skipped`) | Set it in `.env`, then `docker compose up -d --wait api` |
+| Keycloak says "Invalid username or password" | Wrong password, or the user is locked out for a while after repeated failures (brute-force protection) | Use the `SEED_USER_PASSWORD` that was set when the realm was first imported; unlock the user in the admin console |
+| Sign-in page shows "Your account is not assigned to exactly one company" | No company group, two company groups, or the company was not seeded (log `sign_in_refused`, reason `no_company`; `sign_in_conflict` when the e-mail belongs to another account) | Fix the group in Keycloak; check that the seed ran (`seed_skipped` means `SEED_USER_PASSWORD` was empty) |
+| Sign-in page shows "Your sign-in took too long…" right after signing in | The tokens are refused: issuer mismatch (`KEYCLOAK_PUBLIC_URL` differs from the URL in the browser), wrong client secret, or clocks differ (log `token_request_refused`) | Open the SAPS Web App at `WEB_APP_ORIGIN` and Keycloak at `KEYCLOAK_PUBLIC_URL`; keep `KEYCLOAK_CLIENT_SECRET` as at the realm import |
+| Every request answers 503 "Sign-in service not reachable" | Keycloak is down when a session needs a token refresh (every 5 minutes) | `docker compose ps keycloak`; the sessions are kept and work again when Keycloak is back |
+| `docker compose` says `Set SESSION_ENCRYPTION_KEY in .env` | The key is required (SAPS-44) | Generate one: `openssl rand -base64 32 \| tr '+/' '-_'` |
 | State-changing request returns 403 "The request origin is not allowed." | `Origin` header missing or different from `WEB_APP_ORIGIN` | Call the SAPS API through the SAPS Web App origin (`http://localhost:5173`); with curl add `-H "Origin: http://localhost:5173"` |
 
 ## 10. Command Cheat Sheet

@@ -11,6 +11,10 @@ related: [UC-01, SCP-IN-12, NFR-SEC-001, NFR-USAB-001, DEC-011, DEC-015, ADR-000
 # SAPS-27 — User roles and sign-in
 
 ## 1. Summary
+> **Superseded in part by [SAPS-44](SAPS-44-single-sign-on.md) (2027-03-01):** the password sign-in (BR-02, BR-03,
+> `createSession`), the seeded passwords (BR-09) and the username/password page (BR-10) are replaced by the sign-in through
+> Keycloak. The session, role and Origin rules (BR-04 to BR-08) still apply.
+
 Users sign in with simple accounts; the SAPS API keeps a server-side session in an HttpOnly cookie and checks role,
 tenant and request origin on every call. The PoC has one tenant with seeded demo users: Accounting Members and an
 Accounting Manager. Every other feature builds on this one: it provides the current user, the tenant and the role checks.

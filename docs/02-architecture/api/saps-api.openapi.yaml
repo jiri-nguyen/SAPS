@@ -3,7 +3,7 @@
 openapi: 3.1.0
 info:
   title: SAPS API
-  version: "0.4.5"
+  version: "0.5.0"
   description: |
     HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload, the exception queue,
     approval, final review, notifications and matching settings.
@@ -18,8 +18,13 @@ info:
     - Processing is asynchronous (ADR-0004): upload and re-match return `202 Accepted`; clients poll the invoice or
       the notifications to see the result.
     - The tenant is taken from the signed-in user (ADR-0007); it never appears in requests.
-    - Authentication uses a server-side session in the HttpOnly cookie `saps_session` (ADR-0008). State-changing requests
-      (POST, PUT, PATCH, DELETE) must carry an `Origin` header matching the SAPS Web App origin; otherwise `403` (CSRF protection).
+    - Users sign in through the Identity Provider (Keycloak, OpenID Connect; SAPS-44, ADR-0011): `startSignIn` sends the
+      browser there, `completeSignIn` creates a server-side session in the HttpOnly cookie `saps_session`. Tokens never
+      reach the browser. State-changing requests (POST, PUT, PATCH, DELETE) must carry an `Origin` header matching the
+      SAPS Web App origin; otherwise `403` (CSRF protection). `backchannelLogout` is called by the Identity Provider and
+      is exempt.
+    - Any operation with a session may answer `503` when the session's access token needs a refresh and the Identity
+      Provider cannot be reached; the session is kept (SAPS-44 EC-08).
     - `x-roles` lists the roles allowed to call an operation; other signed-in users get `403`.
     - Every response with an `Invoice` carries its version as `ETag`; send it back as `If-Match` in `updateInvoice` and
       `resolveInvoiceExceptions` (`428` when missing, `412` when the invoice changed since).
@@ -64,32 +69,6 @@ paths:
                   status: { type: string, enum: [ok] }
 
   /v1/session:
-    post:
-      operationId: createSession
-      summary: Sign in
-      description: Checks the credentials and sets the session cookie `saps_session` (HttpOnly, SameSite=Lax; ADR-0008). A new session is created at every sign-in.
-      tags: [Session]
-      security: []
-      parameters:
-        - $ref: "#/components/parameters/CorrelationId"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/SessionCreate" }
-      responses:
-        "200":
-          description: Signed in
-          headers:
-            Set-Cookie:
-              description: Session cookie `saps_session`
-              schema: { type: string }
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/UserAccount" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "500": { $ref: "#/components/responses/InternalError" }
     get:
       operationId: getSession
       summary: Get the signed-in user
@@ -104,16 +83,101 @@ paths:
               schema: { $ref: "#/components/schemas/UserAccount" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
     delete:
       operationId: deleteSession
       summary: Sign out
+      description: |
+        Revokes the session and clears the cookie (SAPS-44 BR-06). The browser then goes to `logoutUrl` to end the
+        Identity Provider session too; it comes back to the SAPS Web App.
       tags: [Session]
       parameters:
         - $ref: "#/components/parameters/CorrelationId"
       responses:
-        "204": { description: Signed out; the session is revoked and the cookie is cleared }
+        "200":
+          description: Signed out
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignOut" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /v1/session/sign-in:
+    get:
+      operationId: startSignIn
+      summary: Start the sign-in through the Identity Provider
+      description: |
+        Redirects the browser to the Identity Provider (authorization code flow with PKCE S256, `state` and `nonce`;
+        SAPS-44). `state`, `nonce` and the PKCE verifier are kept for 10 minutes in the encrypted, HttpOnly cookie
+        `saps_sign_in` (path `/v1/session`, SameSite=Lax). When the Identity Provider cannot be reached, redirects to
+        `/?signIn=unavailable`.
+      tags: [Session]
+      security: []
+      parameters:
+        - name: returnTo
+          in: query
+          description: Path of the SAPS Web App to open after the sign-in. Anything that is not a path (`//…`, `https://…`) is replaced by `/` (EC-10).
+          schema: { type: string, maxLength: 2000 }
+      responses:
+        "302":
+          description: To the Identity Provider's sign-in page
+          headers:
+            Location: { schema: { type: string } }
+            Set-Cookie:
+              description: Sign-in cookie `saps_sign_in`
+              schema: { type: string }
+
+  /v1/session/callback:
+    get:
+      operationId: completeSignIn
+      summary: Complete the sign-in (redirect target of the Identity Provider)
+      description: |
+        Exchanges the code, validates the ID token and checks the user (SAPS-44 BR-02): exactly one company group of an
+        active company, an e-mail address in that company's domain, exactly one role. Then links or creates the user
+        account and sets the session cookie `saps_session`. Every failure creates no session and redirects to
+        `/?signIn={reason}`; the SAPS Web App shows a message per reason (SAPS-44 §3.3): `cancelled`, `expired`,
+        `no_company`, `wrong_domain`, `no_role`, `unavailable`.
+      tags: [Session]
+      security: []
+      parameters:
+        - { name: code, in: query, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: error, in: query, description: Set by the Identity Provider when the user cancelled, schema: { type: string } }
+      responses:
+        "302":
+          description: To `returnTo` with the session cookie, or to `/?signIn={reason}` without a session
+          headers:
+            Location: { schema: { type: string } }
+            Set-Cookie:
+              description: Session cookie `saps_session` (HttpOnly, SameSite=Lax); clears `saps_sign_in`
+              schema: { type: string }
+
+  /v1/session/backchannel-logout:
+    post:
+      operationId: backchannelLogout
+      summary: Back-channel logout from the Identity Provider
+      description: |
+        Called by the Identity Provider, not by a browser (OpenID Connect Back-Channel Logout 1.0). The signed logout
+        token is validated (signature, issuer, audience, age, event); then every session of its `sid` ends
+        (SAPS-44 BR-07). No session cookie and no `Origin` check.
+      tags: [Session]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [logout_token]
+              properties:
+                logout_token: { type: string, maxLength: 16384 }
+      responses:
+        "200": { description: Sessions of that Identity Provider session ended (none when unknown) }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
   /v1/invoices:
     post:
@@ -602,7 +666,7 @@ components:
       type: apiKey
       in: cookie
       name: saps_session
-      description: Server-side session cookie set by `createSession` (HttpOnly, SameSite=Lax; ADR-0008). Simple user accounts, no SSO in the PoC (NFR-SEC-001).
+      description: Server-side session cookie set by `completeSignIn` after the sign-in through the Identity Provider (HttpOnly, SameSite=Lax; ADR-0011, NFR-SEC-001).
 
   parameters:
     InvoiceId:
@@ -712,12 +776,11 @@ components:
       properties:
         id: { type: string, format: uuid }
         displayName: { type: string, maxLength: 200 }
-    SessionCreate:
+    SignOut:
       type: object
-      required: [username, password]
+      required: [logoutUrl]
       properties:
-        username: { type: string, maxLength: 100 }
-        password: { type: string, format: password, writeOnly: true, maxLength: 200 }
+        logoutUrl: { type: string, maxLength: 8000, description: "Where the browser goes to end the Identity Provider session (SAPS-44 BR-06)" }
 
     # ---------- invoices ----------
     InvoiceFile:
@@ -950,7 +1013,7 @@ components:
       content:
         application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } }
     Unauthorized:
-      description: Not signed in, or wrong credentials
+      description: Not signed in, or the session ended
       content:
         application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } }
     Forbidden:
@@ -983,6 +1046,10 @@ components:
         application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } }
     UnprocessableEntity:
       description: Business validation failed
+      content:
+        application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } }
+    ServiceUnavailable:
+      description: The Identity Provider cannot be reached to refresh the session; try again (the session is kept)
       content:
         application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } }
     InternalError:

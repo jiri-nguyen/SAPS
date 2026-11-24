@@ -3,8 +3,8 @@ title: Data Model
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
-last_updated: 2026-12-15
-related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-021, SAPS-31]
+last_updated: 2027-03-01
+related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, ADR-0011, SAPS-44, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-021, SAPS-31]
 ---
 
 # Data Model
@@ -52,6 +52,7 @@ erDiagram
         uuid id PK
         uuid tenant_id FK
         string username UK
+        string idp_subject
         enum role
     }
     UserSession {
@@ -59,6 +60,7 @@ erDiagram
         uuid user_account_id FK
         string token_hash UK
         timestamp expires_at
+        string idp_session_id
     }
     Invoice {
         uuid id PK
@@ -145,7 +147,7 @@ A customer company (in Phase 2: a subsidiary of the group, [DEC-060](../01-requi
 |---|---|
 | Data store / table | SAPS Database / `tenant` |
 | Owning container | SAPS API |
-| Lifecycle | simple CRUD (seeded in the PoC) |
+| Lifecycle | seeded for the demo companies; created or updated at each sign-in (SAPS-44 BR-03) |
 | Retention | TBD (Q2) |
 | Expected volume | 3 in the Phase 2 demo; more subsidiaries later ([DEC-026](../01-requirements/decision-log.md#dec-026), [DEC-060](../01-requirements/decision-log.md#dec-060)) |
 
@@ -161,33 +163,39 @@ A customer company (in Phase 2: a subsidiary of the group, [DEC-060](../01-requi
 | time_zone | string(64) | No | — | Internal | IANA time zone, default `UTC` (processing calendar, [DEC-062](../01-requirements/decision-log.md#dec-062)) |
 
 ### UserAccount
-A person who signs in: an Accounting Member or an Accounting Manager ([NFR-SEC-001](../01-requirements/nfr.md#nfr-sec-001)).
+A person who signs in through Keycloak: an Accounting Member or an Accounting Manager
+([NFR-SEC-001](../01-requirements/nfr.md#nfr-sec-001), [SAPS-44](../03-features/SAPS-44-single-sign-on.md)). The SAPS
+Database keeps no password; name, e-mail, company and role are copied from the Identity Provider at each sign-in.
 
 | Property | Value |
 |---|---|
 | Data store / table | SAPS Database / `user_account` |
 | Owning container | SAPS API |
-| Lifecycle | simple CRUD (seeded in the PoC) |
+| Lifecycle | seeded for the demo companies; created or updated at each sign-in (SAPS-44 BR-03) |
 | Retention | TBD (Q2) |
 | Expected volume | a few demo users |
 
 | Attribute | Type | Null | Key | Class. | Description |
 |---|---|---|---|---|---|
 | id | uuid | No | PK | Internal | Surrogate key |
-| username | string(100) | No | UK | Internal | Sign-in name; unique across tenants, so sign-in identifies the tenant |
-| display_name | string(200) | No | — | Restricted | Name shown in the UI |
-| password_hash | string(255) | No | — | Restricted | Argon2id password hash ([ADR-0008](adr/0008-use-session-cookies-for-authentication.md)); never logged |
+| username | string(100) | No | UK | Internal | The e-mail address; unique across tenants |
+| display_name | string(200) | No | — | Restricted | Name shown in the UI (`name` claim) |
+| email | string(320) | Yes | — | Restricted | E-mail address (`email` claim); a seeded account is linked by it at the first sign-in |
+| idp_issuer | string(255) | Yes | UK (with `idp_subject`) | Internal | Issuer of the Identity Provider; empty until the first sign-in |
+| idp_subject | string(255) | Yes | UK (with `idp_issuer`) | Internal | Subject (`sub`) of the user in the Identity Provider |
 | role | enum | No | — | Internal | `ACCOUNTING_MEMBER`, `ACCOUNTING_MANAGER` |
-| is_active | boolean | No | — | Internal | Inactive users cannot sign in |
+| is_active | boolean | No | — | Internal | Inactive users cannot sign in (users are normally disabled in Keycloak) |
 
 ### UserSession
-A signed-in browser session ([ADR-0008](adr/0008-use-session-cookies-for-authentication.md)). The cookie holds a random value; only its hash is stored.
+A signed-in browser session ([ADR-0011](adr/0011-sign-in-through-keycloak-with-a-server-side-session.md)). The cookie
+holds a random value; only its hash is stored. The session keeps the Keycloak tokens, encrypted, so the SAPS API can
+refresh them (SAPS-44 BR-05).
 
 | Property | Value |
 |---|---|
 | Data store / table | SAPS Database / `user_session` |
 | Owning container | SAPS API |
-| Lifecycle | created at sign-in; ends at sign-out (`revoked_at`), idle timeout or absolute timeout |
+| Lifecycle | created at sign-in; ends at sign-out (`revoked_at`), back-channel logout, refused refresh, idle timeout or absolute timeout |
 | Retention | delete expired and revoked sessions after TBD days |
 | Expected volume | a few per user |
 
@@ -198,7 +206,11 @@ A signed-in browser session ([ADR-0008](adr/0008-use-session-cookies-for-authent
 | token_hash | string(64) | No | UK | Restricted | SHA-256 of the cookie value; the cookie value itself is never stored or logged |
 | expires_at | timestamp UTC | No | — | Internal | Absolute timeout |
 | last_seen_at | timestamp UTC | No | — | Internal | Used for the idle timeout |
-| revoked_at | timestamp UTC | Yes | — | Internal | Set at sign-out or deactivation |
+| revoked_at | timestamp UTC | Yes | — | Internal | Set at sign-out, back-channel logout or a refused refresh |
+| idp_session_id | string(255) | Yes | IX | Internal | Keycloak session (`sid`); back-channel logout ends the sessions with this value |
+| refresh_token_encrypted | text | Yes | — | Restricted | Refresh token, encrypted (Fernet, `SESSION_ENCRYPTION_KEY`); never logged |
+| id_token_encrypted | text | Yes | — | Restricted | ID token, encrypted; sent as `id_token_hint` at sign-out |
+| access_token_expires_at | timestamp UTC | Yes | — | Internal | When the next request refreshes the tokens |
 
 ### Invoice
 An uploaded vendor invoice and its processing state.

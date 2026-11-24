@@ -3,8 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
-import { ApiError, UNAUTHORIZED, unauthorizedEvents } from "./api/client";
+import { UNAUTHORIZED, unauthorizedEvents } from "./api/client";
 import type { SessionApi, UserAccount } from "./api/session";
+import { browser } from "./auth/browser";
 import { useSession } from "./auth/session-context";
 import { fakeExceptionApi, summary } from "./test/invoices";
 import { fakeNotificationApi, notificationFixture, notificationPage } from "./test/notifications";
@@ -12,25 +13,25 @@ import { fakeSettingsApi } from "./test/settings";
 
 const MEMBER: UserAccount = {
   id: "1",
-  username: "member1",
+  username: "member1@vn.example.com",
   displayName: "Accounting Member 1",
   role: "ACCOUNTING_MEMBER",
   companyName: "Demo Vietnam",
 };
 const MANAGER: UserAccount = {
   id: "2",
-  username: "manager1",
+  username: "manager1@vn.example.com",
   displayName: "Accounting Manager 1",
   role: "ACCOUNTING_MANAGER",
   companyName: "Demo Vietnam",
 };
 const pending = () => new Promise<never>(() => {});
+const LOGOUT_URL = "http://localhost:8080/realms/saps/protocol/openid-connect/logout?client_id=saps-web";
 
 function fakeApi(overrides: Partial<SessionApi> = {}): SessionApi {
   return {
     getSession: vi.fn().mockResolvedValue(null),
-    signIn: vi.fn().mockResolvedValue(MEMBER),
-    signOut: vi.fn().mockResolvedValue(undefined),
+    signOut: vi.fn().mockResolvedValue(LOGOUT_URL),
     ...overrides,
   };
 }
@@ -39,12 +40,8 @@ function renderApp(api: SessionApi, checkHealth: () => Promise<"ok" | "unreachab
   return render(<App sessionApi={api} checkHealth={checkHealth} />);
 }
 
-async function signInAs(username: string, password = "pw") {
-  const user = userEvent.setup();
-  await user.type(await screen.findByLabelText("Username"), username);
-  await user.type(screen.getByLabelText("Password"), password);
-  await user.click(screen.getByRole("button", { name: "Sign in" }));
-  return user;
+function spyOnNavigation() {
+  return vi.spyOn(browser, "assign").mockImplementation(() => {});
 }
 
 describe("App", () => {
@@ -64,11 +61,8 @@ describe("App", () => {
     expect(await screen.findByRole("form", { name: "Sign in" })).toBeInTheDocument();
   });
 
-  it("signs in a member and shows only the member menu", async () => {
-    const api = fakeApi();
-    renderApp(api);
-    await signInAs(" member1 ");
-    expect(api.signIn).toHaveBeenCalledWith("member1", "pw");
+  it("shows only the member menu to a signed-in member", async () => {
+    renderApp(fakeApi({ getSession: vi.fn().mockResolvedValue(MEMBER) }));
     expect(await screen.findByTestId("signed-in-user")).toHaveTextContent(
       "Accounting Member 1 (Accounting Member) · Demo Vietnam", // the company (SAPS-42 TS-06)
     );
@@ -249,27 +243,55 @@ describe("App", () => {
     },
   );
 
-  it("shows one message for a wrong username or password", async () => {
-    const signIn = vi.fn().mockRejectedValue(new ApiError(401));
-    renderApp(fakeApi({ signIn }));
-    await signInAs("member1", "wrong");
-    expect(await screen.findByRole("alert")).toHaveTextContent("Invalid username or password.");
-    expect(screen.getByLabelText("Password")).toHaveValue("");
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+  it("starts the sign-in through the company account and comes back to the same screen", async () => {
+    const navigate = spyOnNavigation();
+    window.location.hash = "#/exceptions";
+    renderApp(fakeApi());
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: "Sign in with your company account" }));
+    expect(navigate).toHaveBeenCalledWith("/v1/session/sign-in?returnTo=%2F%23%2Fexceptions");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    navigate.mockRestore();
+    window.location.hash = "";
   });
 
-  it("shows a general message for other sign-in errors", async () => {
-    renderApp(fakeApi({ signIn: vi.fn().mockRejectedValue(new ApiError(503)) }));
-    await signInAs("member1");
-    expect(await screen.findByRole("alert")).toHaveTextContent("Sign-in failed. Please try again.");
+  it.each([
+    ["no_company", "Your account is not assigned to exactly one company. Ask your administrator."],
+    ["wrong_domain", "Your e-mail address does not belong to your company. Ask your administrator."],
+    ["no_role", "Your account needs exactly one SAPS role. Ask your administrator."],
+    ["cancelled", "Sign-in was cancelled. Try again."],
+    ["expired", "Your sign-in took too long or was started in another tab. Try again."],
+    ["unavailable", "Sign-in is not available at the moment. Try again later."],
+    ["something-new", "Sign-in is not available at the moment. Try again later."],
+  ])("shows the reason %s of a refused sign-in once", async (reason, message) => {
+    window.history.replaceState(null, "", `/?keep=1&signIn=${reason}#/`);
+    renderApp(fakeApi());
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(window.location.search).toBe("?keep=1"); // a reload does not show it again
+    expect(window.location.hash).toBe("#/");
+    window.history.replaceState(null, "", "/");
   });
 
-  it("signs out and returns to the sign-in page, even when the call fails", async () => {
+  it("signs out and sends the browser to Keycloak to end that session too", async () => {
+    const navigate = spyOnNavigation();
+    const api = fakeApi({ getSession: vi.fn().mockResolvedValue(MEMBER) });
+    renderApp(api);
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Sign out" }));
+    expect(api.signOut).toHaveBeenCalledOnce();
+    expect(navigate).toHaveBeenCalledWith(LOGOUT_URL);
+    navigate.mockRestore();
+  });
+
+  it("signs out locally when the call fails", async () => {
+    const navigate = spyOnNavigation();
     const signOut = vi.fn().mockRejectedValue(new Error("offline"));
     renderApp(fakeApi({ getSession: vi.fn().mockResolvedValue(MEMBER), signOut }));
     await userEvent.setup().click(await screen.findByRole("button", { name: "Sign out" }));
     expect(signOut).toHaveBeenCalledOnce();
     expect(await screen.findByRole("form", { name: "Sign in" })).toBeInTheDocument();
+    expect(navigate).not.toHaveBeenCalled();
+    navigate.mockRestore();
   });
 
   it("returns to the sign-in page on any 401", async () => {

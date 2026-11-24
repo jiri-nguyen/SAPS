@@ -37,7 +37,7 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 async def db(database_url: str) -> AsyncIterator[AsyncSession]:
-    await run_seed(database_url, "schema-test-pw")
+    await run_seed(database_url)
     engine = create_async_engine(database_url)
     try:
         async with session_factory(engine)() as session:

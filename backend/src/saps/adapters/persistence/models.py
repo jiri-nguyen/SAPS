@@ -17,6 +17,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    Text,
     UniqueConstraint,
     func,
     text,
@@ -70,12 +71,18 @@ class Tenant(AuditMixin, Base):
 
 class UserAccount(AuditMixin, Base):
     __tablename__ = "user_account"
+    __table_args__ = (
+        UniqueConstraint("idp_issuer", "idp_subject", name="uq_user_account_idp_issuer_idp_subject"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), index=True)
     username: Mapped[str] = mapped_column(String(100), unique=True)
     display_name: Mapped[str] = mapped_column(String(200))
-    password_hash: Mapped[str] = mapped_column(String(255))
+    # The identity in the Identity Provider (SAPS-44 BR-03); empty until the first sign-in.
+    email: Mapped[str | None] = mapped_column(String(320))
+    idp_issuer: Mapped[str | None] = mapped_column(String(255))
+    idp_subject: Mapped[str | None] = mapped_column(String(255))
     role: Mapped[Role] = mapped_column(_enum(Role, "role"))
     is_active: Mapped[bool] = mapped_column(Boolean, server_default="true")
 
@@ -92,6 +99,11 @@ class UserSession(AuditMixin, Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The Identity Provider session and its tokens, encrypted (SAPS-44 BR-04, BR-05, BR-07).
+    idp_session_id: Mapped[str | None] = mapped_column(String(255), index=True)
+    refresh_token_encrypted: Mapped[str | None] = mapped_column(Text)
+    id_token_encrypted: Mapped[str | None] = mapped_column(Text)
+    access_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     user: Mapped[UserAccount] = relationship(lazy="raise")
 

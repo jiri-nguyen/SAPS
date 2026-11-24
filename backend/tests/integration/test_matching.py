@@ -59,7 +59,7 @@ class MemoryErp:
 
 @pytest.fixture
 async def engine(database_url: str) -> AsyncIterator[AsyncEngine]:
-    await run_seed(database_url, "matching-test-pw")
+    await run_seed(database_url)
     engine = create_async_engine(database_url)
     try:
         yield engine

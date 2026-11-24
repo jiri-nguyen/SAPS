@@ -13,7 +13,7 @@ from saps.adapters.persistence.notification_repository import SqlNotifications
 from saps.domain.invoices import NotificationType
 from saps.domain.users import CurrentUser, Role
 from tests.integration.api_world import Api
-from tests.integration.pipeline import FIXTURES, NO_LOGIN, process, uploaded
+from tests.integration.pipeline import FIXTURES, process, uploaded
 
 pytestmark = pytest.mark.integration
 
@@ -197,7 +197,7 @@ async def test_inactive_users_and_users_created_later_receive_nothing(api: Api) 
     async with session_factory(api.engine)() as session, session.begin():
         newcomer = UserAccount(
             tenant_id=api.world.tenant[0], username=f"n-{uuid.uuid4().hex[:8]}", display_name="Newcomer",
-            password_hash=NO_LOGIN, role=Role.ACCOUNTING_MEMBER,
+            role=Role.ACCOUNTING_MEMBER,
         )  # fmt: skip
         session.add(newcomer)
         await session.flush()

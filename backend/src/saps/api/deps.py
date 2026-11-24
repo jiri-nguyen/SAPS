@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from saps.adapters.identity.oidc import OidcIdentityProvider
 from saps.adapters.persistence.db import get_engine, session_factory, set_tenant
 from saps.adapters.persistence.exception_repository import SqlExceptionUnitOfWork
 from saps.adapters.persistence.invoice_repository import SqlInvoiceRepository
@@ -15,7 +16,7 @@ from saps.adapters.persistence.matching_settings_repository import SqlMatchingSe
 from saps.adapters.persistence.notification_inbox import SqlNotificationInbox
 from saps.adapters.persistence.user_repository import SqlUserRepository
 from saps.adapters.queue.dramatiq_queue import DramatiqJobQueue
-from saps.adapters.security.argon2_hasher import Argon2PasswordHasher
+from saps.adapters.security.fernet_cipher import FernetTokenCipher
 from saps.adapters.storage.s3_storage import S3FileStorage
 from saps.application.approval import ApprovalService
 from saps.application.auth import AuthService
@@ -27,16 +28,38 @@ from saps.application.upload import UploadInvoiceService
 from saps.config import get_settings
 from saps.domain.users import AccessDeniedError, CurrentUser, Role, SessionPolicy, ensure_role
 from saps.ports.file_storage import FileStoragePort
+from saps.ports.identity import IdentityProvider, IdentityProviderUnavailableError, TokenCipher
 from saps.ports.invoices import InvoiceReader
 from saps.ports.job_queue import JobQueuePort
 from saps.worker.broker import build_broker
 
 SESSION_COOKIE = "saps_session"
+CALLBACK_PATH = "/v1/session/callback"
 
 
 @lru_cache
-def password_hasher() -> Argon2PasswordHasher:
-    return Argon2PasswordHasher()
+def identity_provider() -> IdentityProvider:
+    """One per process: it caches the discovery document and the signing keys (SAPS-44)."""
+    settings = get_settings()
+    origin = settings.web_app_origin.rstrip("/")
+    return OidcIdentityProvider(
+        discovery_url=settings.oidc_discovery_url,
+        issuer=settings.oidc_issuer,
+        client_id=settings.oidc_client_id,
+        client_secret=settings.oidc_client_secret.get_secret_value(),
+        redirect_uri=f"{origin}{CALLBACK_PATH}",
+        post_logout_redirect_uri=f"{origin}/",
+        groups_claim=settings.oidc_groups_claim,
+        roles_claim=settings.oidc_roles_claim,
+    )
+
+
+@lru_cache
+def token_cipher() -> TokenCipher:
+    key = get_settings().session_encryption_key
+    if key is None or not key.get_secret_value():
+        raise RuntimeError("SESSION_ENCRYPTION_KEY is not set (Developer Guide §6)")
+    return FernetTokenCipher(key.get_secret_value())
 
 
 def session_policy() -> SessionPolicy:
@@ -66,8 +89,12 @@ async def db_session() -> AsyncIterator[AsyncSession]:
 DbSession = Annotated[AsyncSession, Depends(db_session)]
 
 
-def auth_service(session: DbSession) -> AuthService:
-    return AuthService(SqlUserRepository(session), password_hasher(), session_policy(), utc_now)
+def auth_service(
+    session: DbSession,
+    provider: Annotated[IdentityProvider, Depends(identity_provider)],
+    cipher: Annotated[TokenCipher, Depends(token_cipher)],
+) -> AuthService:
+    return AuthService(SqlUserRepository(session), provider, cipher, session_policy(), utc_now)
 
 
 Auth = Annotated[AuthService, Depends(auth_service)]
@@ -75,12 +102,19 @@ Auth = Annotated[AuthService, Depends(auth_service)]
 _UNAUTHORIZED = HTTPException(status.HTTP_401_UNAUTHORIZED, "Sign-in required.")
 
 
-async def current_user(request: Request, auth: Auth) -> CurrentUser:
+async def current_user(request: Request, session: DbSession, auth: Auth) -> CurrentUser:
     token = request.cookies.get(SESSION_COOKIE)
     if not token:
         raise _UNAUTHORIZED
-    user = await auth.resolve(token)
+    try:
+        user = await auth.resolve(token)
+    except IdentityProviderUnavailableError as exc:  # the session is kept (SAPS-44 EC-08)
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "Sign-in service not reachable. Try again."
+        ) from exc
     if user is None:
+        # A session ended by a refused refresh stays ended: keep the revocation although the request fails.
+        await session.commit()
         raise _UNAUTHORIZED
     return user
 

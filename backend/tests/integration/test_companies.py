@@ -14,18 +14,16 @@ from saps.adapters.persistence.db import session_factory, set_tenant
 from saps.adapters.persistence.matching_repository import SqlMatchingRepository
 from saps.adapters.persistence.models import Invoice, MatchingSettings, Tenant, UserAccount
 from saps.adapters.persistence.processing_repository import SqlProcessingRepository
-from saps.adapters.security.argon2_hasher import Argon2PasswordHasher
 from saps.application.matching import MatchingService
 from saps.application.processing import ProcessInvoiceService
 from saps.domain.invoices import InvoiceStatus
 from saps.domain.users import Role
 from saps.seed import LEGACY_TENANT, seed
 from saps.seed import _run as run_seed
-from tests.integration.pipeline import EXTRACTION, FIXTURES, NO_LOGIN, uploaded
+from tests.integration.pipeline import EXTRACTION, FIXTURES, uploaded
 
 pytestmark = pytest.mark.integration
 
-PASSWORD = "companies-test-pw"  # noqa: S105  (test-only, throwaway container)
 DS01 = FIXTURES / "ds-01/invoices/ds-01-trade-po.pdf"
 ERP = DummyErpAdapter(FIXTURES)
 
@@ -63,7 +61,7 @@ def _companies(*codes: str) -> DemoCompanies:
 
 async def _seed(engine: AsyncEngine, companies: DemoCompanies) -> tuple[int, int]:
     async with session_factory(engine)() as session, session.begin():
-        return await seed(session, PASSWORD, Argon2PasswordHasher(), companies)
+        return await seed(session, companies)
 
 
 # TS-01 / BR-02, BR-05, EC-04 ----------------------------------------------------------------------
@@ -89,7 +87,6 @@ async def test_a_poc_database_becomes_the_first_demo_company(engine: AsyncEngine
                     username=username,
                     display_name=username,
                     role=role,
-                    password_hash=NO_LOGIN,
                 )
             )
         poc_id = poc.id
@@ -169,7 +166,7 @@ async def _process(engine: AsyncEngine, invoice_id: uuid.UUID, tenant_id: uuid.U
 
 
 async def test_each_company_matches_against_its_own_erp_data(engine: AsyncEngine, database_url: str) -> None:
-    await run_seed(database_url, PASSWORD)
+    await run_seed(database_url)
     vn, sg = await _company(engine, "vn"), await _company(engine, "sg")
 
     first_vn = await uploaded(engine, DS01, vn)

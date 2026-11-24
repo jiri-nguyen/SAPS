@@ -44,7 +44,7 @@ class Stack:
 
 @pytest.fixture
 async def stack(database_url: str, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[Stack]:
-    await run_seed(database_url, "upload-test-pw")
+    await run_seed(database_url)
     use_database(monkeypatch, database_url)
     monkeypatch.setenv("WEB_APP_ORIGIN", ORIGIN)
     get_settings.cache_clear()

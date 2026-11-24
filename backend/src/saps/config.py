@@ -51,7 +51,19 @@ class Settings(BaseSettings):
     session_absolute_timeout_hours: int = Field(default=8, gt=0)
     session_cookie_secure: bool = True
 
-    # Demo users (SAPS-27); empty → seed skipped
+    # Single Sign-On (SAPS-44, ADR-0011): the SAPS API is the OpenID Connect client of the Identity Provider.
+    # The discovery document is read at the internal URL; tokens carry the public issuer.
+    oidc_discovery_url: str = "http://localhost:8080/realms/saps/.well-known/openid-configuration"
+    oidc_issuer: str = "http://localhost:8080/realms/saps"
+    oidc_client_id: str = "saps-web"
+    oidc_client_secret: SecretStr = SecretStr("")
+    oidc_groups_claim: str = "groups"
+    oidc_roles_claim: str = "roles"
+    # Fernet key for the stored tokens and the sign-in cookie; required by the SAPS API
+    # (`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`).
+    session_encryption_key: SecretStr | None = None
+
+    # Password of the demo users in Keycloak (SAPS-43); empty → the demo seed is skipped
     seed_user_password: SecretStr | None = None
 
     # Upload (SAPS-17)

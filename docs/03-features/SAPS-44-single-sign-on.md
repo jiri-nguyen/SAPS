@@ -238,10 +238,11 @@ demo passwords.
 | Q3 | Breaking contract change 0.5.0 (`createSession` removed, `deleteSession` returns `200`) in one release with the Web App? Proposal: yes. | Solution Architect / Tech Lead | before implementation | answered: proposal accepted (2027-03-01) |
 
 ## 8. Documentation Checklist
-- [ ] API spec 0.5.0
-- [ ] Data model (UserAccount, UserSession)
-- [ ] SAPS-27 spec: password rules superseded by SAPS-44 (note)
-- [ ] Developer Guide: sign-in through Keycloak, new settings, troubleshooting
-- [ ] arc42 §6 runtime view: sign-in scenario; §8 security concept
-- [ ] TD-03 resolved
+- [x] API spec 0.5.0
+- [x] Data model (UserAccount, UserSession)
+- [x] SAPS-27 spec: password rules superseded by SAPS-44 (note)
+- [x] Developer Guide: sign-in through Keycloak, new settings, troubleshooting
+- [x] arc42 §6 runtime view: sign-in scenario (index row linking §3.2 here)
+- [ ] arc42 §8 security concept — §8 is not written yet; the Developer Guide §5.3 holds the rules until then
+- [x] TD-03 resolved
 - [ ] Release notes entry prepared

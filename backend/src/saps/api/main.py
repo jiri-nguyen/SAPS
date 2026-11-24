@@ -8,9 +8,11 @@ from fastapi import FastAPI, Response, status
 from pydantic import BaseModel
 
 from saps.adapters.persistence.db import database_is_reachable, dispose_engines, get_engine
+from saps.api.deps import token_cipher
 from saps.api.origin_check import OriginCheckMiddleware
 from saps.api.problems import install_problem_handlers
 from saps.api.routers import invoices, matching_settings, notifications, session
+from saps.api.routers.session import BACKCHANNEL_LOGOUT_PATH
 from saps.api.upload_limit import UploadSizeLimitMiddleware
 from saps.config import get_settings
 from saps.logging_config import configure_logging
@@ -28,20 +30,25 @@ class Readiness(BaseModel):
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     configure_logging(get_settings().log_level)
+    token_cipher()  # fail at start-up when SESSION_ENCRYPTION_KEY is missing (SAPS-44)
     yield
     await dispose_engines()
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="SAPS API", version="0.4.5", lifespan=lifespan)
+    app = FastAPI(title="SAPS API", version="0.5.0", lifespan=lifespan)
     # The last middleware added runs first: Origin check, then the upload size guard.
     app.add_middleware(
         UploadSizeLimitMiddleware,
         path="/v1/invoices",
         max_file_bytes=settings.max_upload_size_mb * 1024 * 1024,
     )
-    app.add_middleware(OriginCheckMiddleware, allowed_origin=settings.web_app_origin)
+    app.add_middleware(
+        OriginCheckMiddleware,
+        allowed_origin=settings.web_app_origin,
+        exempt_paths=frozenset({BACKCHANNEL_LOGOUT_PATH}),
+    )
     install_problem_handlers(app)
     app.include_router(session.router)
     app.include_router(invoices.router)

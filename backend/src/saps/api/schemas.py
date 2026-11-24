@@ -28,9 +28,10 @@ class CamelModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
-class SessionCreate(CamelModel):
-    username: str = Field(min_length=1, max_length=100)
-    password: str = Field(min_length=1, max_length=200)
+class SignOut(CamelModel):
+    """Where the browser goes next to end the Identity Provider session too (SAPS-44 BR-06)."""
+
+    logout_url: str
 
 
 class UserAccount(CamelModel):

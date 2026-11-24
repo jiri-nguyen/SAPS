@@ -31,13 +31,82 @@ export interface paths {
         /** Get the signed-in user */
         get: operations["getSession"];
         put?: never;
+        post?: never;
         /**
-         * Sign in
-         * @description Checks the credentials and sets the session cookie `saps_session` (HttpOnly, SameSite=Lax; ADR-0008). A new session is created at every sign-in.
+         * Sign out
+         * @description Revokes the session and clears the cookie (SAPS-44 BR-06). The browser then goes to `logoutUrl` to end the
+         *     Identity Provider session too; it comes back to the SAPS Web App.
          */
-        post: operations["createSession"];
-        /** Sign out */
         delete: operations["deleteSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/session/sign-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Start the sign-in through the Identity Provider
+         * @description Redirects the browser to the Identity Provider (authorization code flow with PKCE S256, `state` and `nonce`;
+         *     SAPS-44). `state`, `nonce` and the PKCE verifier are kept for 10 minutes in the encrypted, HttpOnly cookie
+         *     `saps_sign_in` (path `/v1/session`, SameSite=Lax). When the Identity Provider cannot be reached, redirects to
+         *     `/?signIn=unavailable`.
+         */
+        get: operations["startSignIn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/session/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Complete the sign-in (redirect target of the Identity Provider)
+         * @description Exchanges the code, validates the ID token and checks the user (SAPS-44 BR-02): exactly one company group of an
+         *     active company, an e-mail address in that company's domain, exactly one role. Then links or creates the user
+         *     account and sets the session cookie `saps_session`. Every failure creates no session and redirects to
+         *     `/?signIn={reason}`; the SAPS Web App shows a message per reason (SAPS-44 §3.3): `cancelled`, `expired`,
+         *     `no_company`, `wrong_domain`, `no_role`, `unavailable`.
+         */
+        get: operations["completeSignIn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/session/backchannel-logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Back-channel logout from the Identity Provider
+         * @description Called by the Identity Provider, not by a browser (OpenID Connect Back-Channel Logout 1.0). The signed logout
+         *     token is validated (signature, issuer, audience, age, event); then every session of its `sid` ends
+         *     (SAPS-44 BR-07). No session cookie and no `Origin` check.
+         */
+        post: operations["backchannelLogout"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -415,10 +484,9 @@ export interface components {
             id: string;
             displayName: string;
         };
-        SessionCreate: {
-            username: string;
-            /** Format: password */
-            password: string;
+        SignOut: {
+            /** @description Where the browser goes to end the Identity Provider session (SAPS-44 BR-06) */
+            logoutUrl: string;
         };
         InvoiceFile: {
             name: string;
@@ -630,7 +698,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description Not signed in, or wrong credentials */
+        /** @description Not signed in, or the session ended */
         Unauthorized: {
             headers: {
                 [name: string]: unknown;
@@ -704,6 +772,15 @@ export interface components {
         };
         /** @description Business validation failed */
         UnprocessableEntity: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description The Identity Provider cannot be reached to refresh the session; try again (the session is kept) */
+        ServiceUnavailable: {
             headers: {
                 [name: string]: unknown;
             };
@@ -788,38 +865,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             500: components["responses"]["InternalError"];
-        };
-    };
-    createSession: {
-        parameters: {
-            query?: never;
-            header?: {
-                /** @description Propagated to logs and to the SAPS Worker; generated if absent */
-                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SessionCreate"];
-            };
-        };
-        responses: {
-            /** @description Signed in */
-            200: {
-                headers: {
-                    /** @description Session cookie `saps_session` */
-                    "Set-Cookie"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserAccount"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            500: components["responses"]["InternalError"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     deleteSession: {
@@ -834,15 +880,96 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Signed out; the session is revoked and the cookie is cleared */
-            204: {
+            /** @description Signed out */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignOut"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    startSignIn: {
+        parameters: {
+            query?: {
+                /** @description Path of the SAPS Web App to open after the sign-in. Anything that is not a path (`//…`, `https://…`) is replaced by `/` (EC-10). */
+                returnTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description To the Identity Provider's sign-in page */
+            302: {
+                headers: {
+                    Location?: string;
+                    /** @description Sign-in cookie `saps_sign_in` */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    completeSignIn: {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+                /** @description Set by the Identity Provider when the user cancelled */
+                error?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description To `returnTo` with the session cookie, or to `/?signIn={reason}` without a session */
+            302: {
+                headers: {
+                    Location?: string;
+                    /** @description Session cookie `saps_session` (HttpOnly, SameSite=Lax); clears `saps_sign_in` */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    backchannelLogout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    logout_token: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Sessions of that Identity Provider session ended (none when unknown) */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            401: components["responses"]["Unauthorized"];
+            400: components["responses"]["BadRequest"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     listInvoices: {
