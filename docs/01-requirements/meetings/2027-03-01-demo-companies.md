@@ -67,7 +67,7 @@ None.
 ## 8. Action Items
 | # | Action | Owner | Due | Status |
 |---|---|---|---|---|
-| A1 | Update and approve the SAPS-42 spec with the answers | Solution Architect (our company) | 2027-03-01 | open |
+| A1 | Update and approve the SAPS-42 spec with the answers | Solution Architect (our company) | 2027-03-01 | done |
 
 ## 9. Open Questions
 None new.

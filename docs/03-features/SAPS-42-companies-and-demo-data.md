@@ -1,7 +1,7 @@
 ---
 id: "SAPS-42"
 title: "SAPS-42 — Companies and per-company demo data"
-status: draft            # draft | in-review | approved | deprecated
+status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2027-03-01
