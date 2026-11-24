@@ -9,8 +9,12 @@ from saps.domain.matching import GoodsReceiptLine, PurchaseOrder
 class ErpDataPort(Protocol):
     """One call of each per invoice, for all its PO numbers (SAPS-19 NFR-SCAL-001)."""
 
-    async def get_purchase_orders(self, po_numbers: Sequence[str]) -> dict[str, PurchaseOrder]:
-        """Known purchase orders by PO number; unknown numbers are missing from the result."""
+    async def get_purchase_orders(
+        self, company_code: str, po_numbers: Sequence[str]
+    ) -> dict[str, PurchaseOrder]:
+        """Known purchase orders of the company by PO number; unknown numbers are missing (SAPS-42 BR-03)."""
         ...
 
-    async def get_goods_receipt_lines(self, po_numbers: Sequence[str]) -> list[GoodsReceiptLine]: ...
+    async def get_goods_receipt_lines(
+        self, company_code: str, po_numbers: Sequence[str]
+    ) -> list[GoodsReceiptLine]: ...

@@ -40,13 +40,19 @@ LINE = LineToMatch(uuid4(), 1, "0100001", 1, D("2"), D("10.00"))
 class FakeErp:
     def __init__(self) -> None:
         self.calls: list[str] = []
+        self.companies: list[str] = []
 
-    async def get_purchase_orders(self, po_numbers: Sequence[str]) -> dict[str, PurchaseOrder]:
+    async def get_purchase_orders(
+        self, company_code: str, po_numbers: Sequence[str]
+    ) -> dict[str, PurchaseOrder]:
         self.calls.append("orders")
+        self.companies.append(company_code)
         lines = {1: PurchaseOrderLine(1, "Paper", D("10"), D("10.00"))}
         return {n: PurchaseOrder(n, "V001", "USD", lines) for n in po_numbers if n != "0199999"}
 
-    async def get_goods_receipt_lines(self, po_numbers: Sequence[str]) -> list[GoodsReceiptLine]:
+    async def get_goods_receipt_lines(
+        self, company_code: str, po_numbers: Sequence[str]
+    ) -> list[GoodsReceiptLine]:
         self.calls.append("receipts")
         return [GoodsReceiptLine("GR1", n, 1, D("10")) for n in po_numbers]
 
@@ -113,6 +119,7 @@ def _invoice(*lines: LineToMatch, total: str = "20", **changes: object) -> Invoi
         assigned_to=None,
         invoice=InvoiceToMatch("V001", D(total), lines or (LINE,)),
         open_exceptions=(),
+        company_code="sg",
     )
     return replace(base, **changes)  # type: ignore[arg-type]
 
@@ -145,6 +152,7 @@ async def test_matched_invoice_below_threshold_goes_to_review_and_notifies_membe
     assert outcome is not None and outcome.status is InvoiceStatus.PENDING_REVIEW
     assert outcome.invoice_type is InvoiceType.TRADE_PO
     assert erp.calls == ["orders", "receipts"] and repo.locked == [("0100001", 1)]
+    assert erp.companies == ["sg"]  # the ERP data of the invoice's company (SAPS-42 BR-03)
     assert repo.saved is not None
     assert repo.saved.lines[LINE.id].match_status is MatchStatus.MATCHED
     assert repo.saved.requires_approval is False

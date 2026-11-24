@@ -32,6 +32,7 @@ def _current_user(record: UserRecord) -> CurrentUser:
         username=record.username,
         display_name=record.display_name,
         role=record.role,
+        company_name=record.company_name,
     )
 
 

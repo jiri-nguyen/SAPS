@@ -23,6 +23,7 @@ class CurrentUser:
     username: str
     display_name: str
     role: Role
+    company_name: str = ""  # shown in the Web App header (SAPS-42)
 
 
 class AccessDeniedError(Exception):

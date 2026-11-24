@@ -14,7 +14,6 @@ from saps.adapters.security.argon2_hasher import Argon2PasswordHasher
 from saps.api.main import create_app
 from saps.application.auth import hash_token
 from saps.config import get_settings
-from saps.seed import DEMO_TENANT
 from saps.seed import _run as run_seed
 from tests.integration.db_urls import use_database
 
@@ -50,7 +49,9 @@ async def client(database_url: str, monkeypatch: pytest.MonkeyPatch) -> AsyncIte
         get_settings.cache_clear()
 
 
-async def _sign_in(client: AsyncClient, username: str = "member1", password: str = PASSWORD) -> str:
+async def _sign_in(
+    client: AsyncClient, username: str = "member1@vn.example.com", password: str = PASSWORD
+) -> str:
     response = await client.post("/v1/session", json={"username": username, "password": password})
     assert response.status_code == 200, response.text
     return response.cookies["saps_session"]
@@ -58,10 +59,18 @@ async def _sign_in(client: AsyncClient, username: str = "member1", password: str
 
 async def test_seed_is_idempotent(database_url: str, db: AsyncSession) -> None:
     await run_seed(database_url, PASSWORD)
-    # Other tests add their own tenants; the seed owns only the demo tenant.
-    tenants = (await db.execute(select(Tenant).where(Tenant.name == DEMO_TENANT))).scalars().all()
-    assert len(tenants) == 1
-    tenant_id = tenants[0].id
+    # Other tests add their own tenants; the seed owns only the demo companies (SAPS-42).
+    tenants = (
+        (await db.execute(select(Tenant).where(Tenant.code.in_(["vn", "sg", "my"])).order_by(Tenant.code)))
+        .scalars()
+        .all()
+    )
+    assert [(t.code, t.name, t.email_domain, t.time_zone) for t in tenants] == [
+        ("my", "Demo Malaysia", "my.example.com", "Asia/Kuala_Lumpur"),
+        ("sg", "Demo Singapore", "sg.example.com", "Asia/Singapore"),
+        ("vn", "Demo Vietnam", "vn.example.com", "Asia/Ho_Chi_Minh"),
+    ]
+    tenant_id = tenants[2].id
     settings = (
         select(func.count()).select_from(MatchingSettings).where(MatchingSettings.tenant_id == tenant_id)
     )
@@ -75,16 +84,22 @@ async def test_seed_is_idempotent(database_url: str, db: AsyncSession) -> None:
         .scalars()
         .all()
     )
-    assert [u.username for u in users] == ["manager1", "manager2", "member1", "member2"]
+    assert [u.username for u in users] == [
+        "manager1@vn.example.com",
+        "member1@vn.example.com",
+        "member2@vn.example.com",
+    ]
     assert all(u.password_hash.startswith("$argon2id$") for u in users)
     assert Argon2PasswordHasher().verify(users[0].password_hash, PASSWORD)
 
 
 async def test_sign_in_get_session_and_sign_out(client: AsyncClient, db: AsyncSession) -> None:
-    response = await client.post("/v1/session", json={"username": "manager1", "password": PASSWORD})
+    response = await client.post(
+        "/v1/session", json={"username": "manager1@vn.example.com", "password": PASSWORD}
+    )
     assert response.status_code == 200
     body = response.json()
-    assert body["username"] == "manager1"
+    assert body["username"] == "manager1@vn.example.com"
     assert body["displayName"] == "Accounting Manager 1"
     assert body["role"] == "ACCOUNTING_MANAGER"
     cookie = response.headers["set-cookie"]
@@ -108,7 +123,7 @@ async def test_sign_in_get_session_and_sign_out(client: AsyncClient, db: AsyncSe
     assert (await client.get("/v1/session")).status_code == 401
 
 
-@pytest.mark.parametrize("username", ["member1", "nobody"])
+@pytest.mark.parametrize("username", ["member1@vn.example.com", "nobody"])
 async def test_wrong_password_and_unknown_user_look_the_same(
     client: AsyncClient, db: AsyncSession, username: str
 ) -> None:
@@ -122,11 +137,15 @@ async def test_wrong_password_and_unknown_user_look_the_same(
 async def test_inactive_user_cannot_sign_in_and_loses_open_sessions(
     client: AsyncClient, db: AsyncSession
 ) -> None:
-    await _sign_in(client, "member2")
-    await db.execute(update(UserAccount).where(UserAccount.username == "member2").values(is_active=False))
+    await _sign_in(client, "member2@vn.example.com")
+    await db.execute(
+        update(UserAccount).where(UserAccount.username == "member2@vn.example.com").values(is_active=False)
+    )
     await db.commit()
     assert (await client.get("/v1/session")).status_code == 401
-    response = await client.post("/v1/session", json={"username": "member2", "password": PASSWORD})
+    response = await client.post(
+        "/v1/session", json={"username": "member2@vn.example.com", "password": PASSWORD}
+    )
     assert response.status_code == 401
     # the next test's seed re-activates member2
 
@@ -158,7 +177,7 @@ async def test_requests_without_session_or_from_another_origin_are_refused(clien
     assert (await client.get("/v1/session")).status_code == 401
     foreign = await client.post(
         "/v1/session",
-        json={"username": "member1", "password": PASSWORD},
+        json={"username": "member1@vn.example.com", "password": PASSWORD},
         headers={"Origin": "https://evil.example"},
     )
     assert foreign.status_code == 403

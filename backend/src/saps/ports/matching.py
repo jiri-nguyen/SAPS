@@ -31,6 +31,8 @@ class InvoiceForMatching:
     assigned_to: UUID | None
     invoice: InvoiceToMatch
     open_exceptions: tuple[OpenException, ...]
+    company_code: str = ""
+    """Selects the company's ERP data (SAPS-42 BR-03)."""
 
 
 @dataclass(frozen=True)

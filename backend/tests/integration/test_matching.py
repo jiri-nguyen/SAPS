@@ -45,11 +45,15 @@ class MemoryErp:
         )
         self.delay = delay
 
-    async def get_purchase_orders(self, po_numbers: Sequence[str]) -> dict[str, PurchaseOrder]:
+    async def get_purchase_orders(
+        self, company_code: str, po_numbers: Sequence[str]
+    ) -> dict[str, PurchaseOrder]:
         await asyncio.sleep(self.delay)  # lets parallel runs overlap before the PO line lock
         return {self.po_number: self.order} if self.po_number in po_numbers else {}
 
-    async def get_goods_receipt_lines(self, po_numbers: Sequence[str]) -> list[GoodsReceiptLine]:
+    async def get_goods_receipt_lines(
+        self, company_code: str, po_numbers: Sequence[str]
+    ) -> list[GoodsReceiptLine]:
         return [GoodsReceiptLine("GR", self.po_number, 1, self.order.lines[1].ordered_quantity)]
 
 
@@ -63,7 +67,7 @@ async def engine(database_url: str) -> AsyncIterator[AsyncEngine]:
         await engine.dispose()
 
 
-async def _member(session: AsyncSession, username: str = "member1") -> UserAccount:
+async def _member(session: AsyncSession, username: str = "member1@vn.example.com") -> UserAccount:
     return (await session.execute(select(UserAccount).where(UserAccount.username == username))).scalar_one()
 
 
@@ -157,8 +161,8 @@ async def test_matched_invoice_is_saved_and_members_are_notified(engine: AsyncEn
             InvoiceStatus.PENDING_REVIEW,
         )
     assert await _notified(engine, invoice_id) == [
-        ("member1", NotificationType.REVIEW_REQUESTED),
-        ("member2", NotificationType.REVIEW_REQUESTED),
+        ("member1@vn.example.com", NotificationType.REVIEW_REQUESTED),
+        ("member2@vn.example.com", NotificationType.REVIEW_REQUESTED),
     ]
 
 
@@ -168,20 +172,19 @@ async def test_invoice_above_threshold_notifies_managers(engine: AsyncEngine) ->
     outcome = await _match(engine, erp, invoice_id)
     assert outcome is not None and outcome.status is InvoiceStatus.PENDING_APPROVAL
     assert await _notified(engine, invoice_id) == [
-        ("manager1", NotificationType.APPROVAL_REQUESTED),
-        ("manager2", NotificationType.APPROVAL_REQUESTED),
-    ]
+        ("manager1@vn.example.com", NotificationType.APPROVAL_REQUESTED),
+    ]  # Demo Vietnam has one manager in a fresh database (SAPS-42 Q2)
 
 
 async def test_exception_then_rematch_resolves_it_and_stale_message_is_skipped(
     engine: AsyncEngine,
 ) -> None:  # TS-10
     erp = MemoryErp()
-    invoice_id = await _invoice(engine, erp.po_number, "2", price="10.60", assigned="member2")
+    invoice_id = await _invoice(engine, erp.po_number, "2", price="10.60", assigned="member2@vn.example.com")
     first = await _match(engine, erp, invoice_id)
     assert first is not None and first.status is InvoiceStatus.EXCEPTION and first.open_codes == (EX.EX6,)
     assert await _notified(engine, invoice_id) == [
-        ("member2", NotificationType.EXCEPTION_RAISED)
+        ("member2@vn.example.com", NotificationType.EXCEPTION_RAISED)
     ]  # claimant only
 
     async with session_factory(engine)() as session, session.begin():  # what updateInvoice (SAPS-20) will do
@@ -248,7 +251,7 @@ async def test_parallel_invoices_cannot_use_the_same_quantity(engine: AsyncEngin
 async def test_worker_job_uses_the_dummy_erp_fixtures(
     engine: AsyncEngine, database_url: str, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    from saps.worker.jobs import run_matching
+    from saps.worker.jobs import run_matching  # the invoice belongs to the seeded Demo Vietnam (code vn)
 
     invoice_id = await _invoice(engine, "0100017", "5", price="9.00", total="45.00")  # ds-17 fixture
     use_database(monkeypatch, database_url)

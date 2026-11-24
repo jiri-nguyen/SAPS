@@ -59,6 +59,13 @@ class Tenant(AuditMixin, Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(200), unique=True)
     is_active: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    # Company details (SAPS-42): the code selects the ERP data; the others serve SSO, mailbox intake and
+    # the processing calendar.
+    code: Mapped[str] = mapped_column(String(20), unique=True)
+    email_domain: Mapped[str | None] = mapped_column(String(255), unique=True)
+    keycloak_group: Mapped[str | None] = mapped_column(String(255), unique=True)
+    mailbox_address: Mapped[str | None] = mapped_column(String(320), unique=True)
+    time_zone: Mapped[str] = mapped_column(String(64), server_default="UTC")
 
 
 class UserAccount(AuditMixin, Base):

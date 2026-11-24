@@ -15,6 +15,7 @@ from saps.adapters.persistence.models import (
     InvoiceException,
     InvoiceLine,
     MatchingSettings,
+    Tenant,
 )
 from saps.adapters.persistence.notification_repository import SqlNotifications
 from saps.domain.duplicates import COMPARED_STATUSES, DuplicateCandidate
@@ -38,6 +39,7 @@ class SqlMatchingRepository(SqlNotifications):
         ).scalar_one_or_none()
         if invoice is None:
             return None
+        company_code = await self._session.scalar(select(Tenant.code).where(Tenant.id == invoice.tenant_id))
         return InvoiceForMatching(
             id=invoice.id,
             tenant_id=invoice.tenant_id,
@@ -61,6 +63,7 @@ class SqlMatchingRepository(SqlNotifications):
                 for e in invoice.exceptions
                 if e.status is ExceptionStatus.OPEN
             ),
+            company_code=company_code or "",
         )
 
     async def get_rules(self, tenant_id: UUID) -> MatchingRules:

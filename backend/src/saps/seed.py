@@ -1,4 +1,4 @@
-"""Idempotent seed of the PoC tenant, its matching settings and the demo users (SAPS-27 BR-09, §3.8).
+"""Idempotent seed of the demo companies, their matching settings and users (SAPS-27 BR-09, SAPS-42 BR-02).
 
 Run: `python -m saps.seed` (the SAPS API container runs it after the migrations).
 Skipped when SEED_USER_PASSWORD is empty.
@@ -7,81 +7,123 @@ Skipped when SEED_USER_PASSWORD is empty.
 import asyncio
 import logging
 from decimal import Decimal
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
+from saps.adapters.demo.companies import DemoCompanies, load_demo_companies
 from saps.adapters.persistence.db import session_factory, set_tenant
 from saps.adapters.persistence.models import MatchingSettings, Tenant, UserAccount
 from saps.config import get_settings
-from saps.domain.users import Role
 from saps.logging_config import configure_logging
 from saps.ports.auth import PasswordHasher
 
-DEMO_TENANT = "PoC Customer"
-DEMO_USERS: tuple[tuple[str, str, Role], ...] = (
-    ("member1", "Accounting Member 1", Role.ACCOUNTING_MEMBER),
-    ("member2", "Accounting Member 2", Role.ACCOUNTING_MEMBER),
-    ("manager1", "Accounting Manager 1", Role.ACCOUNTING_MANAGER),
-    ("manager2", "Accounting Manager 2", Role.ACCOUNTING_MANAGER),
+LEGACY_TENANT = (
+    "PoC Customer"  # the single company of the PoC; becomes the first demo company (SAPS-42 BR-05)
 )
+LEGACY_USERS = (
+    "member1",
+    "member2",
+    "manager1",
+)  # renamed to the e-mail style of that company; manager2 is kept
 DEFAULT_PRICE_TOLERANCE_USD = Decimal("0.5")  # DEC-006, DEC-015
 DEFAULT_APPROVAL_THRESHOLD_USD = Decimal("300")  # DEC-009, DEC-015
 
 log = logging.getLogger("saps.seed")
 
 
-async def seed(session: AsyncSession, password: str, hasher: PasswordHasher) -> None:
-    tenant = (await session.execute(select(Tenant).where(Tenant.name == DEMO_TENANT))).scalar_one_or_none()
-    if tenant is None:
-        tenant = Tenant(name=DEMO_TENANT)
-        session.add(tenant)
-        await session.flush()
-    # The rows below are tenant-owned: set the company, so this also works for a migration user that is not a
-    # superuser and therefore is subject to row-level security (SAPS-41, Amazon RDS).
-    await set_tenant(session, tenant.id)
+async def seed(
+    session: AsyncSession, password: str, hasher: PasswordHasher, companies: DemoCompanies
+) -> tuple[int, int]:
+    """Create or update the demo companies, their matching settings and users; idempotent (SAPS-42 BR-02).
 
-    if await session.get(MatchingSettings, tenant.id) is None:
-        session.add(
-            MatchingSettings(
-                tenant_id=tenant.id,
-                price_tolerance_usd=DEFAULT_PRICE_TOLERANCE_USD,
-                approval_threshold_usd=DEFAULT_APPROVAL_THRESHOLD_USD,
-            )
-        )
-
+    Returns the number of companies and users seeded.
+    """
     password_hash = hasher.hash(password)
-    for username, display_name, role in DEMO_USERS:
-        user = (
-            await session.execute(select(UserAccount).where(UserAccount.username == username))
+    users = 0
+    for index, company in enumerate(companies.companies):
+        tenant = (
+            await session.execute(select(Tenant).where(Tenant.code == company.code))
         ).scalar_one_or_none()
-        if user is None:
+        legacy = None
+        if tenant is None and index == 0:
+            legacy = (
+                await session.execute(select(Tenant).where(Tenant.name == LEGACY_TENANT))
+            ).scalar_one_or_none()
+            tenant = legacy
+        if tenant is None:
+            tenant = Tenant(name=company.name, code=company.code)
+            session.add(tenant)
+        tenant.name = company.name
+        tenant.code = company.code
+        tenant.email_domain = company.email_domain
+        tenant.keycloak_group = company.keycloak_group
+        tenant.mailbox_address = company.mailbox_address
+        tenant.time_zone = company.time_zone
+        await session.flush()
+        # The rows below are tenant-owned: set the company, so this also works for a migration user that is
+        # not a superuser and therefore is subject to row-level security (SAPS-41, Amazon RDS).
+        await set_tenant(session, tenant.id)
+
+        if await session.get(MatchingSettings, tenant.id) is None:
             session.add(
-                UserAccount(
+                MatchingSettings(
                     tenant_id=tenant.id,
-                    username=username,
-                    display_name=display_name,
-                    role=role,
-                    password_hash=password_hash,
+                    price_tolerance_usd=DEFAULT_PRICE_TOLERANCE_USD,
+                    approval_threshold_usd=DEFAULT_APPROVAL_THRESHOLD_USD,
                 )
             )
-        else:
-            user.display_name, user.role, user.password_hash, user.is_active = (
-                display_name,
-                role,
-                password_hash,
-                True,
+        if legacy is not None:
+            await _rename_legacy_users(session, tenant.id, company.email_domain)
+
+        for demo_user in company.users:
+            user = (
+                await session.execute(select(UserAccount).where(UserAccount.username == demo_user.username))
+            ).scalar_one_or_none()
+            if user is None:
+                session.add(
+                    UserAccount(
+                        tenant_id=tenant.id,
+                        username=demo_user.username,
+                        display_name=demo_user.display_name,
+                        role=demo_user.role,
+                        password_hash=password_hash,
+                    )
+                )
+            else:
+                user.display_name, user.role, user.password_hash, user.is_active = (
+                    demo_user.display_name,
+                    demo_user.role,
+                    password_hash,
+                    True,
+                )
+            users += 1
+        await session.flush()
+    return len(companies.companies), users
+
+
+async def _rename_legacy_users(session: AsyncSession, tenant_id: UUID, domain: str) -> None:
+    for username in LEGACY_USERS:
+        user = (
+            await session.execute(
+                select(UserAccount).where(
+                    UserAccount.tenant_id == tenant_id, UserAccount.username == username
+                )
             )
-    await session.flush()
+        ).scalar_one_or_none()
+        if user is not None:
+            user.username = f"{username}@{domain}"
 
 
-async def _run(database_url: str, password: str) -> None:
+async def _run(database_url: str, password: str) -> tuple[int, int]:
     from saps.adapters.security.argon2_hasher import Argon2PasswordHasher
 
+    companies = load_demo_companies(get_settings().fixtures_dir)
     engine = create_async_engine(database_url)
     try:
         async with session_factory(engine)() as session, session.begin():
-            await seed(session, password, Argon2PasswordHasher())
+            return await seed(session, password, Argon2PasswordHasher(), companies)
     finally:
         await engine.dispose()
 
@@ -93,8 +135,8 @@ def main() -> None:
     if not password:
         log.warning("seed_skipped", extra={"reason": "SEED_USER_PASSWORD is empty"})
         return
-    asyncio.run(_run(settings.database_url, password))
-    log.info("seed_completed", extra={"tenant": DEMO_TENANT, "users": len(DEMO_USERS)})
+    companies, users = asyncio.run(_run(settings.database_url, password))
+    log.info("seed_completed", extra={"companies": companies, "users": users})
 
 
 if __name__ == "__main__":

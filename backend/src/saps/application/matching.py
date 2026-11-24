@@ -55,9 +55,11 @@ class MatchingService:
         derivation = derive_invoice_type(invoice.invoice)
         purchase_orders, receipts, invoiced = {}, [], {}
         if derivation.po_lines:
-            purchase_orders = await self._erp.get_purchase_orders(derivation.po_numbers)
+            purchase_orders = await self._erp.get_purchase_orders(invoice.company_code, derivation.po_numbers)
             if derivation.invoice_type is InvoiceType.TRADE_PO:
-                receipts = await self._erp.get_goods_receipt_lines(derivation.po_numbers)
+                receipts = await self._erp.get_goods_receipt_lines(
+                    invoice.company_code, derivation.po_numbers
+                )
             keys = derivation.po_line_keys
             await self._repo.lock_po_lines(invoice.tenant_id, keys)
             invoiced = await self._repo.already_invoiced(invoice.tenant_id, keys, invoice.id)

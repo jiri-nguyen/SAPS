@@ -51,7 +51,7 @@ async def stack(database_url: str, monkeypatch: pytest.MonkeyPatch) -> AsyncIter
     engine = create_async_engine(database_url)
     async with session_factory(engine)() as session:
         user = (
-            await session.execute(select(UserAccount).where(UserAccount.username == "member1"))
+            await session.execute(select(UserAccount).where(UserAccount.username == "member1@vn.example.com"))
         ).scalar_one()
         member = CurrentUser(user.id, user.tenant_id, user.username, user.display_name, user.role)
     app = create_app()
@@ -103,14 +103,14 @@ async def test_upload_creates_the_invoice_event_object_and_message(
         invoice = await session.get_one(Invoice, invoice_id)
         event = await session.scalar(select(InvoiceEvent).where(InvoiceEvent.invoice_id == invoice_id))
     assert invoice.status is InvoiceStatus.UPLOADED and invoice.file_content_type == content_type
-    assert invoice.file_name == name and invoice.created_by == "member1"
+    assert invoice.file_name == name and invoice.created_by == "member1@vn.example.com"
     assert (
         invoice.file_storage_key == f"tenants/{invoice.tenant_id}/invoices/{invoice_id}/{invoice.file_sha256}"
     )
     assert stack.storage.objects[invoice.file_storage_key] == (content, content_type)
     assert event is not None and (event.action, event.actor, event.status_to) == (
         "UPLOAD",
-        "member1",
+        "member1@vn.example.com",
         "UPLOADED",
     )
     assert event.details == {"fileName": name, "sizeBytes": len(content), "sha256": invoice.file_sha256}
@@ -141,7 +141,9 @@ async def test_get_invoice_returns_lines_exceptions_and_approval(stack: Stack) -
     now = datetime.now(UTC)
     async with session_factory(stack.engine)() as session, session.begin():
         manager = (
-            await session.execute(select(UserAccount).where(UserAccount.username == "manager1"))
+            await session.execute(
+                select(UserAccount).where(UserAccount.username == "manager1@vn.example.com")
+            )
         ).scalar_one()
         tenant = stack.member.tenant_id
         line = InvoiceLine(
@@ -186,6 +188,6 @@ async def test_get_invoice_returns_lines_exceptions_and_approval(stack: Stack) -
 async def test_invoice_of_another_tenant_is_not_found(stack: Stack) -> None:  # ADR-0007
     invoice_id = (await _upload(stack, PDF_BYTES, uuid.uuid4().hex)).json()["id"]
     stack.app.dependency_overrides[current_user] = lambda: CurrentUser(
-        stack.member.user_id, uuid.uuid4(), "member1", "Accounting Member 1", stack.member.role
+        stack.member.user_id, uuid.uuid4(), "member1@vn.example.com", "Accounting Member 1", stack.member.role
     )
     assert (await stack.client.get(f"/v1/invoices/{invoice_id}")).status_code == 404
