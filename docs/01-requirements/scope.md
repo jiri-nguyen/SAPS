@@ -1,11 +1,11 @@
 ---
 title: Scope Statement
-version: "0.8"           # 1.0 = first customer-approved version
+version: "0.9"           # 1.0 = first customer-approved version
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Solution Architect (our company)", "Product Owner (Customer)"]
 last_updated: 2027-03-01
-related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-003, DEC-004, DEC-011, DEC-012, DEC-013, DEC-014, DEC-015, DEC-016, DEC-017, DEC-018, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024, DEC-025, DEC-026, DEC-031, DEC-032, DEC-033, DEC-034, DEC-039, DEC-041, DEC-047, DEC-048, DEC-049, DEC-050, DEC-051, DEC-052, DEC-053, DEC-054, DEC-055, DEC-056, DEC-057, MTG-20270301, MTG-20270301-2]
+related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-003, DEC-004, DEC-011, DEC-012, DEC-013, DEC-014, DEC-015, DEC-016, DEC-017, DEC-018, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024, DEC-025, DEC-026, DEC-031, DEC-032, DEC-033, DEC-034, DEC-039, DEC-041, DEC-047, DEC-048, DEC-049, DEC-050, DEC-051, DEC-052, DEC-053, DEC-054, DEC-055, DEC-056, DEC-057, DEC-062, MTG-20270301, MTG-20270301-2, MTG-20270301-4]
 ---
 
 # Scope Statement
@@ -18,7 +18,7 @@ Smart-AP-Suite receives invoices, extracts their data, matches them according to
 routes exceptions and approvals, and presents the final result to an Accounting Member.
 
 **This version covers the Proof of Concept (PoC) phase** ([DEC-003](decision-log.md#dec-003), accepted: [DEC-047](decision-log.md#dec-047))
-**and Phase 2** ([DEC-048](decision-log.md#dec-048) `[CR]`, [DEC-051](decision-log.md#dec-051)): SCP-IN-01 … -14 are the PoC scope, SCP-IN-15 … -22 are new in Phase 2. Terms are defined in the [§12 Glossary](../02-architecture/arc42/12-glossary.md).
+**and Phase 2** ([DEC-048](decision-log.md#dec-048) `[CR]`, [DEC-051](decision-log.md#dec-051)): SCP-IN-01 … -14 are the PoC scope, SCP-IN-15 … -23 are new in Phase 2. Terms are defined in the [§12 Glossary](../02-architecture/arc42/12-glossary.md).
 Backlog items live in the Linear project
 [Smart-AP-Suite](https://linear.app/jiringuyen/project/smart-ap-suite-766faab061af/overview).
 
@@ -53,6 +53,7 @@ All PoC items are priority Must (AS2, confirmed). Priorities of Phase 2 items fo
 | SCP-IN-20 | Multi-tenancy | Phase 2 (from SCP-OUT-12): the system serves several customer companies, about 3 in the Phase 2 demo; a user belongs to one company; matching settings, vendors and ERP data per company ([DEC-056](decision-log.md#dec-056)) | Must; first ([DEC-050](decision-log.md#dec-050)) | [SAPS-41](https://linear.app/jiringuyen/issue/SAPS-41), [SAPS-42](https://linear.app/jiringuyen/issue/SAPS-42) | [DEC-048](decision-log.md#dec-048) |
 | SCP-IN-21 | GR-based invoice verification | Phase 2 (from SCP-OUT-13): invoice lines refer to a delivery order / goods receipt | TBD ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q7) | [SAPS-51](https://linear.app/jiringuyen/issue/SAPS-51) | [DEC-048](decision-log.md#dec-048) |
 | SCP-IN-22 | Invoice list and search | Phase 2 (new): Accounting Members and Accounting Managers see and search all invoices of their company in every status, with filters; no export ([DEC-057](decision-log.md#dec-057)) | TBD ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q6) | [SAPS-46](https://linear.app/jiringuyen/issue/SAPS-46) | [DEC-048](decision-log.md#dec-048), [DEC-057](decision-log.md#dec-057) |
+| SCP-IN-23 | Processing calendar | Phase 2 (new): the Accounting Manager sets closed periods for the company (monthly day ranges, weekdays, specific dates, local time zone); new invoices received in a closed period are held (On hold) and processed when it ends; a manager can release one invoice at once | Must | [SAPS-52](https://linear.app/jiringuyen/issue/SAPS-52) | [DEC-062](decision-log.md#dec-062) `[CR]` |
 
 ### 3.2 Integrations
 | ID | Item | Description | Priority | Backlog epic | Source |
@@ -142,3 +143,4 @@ Scope-relevant questions are tracked and answered in the meeting minutes listed 
 | 0.6 | 2026-12-11 | Solution Architect (our company) | SCP-OUT-14, -15 added | [DEC-039](decision-log.md#dec-039), [DEC-041](decision-log.md#dec-041) |
 | 0.7 | 2027-03-01 | Solution Architect (our company) | PoC accepted (BO2 met); Phase 2 `[CR]`: BO3, SCP-IN-15 to -22 added; SCP-OUT-02, -07, -08, -10, -11, -12, -13 withdrawn (moved into scope); SCP-OUT-01, -09 after the Phase 2 demo | [DEC-047](decision-log.md#dec-047) to [DEC-051](decision-log.md#dec-051) |
 | 0.8 | 2027-03-01 | Solution Architect (our company) | BO3 demo date; SCP-IN-10, -18, -19, -20, -22 detailed | [DEC-052](decision-log.md#dec-052) to [DEC-057](decision-log.md#dec-057) |
+| 0.9 | 2027-03-01 | Solution Architect (our company) | `[CR]` SCP-IN-23 processing calendar added | [DEC-062](decision-log.md#dec-062) |
