@@ -5,7 +5,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2027-03-01
-related: [SCP-IN-20, SCP-IN-09, SCP-IN-13, DEC-055, DEC-056, DEC-058, DEC-059, DEC-060, DEC-061, DEC-062, ADR-0001, ADR-0009, ADR-0010, ADR-0012, SAPS-41, SAPS-43, SAPS-44, SAPS-45, SAPS-52]
+related: [MTG-20270301-5, SCP-IN-20, SCP-IN-09, SCP-IN-13, DEC-055, DEC-056, DEC-058, DEC-059, DEC-060, DEC-061, DEC-062, ADR-0001, ADR-0009, ADR-0010, ADR-0012, SAPS-41, SAPS-43, SAPS-44, SAPS-45, SAPS-52]
 ---
 
 # SAPS-42 — Companies and per-company demo data
@@ -31,10 +31,10 @@ its own data.
 | ID | Rule | Source |
 |---|---|---|
 | BR-01 | A company has a unique short code (lower case, e.g. `vn`), a name, one e-mail domain, a Keycloak group path, a mailbox address and an IANA time zone. | [DEC-059](../01-requirements/decision-log.md#dec-059), [DEC-061](../01-requirements/decision-log.md#dec-061), [DEC-055](../01-requirements/decision-log.md#dec-055), [DEC-062](../01-requirements/decision-log.md#dec-062) |
-| BR-02 | The seed creates the demo companies of Q1 with their matching settings (defaults 0.5 USD and 300 USD) and demo users (Q2, Q3); running it again changes nothing. | [DEC-015](../01-requirements/decision-log.md#dec-015), SAPS-27 BR-09 |
+| BR-02 | The seed creates the 3 demo companies — Demo Vietnam (`vn`, `vn.example.com`, `Asia/Ho_Chi_Minh`), Demo Singapore (`sg`, `sg.example.com`, `Asia/Singapore`), Demo Malaysia (`my`, `my.example.com`, `Asia/Kuala_Lumpur`); mailbox `ap@<domain>`; Keycloak group `/companies/<code>` — with their matching settings (defaults 0.5 USD and 300 USD) and 2 Accounting Members and 1 Accounting Manager each, usernames in e-mail style (`member1@vn.example.com`); running it again changes nothing. | [DEC-015](../01-requirements/decision-log.md#dec-015), SAPS-27 BR-09 |
 | BR-03 | Each company has its own dummy ERP data (purchase orders, goods receipts and the vendors on them). Matching reads only the data of the invoice's company. | [DEC-056](../01-requirements/decision-log.md#dec-056) |
 | BR-04 | The dummy sample set (extraction results by file hash) stays shared: any company may upload any sample file; what happens next depends on that company's ERP data. | [DEC-012](../01-requirements/decision-log.md#dec-012), SAPS-18 |
-| BR-05 | The existing company of a PoC database keeps its data and users; it becomes one of the demo companies (Q3). | design |
+| BR-05 | The existing company of a PoC database keeps its data; it becomes Demo Vietnam, and its users `member1`, `member2`, `manager1` are renamed to the e-mail style of `vn.example.com` (`manager2` is kept as an extra manager). | design, Q3 |
 
 ### 2.2 Affected NFRs
 | NFR | How this feature is affected |
@@ -56,7 +56,7 @@ its own data.
 | SAPS Database | modified | New columns on `tenant` (migration `0007`) |
 | SAPS API | modified | Seed of the demo companies; the signed-in user's company code is known |
 | SAPS Worker | modified | Matching passes the company to the ERP Data Port; the Dummy ERP Adapter serves data per company |
-| SAPS Web App | none | The header shows the company name (small change, optional, Q5) |
+| SAPS Web App | modified | The header shows the company name of the signed-in user (Q5) |
 
 Design rules:
 - **Tenant columns:** `code` (string(20), unique, `^[a-z][a-z0-9-]{1,19}$`), `email_domain` (string(255), unique),
@@ -97,7 +97,7 @@ sequenceDiagram
 | EC-05 | Two companies with the same e-mail domain, group or mailbox | Refused by unique constraints at seed time | Seed error |
 
 ### 3.4 API Changes
-None required. Optional (Q5): `getSession` returns the company name for the header — additive field `companyName` on `UserAccount`.
+`getSession` and `createSession` return the company name for the header: additive field `companyName` on `UserAccount` (contract 0.4.5, not breaking).
 
 ### 3.6 Data Model Changes
 | Entity | Change | Migration | Backward compatible |
@@ -129,6 +129,7 @@ None required. Optional (Q5): `getSession` returns the company name for the head
 | TS-03 | The same sample file uploaded in two companies is matched against each company's ERP data; quantities invoiced in A do not reduce what B may invoice | Integration | BR-03, BR-04, EC-01 |
 | TS-04 | Unique constraints on code, domain, group and mailbox | Integration | EC-05 |
 | TS-05 | Compose smoke: members of two demo companies run DS-01 each and both reach Completed | E2E | BR-03 |
+| TS-06 | The header shows the company name of the signed-in user | Unit (Web App) | Q5 |
 
 ## 6. Decisions
 | Decision | Rationale | ADR |
@@ -140,15 +141,15 @@ None required. Optional (Q5): `getSession` returns the company name for the head
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | Which 3 demo companies? Proposal: "Demo Vietnam" (`vn`, `vn.example.com`, `Asia/Ho_Chi_Minh`), "Demo Singapore" (`sg`, `sg.example.com`, `Asia/Singapore`), and a third — which country? Mailboxes `ap@<domain>`. | Product Owner (Customer) | before implementation | open |
-| Q2 | Demo users per company? Proposal: 2 Accounting Members and 1 Accounting Manager per company (9 users). | Product Owner (Customer) | before implementation | open |
-| Q3 | Usernames: e-mail style for all demo users (`member1@vn.example.com`), the PoC users `member1` … become users of the first company and are renamed? Proposal: rename to e-mail style (sign-in with Keycloak will use e-mails anyway); CI smoke and Developer Guide updated. | Solution Architect / Tech Lead | before implementation | open |
-| Q4 | Dummy ERP data: the same demo catalogue in every company (proposal), or separate catalogues per company? | Solution Architect / Tech Lead | before implementation | open |
-| Q5 | Show the company name in the header of the Web App (small additive API change)? Proposal: yes. | Product Owner (Customer) | before implementation | open |
+| Q1 | Which 3 demo companies? Proposal: "Demo Vietnam" (`vn`, `vn.example.com`, `Asia/Ho_Chi_Minh`), "Demo Singapore" (`sg`, `sg.example.com`, `Asia/Singapore`), and a third — which country? Mailboxes `ap@<domain>`. | Product Owner (Customer) | before implementation | answered: Vietnam, Singapore, Malaysia as proposed; Malaysia = "Demo Malaysia" (`my`, `my.example.com`, `Asia/Kuala_Lumpur`) ([MTG-20270301-5](../01-requirements/meetings/2027-03-01-demo-companies.md)) |
+| Q2 | Demo users per company? Proposal: 2 Accounting Members and 1 Accounting Manager per company (9 users). | Product Owner (Customer) | before implementation | answered: proposal accepted ([MTG-20270301-5](../01-requirements/meetings/2027-03-01-demo-companies.md)) |
+| Q3 | Usernames: e-mail style for all demo users (`member1@vn.example.com`), the PoC users `member1` … become users of the first company and are renamed? Proposal: rename to e-mail style (sign-in with Keycloak will use e-mails anyway); CI smoke and Developer Guide updated. | Solution Architect / Tech Lead | before implementation | answered: proposal accepted (2027-03-01) |
+| Q4 | Dummy ERP data: the same demo catalogue in every company (proposal), or separate catalogues per company? | Solution Architect / Tech Lead | before implementation | answered: proposal accepted (2027-03-01) |
+| Q5 | Show the company name in the header of the Web App (small additive API change)? Proposal: yes. | Product Owner (Customer) | before implementation | answered: yes ([MTG-20270301-5](../01-requirements/meetings/2027-03-01-demo-companies.md)) |
 
 ## 8. Documentation Checklist
 - [ ] Data model: Tenant columns
 - [ ] Fixtures README: `companies.json`, company-only ERP folders
 - [ ] Developer Guide: demo companies and users
-- [ ] API spec (only if Q5 = yes)
+- [ ] API spec 0.4.5 (`UserAccount.companyName`)
 - [ ] Release notes entry prepared
