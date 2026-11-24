@@ -122,10 +122,10 @@ jobs:
           body="{\"username\":\"member1@vn.example.com\",\"password\":\"$password\"}"
           code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
           test "$(code -X POST -H 'Content-Type: application/json' -d "$body" "$base")" = 403
-          curl -fsS -c jar -H "$origin" -H 'Content-Type: application/json' -d "$body" "$base" | grep -q ACCOUNTING_MEMBER
-          curl -fsS -b jar "$base" | grep -q '"displayName":"Accounting Member 1"'
-          test "$(code -b jar -c jar -X DELETE -H "$origin" "$base")" = 204
-          test "$(code -b jar "$base")" = 401
+          curl -fsS -c signin-jar -H "$origin" -H 'Content-Type: application/json' -d "$body" "$base" | grep -q ACCOUNTING_MEMBER
+          curl -fsS -b signin-jar "$base" | grep -q '"displayName":"Accounting Member 1"'
+          test "$(code -b signin-jar -c signin-jar -X DELETE -H "$origin" "$base")" = 204
+          test "$(code -b signin-jar "$base")" = 401
       - name: Whole invoice flow from upload to Completed (SAPS-17 … SAPS-23)
         run: |
           base=http://localhost:5173/v1
