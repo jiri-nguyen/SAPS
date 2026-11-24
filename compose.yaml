@@ -113,14 +113,31 @@ services:
       interval: 5s
       retries: 20
 
+  mail:                    # Test Mail Server: GreenMail, SMTP :3025 and IMAP :3143; mailboxes appear on first use (SAPS-45)
+    image: greenmail/standalone:2.1.15
+    environment:
+      GREENMAIL_OPTS: -Dgreenmail.setup.test.all -Dgreenmail.hostname=0.0.0.0 -Dgreenmail.auth.disabled
+    ports: ["3025:3025", "3143:3143"]
+    healthcheck:           # the image has bash but no curl or nc: open the IMAP port with bash
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/3143"]
+      interval: 3s
+      retries: 20
+
   worker:                  # SAPS Worker
     build: ./backend
     command: ["dramatiq", "saps.worker.actors", "--processes", "1", "--threads", "4"]
     env_file: [{ path: .env, required: false }]
-    environment: *app-env
+    environment:
+      <<: *app-env
+      # Invoice intake from the company mailboxes (SAPS-45): the demo reads the test mail server over IMAP.
+      MAIL_ADAPTER: imap
+      IMAP_HOST: mail
+      IMAP_PORT: "3143"
+      IMAP_PASSWORD: ${IMAP_PASSWORD:-demo-mail-local}
     depends_on:
       api: { condition: service_healthy }
       redis: { condition: service_healthy }
+      mail: { condition: service_healthy }
 
   web:                     # SAPS Web App
     build: ./frontend

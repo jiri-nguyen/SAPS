@@ -108,7 +108,7 @@ jobs:
           echo "::add-mask::$password"
           echo "::add-mask::$key"
           # A short stuck age and tick keep the lost-message check short (SAPS-37 Q2); the defaults stay 60 s and 10 s.
-          sed "s/^SEED_USER_PASSWORD=.*/SEED_USER_PASSWORD=$password/; s/^SESSION_ENCRYPTION_KEY=.*/SESSION_ENCRYPTION_KEY=$key/; s/^SWEEPER_INTERVAL_SECONDS=.*/SWEEPER_INTERVAL_SECONDS=5/; s/^SWEEPER_STUCK_AFTER_SECONDS=.*/SWEEPER_STUCK_AFTER_SECONDS=15/" .env.example > .env
+          sed "s/^SEED_USER_PASSWORD=.*/SEED_USER_PASSWORD=$password/; s/^SESSION_ENCRYPTION_KEY=.*/SESSION_ENCRYPTION_KEY=$key/; s/^SWEEPER_INTERVAL_SECONDS=.*/SWEEPER_INTERVAL_SECONDS=5/; s/^MAIL_POLL_SECONDS=.*/MAIL_POLL_SECONDS=5/; s/^SWEEPER_STUCK_AFTER_SECONDS=.*/SWEEPER_STUCK_AFTER_SECONDS=15/" .env.example > .env
       - name: Start all containers
         run: docker compose up -d --build --wait
       - name: SAPS Web App, proxy and SAPS API
@@ -275,6 +275,48 @@ jobs:
           done
           test "$state" = "PENDING_REVIEW " || { echo "invoice is '$state'"; docker compose logs worker; exit 1; }
           curl -fsS -b sg-jar -H "$origin" -X POST "$base/invoices/$id/confirmation" | grep -q '"status":"COMPLETED"'
+      - name: Invoice by mail reaches the company of its mailbox (SAPS-45)
+        run: |
+          web=http://localhost:5173
+          base=$web/v1
+          password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
+          field() { python3 -c 'import json, sys; d = json.load(sys.stdin); print(eval(sys.argv[1]))' "$1"; }
+          # Demo Malaysia has not seen DS-01: it reaches Pending review there (per-company ERP data, SAPS-42)
+          python3 backend/tools/send_test_mail.py --smtp localhost:3025 --to ap@my.example.com \
+            --subject "CI invoice $GITHUB_RUN_ID" backend/fixtures/ds-01/invoices/ds-01-trade-po.pdf
+          python3 backend/tools/send_test_mail.py --smtp localhost:3025 --to ap@my.example.com \
+            --subject "CI mail without attachment $GITHUB_RUN_ID"
+          .github/scripts/sign-in.sh $web member1@my.example.com "$password" my-mail-jar > /dev/null
+          for i in $(seq 1 60); do   # the worker reads the mailboxes every 5 s in CI
+            id="$(curl -fsS -b my-mail-jar "$base/invoices?pageSize=100" | field '(d["items"][0]["id"] if d["items"] else "")')"
+            [ -n "$id" ] && state="$(curl -fsS -b my-mail-jar "$base/invoices/$id" | field 'd["status"]')" && [ "$state" = PENDING_REVIEW ] && break
+            sleep 1
+          done
+          test "$state" = PENDING_REVIEW || { echo "mail invoice is '$state'"; docker compose logs worker; exit 1; }
+          curl -fsS -b my-mail-jar "$base/invoices/$id" | python3 -c 'import json, sys
+          d = json.load(sys.stdin)
+          assert d["uploadedBy"] is None, d["uploadedBy"]
+          assert d["source"]["channel"] == "MAIL" and d["source"]["mailSubject"].startswith("CI invoice"), d["source"]
+          assert d["source"]["mailFrom"] == "Vendor Ltd <billing@vendor.example.net>", d["source"]'
+          test "$(curl -fsS -b my-mail-jar "$base/invoices?pageSize=100" | field 'len(d["items"])')" = 1   # one invoice, the other mail had none
+          .github/scripts/sign-in.sh $web member1@vn.example.com "$password" vn-mail-jar > /dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b vn-mail-jar "$base/invoices/$id")" = 404   # another company never sees it
+          python3 - <<'PY'
+          import imaplib, time
+          def count(folder):
+              c = imaplib.IMAP4("localhost", 3143)
+              c.login("ap@my.example.com", "x")
+              status, data = c.select(folder, readonly=True)
+              c.logout()
+              return int(data[0]) if status == "OK" else 0
+          for _ in range(30):
+              if (count("INBOX"), count("Processed"), count("Skipped")) == (0, 1, 1):
+                  break
+              time.sleep(1)
+          assert (count("INBOX"), count("Processed"), count("Skipped")) == (0, 1, 1), "the mails were not moved"
+          PY
+          docker compose logs worker | grep -q '"message": "mail_skipped"'
+          docker compose logs worker | grep -q '"message": "mail_imported"'
       - name: Keycloak realm with the demo companies (SAPS-43)
         run: |
           kc=http://localhost:8080
