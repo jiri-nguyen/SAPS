@@ -33,6 +33,8 @@ TENANT_TABLES = (
     "invoice_event",
     "notification",
 )
+# `inbound_mail` (SAPS-45) is not filled by these scenarios; test_mail_intake checks it (TS-06).
+CATALOG_TABLES = (*TENANT_TABLES, "inbound_mail")
 DS03 = FIXTURES / "ds-03/invoices/ds-03-above-threshold.pdf"  # Pending approval
 DS12 = FIXTURES / "ds-12/invoices/ds-12-price-outside-tolerance.pdf"  # Exception EX6
 
@@ -180,7 +182,7 @@ async def test_every_table_with_a_tenant_column_has_row_level_security(engine: A
                 )
             )
         ).all()
-    assert sorted(r.relname for r in rows) == sorted(TENANT_TABLES)
+    assert sorted(r.relname for r in rows) == sorted(CATALOG_TABLES)
     missing = [r.relname for r in rows if not (r.relrowsecurity and r.relforcerowsecurity and r.has_policy)]
     assert missing == []
 

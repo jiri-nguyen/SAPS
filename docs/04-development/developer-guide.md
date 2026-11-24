@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect / Tech Lead (our company)"
 reviewers: []
 last_updated: 2027-03-01
-related: [DEC-028, DEC-029, DEC-030, ADR-0001, ADR-0008, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0011, SAPS-26, SAPS-44]
+related: [DEC-028, DEC-029, DEC-030, ADR-0001, ADR-0008, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0011, ADR-0012, SAPS-26, SAPS-44, SAPS-45]
 ---
 
 # Developer Guide
@@ -139,6 +139,14 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` of `.env`, master realm); realm `saps` has the groups `/companies/vn`,
   `/companies/sg`, `/companies/my`, the roles Accounting Member and Accounting Manager and the 9 demo users of
   `fixtures/companies.json`. Passwords, roles and company groups are changed here, not in the SAPS Database.
+- Invoice by mail ([SAPS-45](../03-features/SAPS-45-mailbox-intake.md)): the test mail server (GreenMail) takes mails on SMTP `localhost:3025`;
+  the SAPS Worker reads the company mailboxes over IMAP every `MAIL_POLL_SECONDS` (60 s). Send DS-01 to Demo Malaysia with
+  `python backend/tools/send_test_mail.py --to ap@my.example.com backend/fixtures/ds-01/invoices/ds-01-trade-po.pdf`
+  (other companies: `ap@vn.example.com`, `ap@sg.example.com`). Within a minute, sign in as `member1@my.example.com`: the invoice is
+  in the Review queue, and its detail page shows "Received by mail from … · subject · date". A mail without a PDF, PNG or JPG
+  attachment is skipped (log `mail_skipped`); a mail with several attachments gives several invoices. Check the mailbox folders with any
+  IMAP client on `localhost:3143` (user: the mailbox address, any password): `Processed` and `Skipped`.
+  `MAIL_ADAPTER=none` stops the intake.
 - Sweeper ([SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37)): `docker compose stop worker`, upload `ds-17-rejected-at-review.pdf` as
   `member1@vn.example.com` (it stays Uploaded), `docker compose exec redis redis-cli FLUSHALL` (the message is lost), `docker compose start worker`.
   After `SWEEPER_STUCK_AFTER_SECONDS` (60 s by default) the next tick sends it again: the invoice reaches Pending review, its
@@ -306,6 +314,10 @@ All settings are environment variables, read in `backend/src/saps/config.py`. `.
 | `SESSION_ENCRYPTION_KEY` | Fernet key that encrypts the stored Keycloak tokens and the sign-in cookie; required by the SAPS API ([SAPS-44](../03-features/SAPS-44-single-sign-on.md)). Changing it ends all sessions | set locally; CI generates a random value |
 | `OIDC_DISCOVERY_URL`, `OIDC_ISSUER` | Discovery document as the SAPS API reaches Keycloak, and the issuer in the tokens (the public URL) — set in `compose.yaml` from `KEYCLOAK_PUBLIC_URL` | `compose.yaml` |
 | `OIDC_CLIENT_ID`, `OIDC_GROUPS_CLAIM`, `OIDC_ROLES_CLAIM` | Client and claim names — defaults `saps-web`, `groups`, `roles` ([ADR-0010](../02-architecture/adr/0010-use-one-keycloak-realm-with-company-groups.md)) | defaults |
+| `MAIL_ADAPTER` | Mail intake: `imap` (set in `compose.yaml` for the SAPS Worker) or `none` (default when unset) — `graph` for Outlook comes later ([SAPS-45](../03-features/SAPS-45-mailbox-intake.md)) | `compose.yaml` |
+| `MAIL_POLL_SECONDS`, `MAIL_BATCH_SIZE` | Interval of the mail intake and mails read per mailbox and tick — defaults 60 and 50 | `.env.example` |
+| `IMAP_HOST`, `IMAP_PORT`, `IMAP_SSL` | Mail server of the IMAP adapter — `mail`, `3143`, `false` in Docker Compose | `compose.yaml` |
+| `IMAP_PASSWORD` | Password used for every demo mailbox; the test mail server accepts any value | `.env.example` |
 | `SEED_USER_PASSWORD` | Password of the demo users in Keycloak; empty → the demo seed is skipped (log `seed_skipped`) | set locally; CI generates a random value |
 
 - Never commit `.env`; gitleaks runs as a pre-commit hook.
@@ -348,6 +360,8 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 | `docker compose up --wait` takes about 40 s | SAPS File Storage becomes healthy only when SeaweedFS can store files (`/dir/assign`); the SAPS API waits for it | Expected; without the wait the first upload would hang 7–20 s |
 | Upload answers 413 / 415 / 400 | File above `MAX_UPLOAD_SIZE_MB`, not PDF / JPEG / PNG by content, or empty | Use a supported file; the type is checked by content, not by name |
 | Keycloak says "Invalid username or password" | Wrong password, or the user is locked out for a while after repeated failures (brute-force protection) | Use the `SEED_USER_PASSWORD` that was set when the realm was first imported; unlock the user in the admin console |
+| A mail does not become an invoice | The worker reads a mailbox only when `MAIL_ADAPTER=imap`, the company is active and its `mailbox_address` is the recipient; check `docker compose logs worker` for `mail_imported`, `mail_skipped` (no valid attachment) or `mail_poll_failed` (mail server not reachable) | Send the mail to `ap@<company>.example.com`; attach a PDF, PNG or JPG (not inline); wait `MAIL_POLL_SECONDS` |
+| A mail stays in the inbox after its invoices appeared | Moving the mail failed (log `mail_move_failed`); the next tick moves it again without importing it twice | None |
 | Sign-in page shows "Your account is not assigned to exactly one company" | No company group, two company groups, or the company was not seeded (log `sign_in_refused`, reason `no_company`; `sign_in_conflict` when the e-mail belongs to another account) | Fix the group in Keycloak; check that the seed ran (`seed_skipped` means `SEED_USER_PASSWORD` was empty) |
 | Sign-in page shows "Your sign-in took too long…" right after signing in | The tokens are refused: issuer mismatch (`KEYCLOAK_PUBLIC_URL` differs from the URL in the browser), wrong client secret, or clocks differ (log `token_request_refused`) | Open the SAPS Web App at `WEB_APP_ORIGIN` and Keycloak at `KEYCLOAK_PUBLIC_URL`; keep `KEYCLOAK_CLIENT_SECRET` as at the realm import |
 | Every request answers 503 "Sign-in service not reachable" | Keycloak is down when a session needs a token refresh (every 5 minutes) | `docker compose ps keycloak`; the sessions are kept and work again when Keycloak is back |

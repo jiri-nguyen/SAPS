@@ -11,6 +11,9 @@ related: [UC-02, SCP-IN-01, DEC-012, DEC-026, NFR-SEC-001, NFR-SCAL-001, ADR-000
 # SAPS-17 — Invoice upload
 
 ## 1. Summary
+> **Superseded in part by [SAPS-45](SAPS-45-mailbox-intake.md) (2027-03-01):** BR-01 "manual upload is the only intake
+> channel" no longer holds; invoices also arrive by mail through the same upload use case. Uploads by users are unchanged.
+
 An Accounting Member uploads an invoice file (PDF or image) in the SAPS Web App. The SAPS API checks the file, stores it
 in SAPS File Storage, creates the invoice with status Uploaded and queues processing; it answers at once with
 `202 Accepted`. Extraction, duplicate check and matching run in the SAPS Worker ([SAPS-18](SAPS-18-dummy-invoice-extraction.md),

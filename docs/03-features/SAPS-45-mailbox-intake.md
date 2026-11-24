@@ -233,12 +233,12 @@ None. `process_invoice` is unchanged; the `UPLOAD` invoice event of a mail invoi
 | Q4 | IMAP sign-in: one shared `IMAP_PASSWORD` for all demo mailboxes (GreenMail only)? Proposal: yes; per-mailbox credentials are not needed because Outlook will use the Graph app registration (ADR-0012). | Solution Architect / Tech Lead | before implementation | answered: proposal accepted (2027-03-01) |
 
 ## 8. Documentation Checklist
-- [ ] API spec 0.6.0 (`source`, nullable `uploadedBy`)
-- [ ] Data model (InboundMail, Invoice changes, ERD)
-- [ ] SAPS-17 spec: BR-01 "only intake channel" superseded by SAPS-45 (note)
-- [ ] Glossary: Mailbox Port, IMAP Mail Adapter, Test Mail Server, Inbound mail, Intake channel
-- [ ] C4 L2 diagram: Test Mail Server container and "Reads mailboxes [IMAP]"
-- [ ] arc42 §6 runtime view: scenario index row linking §3.2
-- [ ] Developer Guide: mail settings, sending a test mail, troubleshooting
-- [ ] Test strategy: GreenMail in integration tests
+- [x] API spec 0.6.0 (`source`, nullable `uploadedBy`)
+- [x] Data model (InboundMail, Invoice changes, ERD)
+- [x] SAPS-17 spec: BR-01 "only intake channel" superseded by SAPS-45 (note)
+- [x] Glossary: Mailbox Port, IMAP Mail Adapter, Test Mail Server, Inbound mail, Intake channel
+- [x] C4 L2 diagram: Test Mail Server container and "Reads company mailboxes [IMAP]"
+- [x] arc42 §6 runtime view: scenario index row linking §3.2
+- [x] Developer Guide: mail settings, sending a test mail, troubleshooting
+- [x] Test strategy: GreenMail in integration tests
 - [ ] Release notes entry prepared

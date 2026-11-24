@@ -9,8 +9,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
-from saps.adapters.persistence.models import Approval, Invoice, InvoiceEvent, UserAccount
+from saps.adapters.persistence.models import Approval, InboundMail, Invoice, InvoiceEvent, UserAccount
 from saps.domain.invoices import ExceptionStatus, InvoiceStatus
+from saps.domain.mail_intake import IntakeChannel
 from saps.ports.invoices import (
     ApprovalView,
     DuplicateIdempotencyKeyError,
@@ -20,6 +21,7 @@ from saps.ports.invoices import (
     InvoiceFile,
     InvoiceFilter,
     InvoiceLineView,
+    InvoiceSource,
     InvoiceSummaryView,
     InvoiceView,
     NewUpload,
@@ -44,6 +46,17 @@ def decode_token(token: str) -> tuple[datetime, UUID]:
         raise InvalidPageTokenError(token) from exc
 
 
+def _upload_details(upload: NewUpload) -> dict[str, object]:
+    details: dict[str, object] = {
+        "fileName": upload.file.name,
+        "sizeBytes": upload.file.size_bytes,
+        "sha256": upload.file.sha256,
+    }
+    if upload.channel is IntakeChannel.MAIL:  # SAPS-45 §3.5; the event of an upload is unchanged
+        details |= {"channel": upload.channel.value, "inboundMailId": str(upload.inbound_mail_id)}
+    return details
+
+
 _IDEMPOTENCY_CONSTRAINT = "uq_invoice_tenant_id_idempotency_key"
 
 
@@ -66,6 +79,8 @@ class SqlInvoiceRepository:
                         tenant_id=upload.tenant_id,
                         status=InvoiceStatus.UPLOADED,
                         uploaded_by=upload.uploaded_by,
+                        channel=upload.channel,
+                        inbound_mail_id=upload.inbound_mail_id,
                         file_name=upload.file.name,
                         file_content_type=upload.file.content_type,
                         file_size_bytes=upload.file.size_bytes,
@@ -85,11 +100,7 @@ class SqlInvoiceRepository:
                         status_to=InvoiceStatus.UPLOADED,
                         action=UPLOAD_ACTION,
                         actor=upload.actor,
-                        details={
-                            "fileName": upload.file.name,
-                            "sizeBytes": upload.file.size_bytes,
-                            "sha256": upload.file.sha256,
-                        },
+                        details=_upload_details(upload),
                         occurred_at=upload.uploaded_at,
                         created_by=upload.actor,
                         updated_by=upload.actor,
@@ -114,6 +125,9 @@ class SqlInvoiceRepository:
                 .where(Approval.invoice_id == invoice.id)
                 .order_by(Approval.decided_at.desc())
                 .limit(1)
+            )
+            mail = (
+                await session.get(InboundMail, invoice.inbound_mail_id) if invoice.inbound_mail_id else None
             )
             user_ids = {invoice.uploaded_by, invoice.assigned_to, approval.decided_by if approval else None}
             user_ids |= {e.resolved_by for e in invoice.exceptions}
@@ -146,7 +160,13 @@ class SqlInvoiceRepository:
             price_tolerance_applied=invoice.price_tolerance_applied,
             approval_threshold_applied=invoice.approval_threshold_applied,
             assigned_to=ref(invoice.assigned_to),
-            uploaded_by=user(invoice.uploaded_by),
+            uploaded_by=ref(invoice.uploaded_by),
+            source=InvoiceSource(
+                channel=invoice.channel,
+                mail_from=mail.sender if mail else None,
+                mail_subject=mail.subject if mail else None,
+                mail_received_at=mail.received_at if mail else None,
+            ),
             file=InvoiceFile(
                 invoice.file_name, invoice.file_content_type, invoice.file_size_bytes, invoice.file_sha256
             ),

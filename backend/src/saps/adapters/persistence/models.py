@@ -35,6 +35,7 @@ from saps.domain.invoices import (
     MatchStatus,
     NotificationType,
 )
+from saps.domain.mail_intake import InboundMailStatus, IntakeChannel
 from saps.domain.users import Role
 
 
@@ -118,6 +119,30 @@ class MatchingSettings(AuditMixin, Base):
     approval_threshold_usd: Mapped[Decimal] = mapped_column(Numeric(18, 2), server_default="300")
 
 
+class InboundMail(AuditMixin, Base):
+    """A mail read from a company mailbox and what became of it (SAPS-45 BR-05)."""
+
+    __tablename__ = "inbound_mail"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "mail_key", name="uq_inbound_mail_tenant_id_mail_key"),
+        Index("ix_inbound_mail_status", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), index=True)
+    mailbox_address: Mapped[str] = mapped_column(String(320))
+    mail_key: Mapped[str] = mapped_column(String(500))
+    sender: Mapped[str] = mapped_column(String(320))
+    subject: Mapped[str] = mapped_column(String(500))
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[InboundMailStatus] = mapped_column(
+        _enum(InboundMailStatus, "inbound_mail_status"), server_default=InboundMailStatus.RECEIVED.value
+    )
+    skip_reason: Mapped[str | None] = mapped_column(String(50))
+    attachments: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, server_default="[]")
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Invoice(AuditMixin, Base):
     """An uploaded vendor invoice and its processing state (data model §4.1)."""
 
@@ -144,7 +169,11 @@ class Invoice(AuditMixin, Base):
     approval_threshold_applied: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
     requires_approval: Mapped[bool | None] = mapped_column(Boolean)
     assigned_to: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user_account.id"))
-    uploaded_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("user_account.id"))
+    uploaded_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user_account.id"))
+    channel: Mapped[IntakeChannel] = mapped_column(
+        _enum(IntakeChannel, "intake_channel"), server_default=IntakeChannel.UPLOAD.value
+    )
+    inbound_mail_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("inbound_mail.id"))
     file_name: Mapped[str] = mapped_column(String(255))
     file_content_type: Mapped[str] = mapped_column(String(100))
     file_size_bytes: Mapped[int] = mapped_column(BigInteger)

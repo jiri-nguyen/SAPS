@@ -3,8 +3,8 @@ title: "§12 Glossary"
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["BA (TBD)", "Tech Lead (TBD)"]
-last_updated: 2026-12-08
-related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-033, ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006]
+last_updated: 2027-03-01
+related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-033, DEC-055, SAPS-45, ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006]
 ---
 
 # §12 Glossary
@@ -55,6 +55,9 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-033, A
 | Purchase Order | Buyer document authorizing a purchase from a vendor. | Đơn đặt hàng | — |
 | Received-not-invoiced quantity | Quantity received on goods receipts for a PO line minus the quantity already invoiced for that line. | Số lượng đã nhận chưa xuất hóa đơn | Open GR quantity |
 | Rejected | Final invoice state after a rejection by the Accounting Manager or an Accounting Member ([DEC-014](../../01-requirements/decision-log.md#dec-014)). | Bị từ chối | Cancelled |
+| Inbound mail | A mail read from a company mailbox; one record per mail makes the import exactly-once. Entity `InboundMail` ([SAPS-45](../../03-features/SAPS-45-mailbox-intake.md)). | Thư đến | Email record |
+| Intake channel | How an invoice entered the system: `UPLOAD` by a user or `MAIL` from a company mailbox. | Kênh tiếp nhận | — |
+| Mailbox | The e-mail address of a company where vendors send invoices; the mailbox sets the company of the invoices ([DEC-055](../../01-requirements/decision-log.md#dec-055)). | Hộp thư | Inbox |
 | Tenant | A customer company served by Smart-AP-Suite; its data is separated from other tenants. The PoC has one tenant ([ADR-0007](../adr/0007-prepare-data-model-for-tenants.md)). | Khách hàng thuê bao | Client, customer |
 | Trade PO invoice | Invoice whose PO number starts with `0`; processed with 3-way matching. Usually for goods for resale or production. | Hóa đơn PO thương mại | Direct PO invoice |
 | User account | Sign-in identity of an Accounting Member or Accounting Manager. Entity `UserAccount`. | Tài khoản người dùng | Login |
@@ -68,6 +71,7 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-033, A
 | Accounting Member | Person | Uploads invoices, handles exceptions, checks the final result. | L1, L2 |
 | Dummy ERP Adapter | Component | PoC implementation of the ERP Data Port; reads fixture files ([ADR-0001](../adr/0001-isolate-extraction-and-erp-behind-ports.md)). | L3 |
 | Dummy Extraction Adapter | Component | PoC implementation of the Extraction Port; reads fixture files ([ADR-0001](../adr/0001-isolate-extraction-and-erp-behind-ports.md)). | L3 |
+| IMAP Mail Adapter | Component | Implementation of the Mailbox Port for the local test mail server over IMAP ([ADR-0012](../adr/0012-read-invoice-mailboxes-through-a-mail-port.md)); a Microsoft Graph adapter for Outlook comes later. | L3 |
 | ERP Data Port | Component | Interface in the SAPS API / SAPS Worker codebase that provides purchase orders, goods receipts and vendors. | L3 |
 | Extraction Port | Component | Interface in the SAPS API / SAPS Worker codebase that provides extracted invoice data for an uploaded file. | L3 |
 | File Storage Port | Component | Interface for storing and reading invoice files (S3 API) ([ADR-0006](../adr/0006-store-invoice-files-in-seaweedfs.md)). | L3 |
@@ -75,13 +79,15 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-033, A
 | Job Queue Port | Component | Interface for sending and receiving processing jobs; Dramatiq on Redis in the PoC ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)). | L3 |
 | MuleSoft APIs | External System | Customer integration layer exposing SAP purchasing data (APIs or MCP Tools) after the PoC ([CON-03](02-constraints.md)). | L1, L2 |
 | SAP ERP | External System | SAP ECC or SAP S/4HANA holding purchase orders, goods receipts and vendors; reached through MuleSoft APIs. | L1, L2 |
+| Mailbox Port | Component | Interface in the SAPS Worker codebase to list, read and move the mails of a company mailbox ([ADR-0012](../adr/0012-read-invoice-mailboxes-through-a-mail-port.md)). | L3 |
 | Keycloak | Container | Identity provider for single sign-on: realm `saps`, a group per company, realm roles Accounting Member and Accounting Manager ([ADR-0010](../adr/0010-use-one-keycloak-realm-with-company-groups.md), [ADR-0011](../adr/0011-sign-in-through-keycloak-with-a-server-side-session.md)). | L2 |
+| Test Mail Server | Container | GreenMail (SMTP and IMAP) in Docker Compose that stands in for the company mailboxes in the demo and the tests ([ADR-0012](../adr/0012-read-invoice-mailboxes-through-a-mail-port.md)). | L2 |
 | SAPS API | Container | Python/FastAPI backend: upload, invoice workflow, approvals, settings, notifications ([ADR-0002](../adr/0002-use-python-fastapi-and-react.md)). | L2, L3 |
 | SAPS Database | Container | PostgreSQL database: invoices, matching results and workflow state ([ADR-0003](../adr/0003-use-postgresql-and-docker-compose.md)). | L2 |
 | SAPS File Storage | Container | SeaweedFS object storage with S3 API for uploaded invoice files ([ADR-0006](../adr/0006-store-invoice-files-in-seaweedfs.md)). | L2 |
 | SAPS Message Broker | Container | Redis: queues processing messages for the SAPS Worker ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)). | L2 |
 | SAPS Web App | Container | React single-page application for Accounting Members and Accounting Managers ([ADR-0002](../adr/0002-use-python-fastapi-and-react.md)). | L2 |
-| SAPS Worker | Container | Python / Dramatiq background worker: extraction, duplicate check, matching, sweeper ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)). | L2 |
+| SAPS Worker | Container | Python / Dramatiq background worker: extraction, duplicate check, matching, sweeper, mail intake ([ADR-0004](../adr/0004-process-invoices-in-background-worker.md)). | L2 |
 | Smart-AP-Suite | Software System | Automates the Accounts Payable flow: invoice upload, extraction, matching, exception review, approval. | L1, L2 |
 
 ## 12.3 Abbreviations

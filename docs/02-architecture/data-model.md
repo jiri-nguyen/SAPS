@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
 last_updated: 2027-03-01
-related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, ADR-0011, SAPS-44, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-021, SAPS-31]
+related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, ADR-0011, ADR-0012, SAPS-44, SAPS-45, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-021, SAPS-31]
 ---
 
 # Data Model
@@ -32,6 +32,8 @@ All tenant-owned tables carry `tenant_id` ([ADR-0007](adr/0007-prepare-data-mode
 erDiagram
     Tenant ||--o{ UserAccount : "has"
     Tenant ||--o{ Invoice : "owns"
+    Tenant ||--o{ InboundMail : "receives"
+    InboundMail ||--o{ Invoice : "delivers"
     Tenant ||--|| MatchingSettings : "configures"
     UserAccount ||--o{ UserSession : "signs in with"
     UserAccount ||--o{ Invoice : "uploads"
@@ -54,6 +56,12 @@ erDiagram
         string username UK
         string idp_subject
         enum role
+    }
+    InboundMail {
+        uuid id PK
+        uuid tenant_id FK
+        string mail_key UK
+        enum status
     }
     UserSession {
         uuid id PK
@@ -241,7 +249,9 @@ An uploaded vendor invoice and its processing state.
 | approval_threshold_applied | decimal(18,2) | Yes | — | Internal | Threshold used to decide on approval (snapshot) |
 | requires_approval | boolean | Yes | — | Internal | True when `total_amount` > `approval_threshold_applied` |
 | assigned_to | uuid | Yes | FK → UserAccount | Internal | Accounting Member who picked the invoice from the exception queue ([DEC-016](../01-requirements/decision-log.md#dec-016)) |
-| uploaded_by | uuid | No | FK → UserAccount | Internal | Accounting Member who uploaded the file |
+| uploaded_by | uuid | Yes | FK → UserAccount | Internal | Accounting Member who uploaded the file; null for an invoice received by mail (set when `channel` is `UPLOAD`) |
+| channel | enum | No | — | Internal | How the invoice entered: `UPLOAD` (default) or `MAIL` ([SAPS-45](../03-features/SAPS-45-mailbox-intake.md)) |
+| inbound_mail_id | uuid | Yes | FK → InboundMail | Internal | The mail the invoice came with; set when `channel` is `MAIL` (check `ck_invoice_channel_source`) |
 | file_name | string(255) | No | — | Internal | Original file name |
 | file_content_type | string(100) | No | — | Internal | MIME type: PDF or image |
 | file_size_bytes | bigint | No | — | Internal | File size |
@@ -252,6 +262,36 @@ An uploaded vendor invoice and its processing state.
 
 Unique index: (`tenant_id`, `idempotency_key`). Index (not unique): (`tenant_id`, `vendor_code`, `invoice_number_normalized`) for duplicate detection. It is not a unique
 key because a duplicate is stored and raised as EX9; rejected invoices are ignored by the check ([DEC-043](../01-requirements/decision-log.md#dec-043)).
+
+### InboundMail
+A mail read from a company mailbox and what became of it ([SAPS-45](../03-features/SAPS-45-mailbox-intake.md),
+[ADR-0012](adr/0012-read-invoice-mailboxes-through-a-mail-port.md)). It makes the import exactly-once: a mail with a
+final status is never imported again.
+
+| Property | Value |
+|---|---|
+| Data store / table | SAPS Database / `inbound_mail` |
+| Owning container | SAPS Worker |
+| Lifecycle | `RECEIVED` while being imported → `PROCESSED` (at least one invoice) or `SKIPPED` (none, [DEC-055](../01-requirements/decision-log.md#dec-055)) |
+| Retention | TBD (Q2) |
+| Expected volume | one row per received mail; about the invoices per day per company ([NFR-SCAL-001](../01-requirements/nfr.md#nfr-scal-001)) |
+
+| Attribute | Type | Null | Key | Class. | Description |
+|---|---|---|---|---|---|
+| id | uuid | No | PK | Internal | Surrogate key |
+| mailbox_address | string(320) | No | — | Internal | Company mailbox that received the mail |
+| mail_key | string(500) | No | UK (with tenant_id) | Internal | `Message-ID` of the mail, or `sha256:` + hash of its content when it has none |
+| sender | string(320) | No | — | Confidential | Sender, shown as text; shortened |
+| subject | string(500) | No | — | Confidential | Subject, shown as text; shortened |
+| received_at | timestamp UTC | No | — | Internal | Date of the mail |
+| status | enum | No | IX | Internal | `RECEIVED`, `PROCESSED`, `SKIPPED` |
+| skip_reason | string(50) | Yes | — | Internal | `no_valid_attachment` when skipped |
+| attachments | jsonb | No | — | Internal | Per attachment: position, name, size, invoice id or skip reason (`unsupported_type`, `too_large`, `empty`) |
+| processed_at | timestamp UTC | Yes | — | Internal | When the mail got its final status |
+
+Unique key: (`tenant_id`, `mail_key`). Row-level security like every tenant-owned table
+([ADR-0009](adr/0009-isolate-tenant-data-in-a-shared-database.md)). Attachment bytes are never stored here; they are
+invoice files in SAPS File Storage.
 
 ### InvoiceLine
 One line of an invoice and its matching result.

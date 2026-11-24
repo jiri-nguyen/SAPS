@@ -16,6 +16,7 @@ from cryptography.fernet import Fernet
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select, text, update
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from saps.adapters.persistence.db import dispose_engines, session_factory
@@ -408,61 +409,64 @@ async def test_backchannel_logout_ends_the_sessions_of_that_idp_session(sso: Sso
 # TS-07 / EC-13: migration on a PoC database -----------------------------------------------------------------
 
 
-async def test_migration_0008_drops_passwords_and_revokes_poc_sessions(
-    database_url: str, db: AsyncSession
-) -> None:
-    down = alembic(database_url, "downgrade", "0007")
-    assert down.returncode == 0, down.stderr
+async def test_migration_0008_drops_passwords_and_revokes_poc_sessions(database_url: str) -> None:
+    """On a database of its own, so that later migrations and the data of other tests do not interfere."""
+    name = f"migration_{uuid.uuid4().hex[:8]}"
+    admin = create_async_engine(database_url, isolation_level="AUTOCOMMIT")
+    async with admin.connect() as conn:
+        await conn.execute(text(f'CREATE DATABASE "{name}"'))
+    url = make_url(database_url).set(database=name).render_as_string(hide_password=False)
+    engine = create_async_engine(url)
     try:
+        up = alembic(url, "upgrade", "0007")  # the PoC schema with passwords
+        assert up.returncode == 0, up.stderr
         suffix = uuid.uuid4().hex[:6]
-        await db.execute(
-            text(
-                "INSERT INTO tenant (id, name, code, is_active, created_by, updated_by) "
-                "VALUES (:t, :n, :c, true, 'test', 'test')"
-            ),
-            {"t": (tenant := uuid.uuid4()), "n": f"PoC {suffix}", "c": f"p{suffix}"},
-        )
-        await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant)})
-        for username in (f"member1@{suffix}.example.com", f"manager2-{suffix}"):
-            await db.execute(
+        tenant = uuid.uuid4()
+        async with engine.begin() as conn:
+            await conn.execute(
                 text(
-                    "INSERT INTO user_account (id, tenant_id, username, display_name, password_hash, role, "
-                    "is_active, created_by, updated_by) "
-                    "VALUES (gen_random_uuid(), :t, :u, :u, '$argon2id$x', "
-                    "'ACCOUNTING_MEMBER', true, 'test', 'test')"
+                    "INSERT INTO tenant (id, name, code, is_active, created_by, updated_by) "
+                    "VALUES (:t, :n, :c, true, 'test', 'test')"
                 ),
-                {"t": tenant, "u": username},
+                {"t": tenant, "n": f"PoC {suffix}", "c": f"p{suffix}"},
             )
-        await db.execute(
-            text(
-                "INSERT INTO user_session (id, tenant_id, user_account_id, token_hash, expires_at, "
-                "last_seen_at, created_by, updated_by) "
-                "SELECT gen_random_uuid(), :t, id, :h, now() + interval '1 hour', now(), "
-                "'test', 'test' FROM user_account WHERE username = :u"
-            ),
-            {"t": tenant, "h": uuid.uuid4().hex, "u": f"member1@{suffix}.example.com"},
-        )
-        await db.commit()
-    finally:
-        up = alembic(database_url, "upgrade", "head")
+            await conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant)})
+            for username in (f"member1@{suffix}.example.com", f"manager2-{suffix}"):
+                await conn.execute(
+                    text(
+                        "INSERT INTO user_account (id, tenant_id, username, display_name, password_hash, "
+                        "role, is_active, created_by, updated_by) "
+                        "VALUES (gen_random_uuid(), :t, :u, :u, '$argon2id$x', "
+                        "'ACCOUNTING_MEMBER', true, 'test', 'test')"
+                    ),
+                    {"t": tenant, "u": username},
+                )
+            await conn.execute(
+                text(
+                    "INSERT INTO user_session (id, tenant_id, user_account_id, token_hash, expires_at, "
+                    "last_seen_at, created_by, updated_by) "
+                    "SELECT gen_random_uuid(), :t, id, :h, now() + interval '1 hour', now(), "
+                    "'test', 'test' FROM user_account WHERE username = :u"
+                ),
+                {"t": tenant, "h": uuid.uuid4().hex, "u": f"member1@{suffix}.example.com"},
+            )
+
+        up = alembic(url, "upgrade", "0008")
         assert up.returncode == 0, up.stderr
 
-    db.expire_all()
-    await db.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": str(tenant)})
-    users = dict(
-        (
-            await db.execute(
-                select(UserAccount.username, UserAccount.email).where(UserAccount.tenant_id == tenant)
-            )
-        ).all()
-    )
-    assert users == {
-        f"member1@{suffix}.example.com": f"member1@{suffix}.example.com",
-        f"manager2-{suffix}": None,
-    }
-    open_sessions = await db.scalar(
-        select(UserSession.id).where(UserSession.tenant_id == tenant, UserSession.revoked_at.is_(None))
-    )
-    assert open_sessions is None
-    await db.execute(text("SELECT set_config('app.tenant_id', '', false)"))
-    await db.commit()
+        async with engine.begin() as conn:
+            await conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant)})
+            users = dict((await conn.execute(text("SELECT username, email FROM user_account"))).all())
+            open_sessions = (
+                await conn.execute(text("SELECT count(*) FROM user_session WHERE revoked_at IS NULL"))
+            ).scalar_one()
+        assert users == {
+            f"member1@{suffix}.example.com": f"member1@{suffix}.example.com",
+            f"manager2-{suffix}": None,
+        }
+        assert open_sessions == 0
+    finally:
+        await engine.dispose()
+        async with admin.connect() as conn:
+            await conn.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
+        await admin.dispose()

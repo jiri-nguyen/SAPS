@@ -529,7 +529,9 @@ export interface components {
             priceToleranceApplied?: components["schemas"]["UnitPrice"] | null;
             approvalThresholdApplied?: components["schemas"]["Amount"] | null;
             assignedTo?: components["schemas"]["UserAccountRef"] | null;
-            uploadedBy: components["schemas"]["UserAccountRef"];
+            /** @description The user who uploaded the invoice; null for an invoice received by mail (SAPS-45) */
+            uploadedBy: components["schemas"]["UserAccountRef"] | null;
+            source: components["schemas"]["InvoiceSource"];
             file: components["schemas"]["InvoiceFile"];
             rejectedReason?: string | null;
             lines: components["schemas"]["InvoiceLine"][];
@@ -539,6 +541,20 @@ export interface components {
             readonly createdAt: string;
             /** Format: date-time */
             readonly updatedAt: string;
+        };
+        /** @description How the invoice entered the system (SAPS-45) */
+        InvoiceSource: {
+            /** @enum {string} */
+            channel: "UPLOAD" | "MAIL";
+            /** @description Sender of the mail; MAIL only */
+            mailFrom?: string | null;
+            /** @description Subject of the mail; MAIL only */
+            mailSubject?: string | null;
+            /**
+             * Format: date-time
+             * @description Date of the mail; MAIL only
+             */
+            mailReceivedAt?: string | null;
         };
         InvoiceLine: {
             /** Format: uuid */

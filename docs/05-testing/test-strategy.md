@@ -3,7 +3,7 @@ title: Test Strategy
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)", "Product Owner (Customer)"]
-last_updated: 2026-11-28
+last_updated: 2027-03-01
 related: [ADR-0004, ADR-0006, DEC-003, DEC-011, DEC-017, DEC-020, DEC-032, DEC-033, NFR-SCAL-001, NFR-SEC-001, NFR-USAB-001, SAPS-32]
 ---
 
@@ -24,7 +24,7 @@ Scope: Proof of Concept ([DEC-003](../01-requirements/decision-log.md#dec-003)).
 | Level / type | Purpose | Scope | Responsible | Tools | Automated | When / environment |
 |---|---|---|---|---|---|---|
 | Unit | Matching rules, type derivation, tolerance, approval and state transitions | SAPS API / SAPS Worker domain logic; SAPS Web App components | Dev | pytest; Vitest + React Testing Library | Yes | CI on every PR |
-| Integration | SAPS API and SAPS Worker with real PostgreSQL, Redis and SeaweedFS; redelivery after a worker stop; sweeper recovers invoices without a message; idempotent actors | SAPS API, SAPS Worker | Dev | pytest + Testcontainers (PostgreSQL, Redis, SeaweedFS) | Yes | CI on every PR |
+| Integration | SAPS API and SAPS Worker with real PostgreSQL, Redis and SeaweedFS; redelivery after a worker stop; sweeper recovers invoices without a message; idempotent actors | SAPS API, SAPS Worker | Dev | pytest + Testcontainers (PostgreSQL, Redis, SeaweedFS, GreenMail test mail server for the mail intake, SAPS-45) | Yes | CI on every PR |
 | Contract | SAPS API matches its OpenAPI specification | SAPS API | Dev | Schemathesis (proposal) | Yes | CI on every PR, against [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
 | End-to-end | Demo scenarios DS-01 … DS-20 (§11) | UC-01 … UC-08 | SA | Playwright | Yes | local, clean Docker Compose stack, before each demo rehearsal |
 | Regression | Previously passing demo scenarios still pass | E2E suite | SA | Playwright | Yes | local, before merging to main |

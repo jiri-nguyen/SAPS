@@ -321,6 +321,15 @@ export function InvoiceDetailPage({
             </dd>
             <dt>File</dt>
             <dd>{invoice.file.name}</dd>
+            {invoice.source.channel === "MAIL" && (
+              <>
+                <dt>Received</dt>
+                <dd data-testid="mail-source">
+                  Received by mail from {text(invoice.source.mailFrom)} · {text(invoice.source.mailSubject)} ·{" "}
+                  {invoice.source.mailReceivedAt ? timestamp(invoice.source.mailReceivedAt) : "—"}
+                </dd>
+              </>
+            )}
             {invoice.approval != null && (
               <>
                 <dt>Approval</dt>
