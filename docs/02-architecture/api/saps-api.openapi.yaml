@@ -3,7 +3,7 @@
 openapi: 3.1.0
 info:
   title: SAPS API
-  version: "0.6.0"
+  version: "0.7.0"
   description: |
     HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload and mail intake, the exception queue,
     approval, final review, notifications and matching settings.
@@ -230,8 +230,12 @@ paths:
       operationId: listInvoices
       summary: List invoices
       description: |
-        Newest first. The exception queue (DEC-016) is `status=EXCEPTION`; approvals waiting for the
-        Accounting Manager are `status=PENDING_APPROVAL`.
+        Newest upload first. The exception queue (DEC-016) is `status=EXCEPTION`; approvals waiting for the
+        Accounting Manager are `status=PENDING_APPROVAL`. The screen "All invoices" (SAPS-46, DEC-057) uses the
+        other filters; all filters are combined with AND. Text filters match part of the value: `vendor` the vendor
+        name or code ignoring case; `invoiceNumber` the number ignoring case, spaces and `-` `.` `/` (DEC-042).
+        `poNumber` matches any line exactly. Ranges include both ends. `uploadedFrom` / `uploadedTo` are days in the
+        time zone of the caller's company. A data filter never matches an invoice without that data yet.
       tags: [Invoices]
       x-roles: [ACCOUNTING_MEMBER, ACCOUNTING_MANAGER]
       parameters:
@@ -253,6 +257,16 @@ paths:
           required: false
           description: "`me` = claimed by the caller; `unassigned` = not claimed by anyone"
           schema: { type: string, enum: [me, unassigned] }
+        - { name: vendor, in: query, required: false, schema: { type: string, minLength: 1, maxLength: 200 } }
+        - { name: invoiceNumber, in: query, required: false, schema: { type: string, minLength: 1, maxLength: 50 } }
+        - { name: poNumber, in: query, required: false, schema: { $ref: "#/components/schemas/PoNumber" } }
+        - { name: invoiceDateFrom, in: query, required: false, schema: { type: string, format: date } }
+        - { name: invoiceDateTo, in: query, required: false, schema: { type: string, format: date } }
+        - { name: uploadedFrom, in: query, required: false, schema: { type: string, format: date } }
+        - { name: uploadedTo, in: query, required: false, schema: { type: string, format: date } }
+        - { name: totalMin, in: query, required: false, schema: { $ref: "#/components/schemas/Amount" } }
+        - { name: totalMax, in: query, required: false, schema: { $ref: "#/components/schemas/Amount" } }
+        - { name: channel, in: query, required: false, schema: { type: string, enum: [UPLOAD, MAIL] } }
         - $ref: "#/components/parameters/PageSize"
         - $ref: "#/components/parameters/PageToken"
         - $ref: "#/components/parameters/CorrelationId"
@@ -793,7 +807,7 @@ components:
         sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
     InvoiceSummary:
       type: object
-      required: [id, status, currency, updatedAt]
+      required: [id, status, currency, updatedAt, channel, uploadedAt]
       properties:
         id: { type: string, format: uuid }
         status: { $ref: "#/components/schemas/InvoiceStatus" }
@@ -807,6 +821,9 @@ components:
           items: { $ref: "#/components/schemas/ExceptionCode" }
         assignedTo: { oneOf: [{ $ref: "#/components/schemas/UserAccountRef" }, { type: "null" }] }
         updatedAt: { type: string, format: date-time }
+        invoiceDate: { type: [string, "null"], format: date }
+        channel: { type: string, enum: [UPLOAD, MAIL] }
+        uploadedAt: { type: string, format: date-time, description: "When the invoice entered the system (upload or mail intake)" }
     Invoice:
       type: object
       description: Invoice with lines, exceptions and approval (data model Invoice)
