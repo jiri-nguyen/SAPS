@@ -38,7 +38,7 @@ services:
       db: { condition: service_healthy }
 
   keycloak:                # Identity Provider: Keycloak, realm `saps` with the companies as groups (ADR-0010)
-    image: quay.io/keycloak/keycloak:26.3.5
+    image: quay.io/keycloak/keycloak:26.8.2-3
     command: ["start", "--import-realm"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
