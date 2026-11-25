@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect / Tech Lead (our company)"
 reviewers: []
 last_updated: 2027-03-01
-related: [DEC-028, DEC-029, DEC-030, ADR-0001, ADR-0008, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0011, ADR-0012, SAPS-26, SAPS-44, SAPS-45]
+related: [DEC-028, DEC-029, DEC-030, ADR-0001, ADR-0008, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0011, ADR-0012, SAPS-26, SAPS-44, SAPS-45, SAPS-46]
 ---
 
 # Developer Guide
@@ -139,6 +139,11 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` of `.env`, master realm); realm `saps` has the groups `/companies/vn`,
   `/companies/sg`, `/companies/my`, the roles Accounting Member and Accounting Manager and the 9 demo users of
   `fixtures/companies.json`. Passwords, roles and company groups are changed here, not in the SAPS Database.
+- Search ([SAPS-46](../03-features/SAPS-46-invoice-search.md)): the menu item **All invoices** (both roles) lists every invoice of the
+  company in every status, newest upload first. Try the status boxes, the vendor (`alpha`), the invoice number typed with other
+  spaces or dashes (`aos 2026 1001` finds `AOS-2026-1001`), the PO number (7 digits), the channel (Upload or Mail), and the ranges of
+  invoice date, upload date (days of the company's time zone) and total. The filters are in the URL: reload, Back and a copied link keep
+  the search, and "← All invoices" on an invoice returns to the same results. A sign-in as another company never lists these invoices.
 - Invoice by mail ([SAPS-45](../03-features/SAPS-45-mailbox-intake.md)): the test mail server (GreenMail) takes mails on SMTP `localhost:3025`;
   the SAPS Worker reads the company mailboxes over IMAP every `MAIL_POLL_SECONDS` (60 s). Send DS-01 to Demo Malaysia with
   `python backend/tools/send_test_mail.py --to ap@my.example.com backend/fixtures/ds-01/invoices/ds-01-trade-po.pdf`
@@ -331,6 +336,7 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 | Architecture rules | `cd backend && uv run lint-imports` | Domain must not import adapters |
 | Integration | `cd backend && uv run pytest tests/integration` | Starts PostgreSQL with Testcontainers (Redis and SeaweedFS when features need them); skipped without Docker |
 | Coverage | `cd backend && uv run pytest --cov=saps --cov-report=term-missing` | Gate: ≥ 90 % on changed code |
+| Volume check | `cd backend && uv run pytest -m volume -s tests/integration/test_search_volume.py` | Not in the normal run: about 365,000 invoices of one company (one year); prints the time of the search with each filter and the plan of the default page ([SAPS-46](../03-features/SAPS-46-invoice-search.md) TS-07) |
 | Unit (frontend) | `cd frontend && npm test` | Vitest |
 | End-to-end | `docker compose up -d --build --wait && cd frontend && npx playwright test` | Demo scenarios DS-01 … DS-20; Playwright is added with the first feature UI |
 

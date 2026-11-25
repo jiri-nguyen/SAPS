@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
 last_updated: 2027-03-01
-related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, ADR-0011, ADR-0012, SAPS-44, SAPS-45, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-021, SAPS-31]
+related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, ADR-0011, ADR-0012, SAPS-44, SAPS-45, SAPS-46, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-021, SAPS-31]
 ---
 
 # Data Model
@@ -262,6 +262,11 @@ An uploaded vendor invoice and its processing state.
 
 Unique index: (`tenant_id`, `idempotency_key`). Index (not unique): (`tenant_id`, `vendor_code`, `invoice_number_normalized`) for duplicate detection. It is not a unique
 key because a duplicate is stored and raised as EX9; rejected invoices are ignored by the check ([DEC-043](../01-requirements/decision-log.md#dec-043)).
+
+Search indexes ([SAPS-46](../03-features/SAPS-46-invoice-search.md), migration 0010): (`tenant_id`, `created_at`, `id`) for
+the default order and paging, (`tenant_id`, `invoice_date`) and (`tenant_id`, `total_amount`) for the range filters. The vendor
+and invoice number filters use no index of their own: with one year of invoices of one company (about 365,000) every filter
+answers in 3 to 50 ms, so no trigram index is added (volume check TS-07 of the spec).
 
 ### InboundMail
 A mail read from a company mailbox and what became of it ([SAPS-45](../03-features/SAPS-45-mailbox-intake.md),

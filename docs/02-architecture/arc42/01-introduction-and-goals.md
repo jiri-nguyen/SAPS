@@ -31,6 +31,7 @@ Scope: see [Scope Statement](../../01-requirements/scope.md).
 | UC-06 | Review final result | Accounting Member | SCP-IN-05 | [SAPS-21](https://linear.app/jiringuyen/issue/SAPS-21) |
 | UC-07 | Change matching settings | Accounting Manager | SCP-IN-13 | [SAPS-28](https://linear.app/jiringuyen/issue/SAPS-28) |
 | UC-08 | View notifications | Accounting Member, Accounting Manager | SCP-IN-08 | [SAPS-24](https://linear.app/jiringuyen/issue/SAPS-24) |
+| UC-09 | Search invoices | Accounting Member, Accounting Manager | SCP-IN-22 | [SAPS-46](https://linear.app/jiringuyen/issue/SAPS-46) |
 
 Matching (SCP-IN-03) and duplicate detection (SCP-IN-07) run inside UC-02 and UC-03; they have no actor of their own.
 
