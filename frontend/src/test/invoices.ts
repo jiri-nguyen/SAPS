@@ -105,6 +105,9 @@ export function summary(overrides: Partial<InvoiceSummary> = {}): InvoiceSummary
     openExceptionCodes: ["EX6"],
     assignedTo: null,
     updatedAt: "2026-12-15T09:00:00Z",
+    invoiceDate: "2026-12-09",
+    channel: "UPLOAD",
+    uploadedAt: "2026-12-15T08:30:00Z",
     ...overrides,
   };
 }

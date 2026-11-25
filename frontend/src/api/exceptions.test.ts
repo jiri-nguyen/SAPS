@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "./client";
-import { createExceptionApi } from "./exceptions";
+import { createExceptionApi, parseFilters } from "./exceptions";
 
 const INVOICE = { id: "inv-1", status: "EXCEPTION" };
 
@@ -36,6 +36,38 @@ describe("exception API", () => {
     );
     await api.list({});
     expect(call(fetchImpl, 1).url).toBe("/v1/invoices?");
+  });
+
+  it("sends the search filters, leaving out empty ones (SAPS-46)", async () => {
+    const page = { items: [], nextPageToken: null };
+    const { api, fetchImpl } = setup(reply(200, page));
+    await api.list({
+      status: ["COMPLETED"],
+      vendor: " alpha ",
+      invoiceNumber: "",
+      poNumber: "0100012",
+      invoiceDateFrom: "2027-01-01",
+      invoiceDateTo: "2027-01-31",
+      uploadedFrom: "2027-03-01",
+      uploadedTo: "2027-03-02",
+      totalMin: "10",
+      totalMax: "500.50",
+      channel: "MAIL",
+      pageSize: 20,
+    });
+    expect(call(fetchImpl).url).toBe(
+      "/v1/invoices?status=COMPLETED&vendor=alpha&poNumber=0100012&invoiceDateFrom=2027-01-01" +
+        "&invoiceDateTo=2027-01-31&uploadedFrom=2027-03-01&uploadedTo=2027-03-02&totalMin=10" +
+        "&totalMax=500.50&channel=MAIL&pageSize=20",
+    );
+  });
+
+  it("reads filters from a query string and ignores unknown names", () => {
+    expect(parseFilters("status=EXCEPTION&status=COMPLETED&vendor=a+b&x=1&channel=")).toEqual({
+      status: ["EXCEPTION", "COMPLETED"],
+      vendor: "a b",
+    });
+    expect(parseFilters("")).toEqual({});
   });
 
   it("claims and releases", async () => {

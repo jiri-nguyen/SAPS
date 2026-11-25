@@ -490,3 +490,37 @@ ul.banner {
   border-color: var(--brand);
   background: var(--info-bg);
 }
+
+/* All invoices: search form (SAPS-46) */
+.search-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.search-form fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  border: 1px solid var(--border, #d0d7de);
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+}
+
+.search-form label.check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--ink);
+}
+
+.search-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.6rem 0.8rem;
+}
+
+.field-error {
+  color: var(--danger, #b42318);
+  font-size: 0.8rem;
+}

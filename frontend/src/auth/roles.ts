@@ -16,10 +16,12 @@ export const MENU_BY_ROLE: Record<Role, readonly [MenuItem, ...MenuItem[]]> = {
     { id: "upload", label: "Upload invoices" },
     { id: "exceptions", label: "Exception queue" },
     { id: "review", label: "Review queue" },
+    { id: "invoices", label: "All invoices" },
   ],
   ACCOUNTING_MANAGER: [
     { id: "approvals", label: "Approval queue" },
     { id: "exceptions", label: "Exception queue" }, // read-only; a manager may release any claim (DEC-036)
+    { id: "invoices", label: "All invoices" },
     { id: "matching-settings", label: "Matching settings" },
   ],
 };

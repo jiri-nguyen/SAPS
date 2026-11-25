@@ -10,11 +10,12 @@ import { InvoiceEditForm } from "./InvoiceEditForm";
 
 type Mode = "view" | "edit" | "reject";
 
-export type Queue = "exceptions" | "approvals" | "review";
+export type Queue = "exceptions" | "approvals" | "review" | "invoices";
 const QUEUE_LABEL: Record<Queue, string> = {
   exceptions: "Exception queue",
   approvals: "Approval queue",
   review: "Review queue",
+  invoices: "All invoices",
 };
 
 /**
@@ -26,12 +27,15 @@ export function InvoiceDetailPage({
   invoiceId,
   user,
   queue = "exceptions",
+  backQuery,
   pollMs = 2000,
 }: {
   api: ExceptionApi;
   invoiceId: string;
   user: UserAccount;
   queue?: Queue;
+  /** The filters of "All invoices" the invoice was opened from; the back link returns to the same results. */
+  backQuery?: string;
   pollMs?: number;
 }) {
   const [loaded, setLoaded] = useState<Versioned | null>(null);
@@ -164,7 +168,9 @@ export function InvoiceDetailPage({
 
   return (
     <article className="stack" aria-label="Invoice">
-      <a href={href(queue)}>← {QUEUE_LABEL[queue]}</a>
+      <a href={href(queue === "invoices" && backQuery ? `invoices?${backQuery}` : queue)}>
+        ← {QUEUE_LABEL[queue]}
+      </a>
       <header className="invoice-head">
         <h2>
           {text(invoice.invoiceNumber)} <span className="muted">{text(invoice.vendorName)}</span>

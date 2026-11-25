@@ -4,16 +4,21 @@ import { useEffect, useState } from "react";
 export interface Route {
   page: string;
   invoiceId?: string;
+  /** The query string after `?`, without it; the filters of `#/invoices?vendor=alpha` (SAPS-46). */
+  query?: string;
 }
 
-/** Queues that open an invoice: `#/{queue}/{invoiceId}` (`#/invoices/{id}` is the old link to the exception queue). */
-const DETAIL_QUEUES: ReadonlySet<string> = new Set(["exceptions", "approvals", "review"]);
+/** Screens that open an invoice: `#/{screen}/{invoiceId}`; `invoices` is the list "All invoices" (SAPS-46). */
+const DETAIL_QUEUES: ReadonlySet<string> = new Set(["exceptions", "approvals", "review", "invoices"]);
 
 export function parseHash(hash: string): Route {
-  const [first = "", second] = hash.replace(/^#\/?/, "").split("/");
-  if (second && DETAIL_QUEUES.has(first)) return { page: first, invoiceId: decodeURIComponent(second) };
-  if (second && first === "invoices") return { page: "exceptions", invoiceId: decodeURIComponent(second) };
-  return { page: first };
+  const [path = "", ...rest] = hash.replace(/^#\/?/, "").split("?");
+  const query = rest.join("?");
+  const [first = "", second] = path.split("/");
+  const route: Route = { page: first };
+  if (second && DETAIL_QUEUES.has(first)) route.invoiceId = decodeURIComponent(second);
+  if (query) route.query = query;
+  return route;
 }
 
 export function href(path: string): string {
