@@ -5,7 +5,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2027-03-01
-related: [SCP-IN-22, DEC-042, DEC-048, DEC-056, DEC-057, NFR-SCAL-001, ADR-0009, SAPS-17, SAPS-20, SAPS-41, SAPS-42, SAPS-45, SAPS-52]
+related: [MTG-20270301-7, SCP-IN-22, DEC-042, DEC-048, DEC-056, DEC-057, NFR-SCAL-001, ADR-0009, SAPS-17, SAPS-20, SAPS-41, SAPS-42, SAPS-45, SAPS-52]
 ---
 
 # SAPS-46 — Invoice list and search
@@ -32,17 +32,17 @@ the filters; row-level security keeps each company to its own invoices
 |---|---|---|
 | BR-01 | Accounting Members and Accounting Managers see all invoices of their own company, in every status, on the screen **All invoices**. Nobody sees invoices of another company. | [DEC-057](../01-requirements/decision-log.md#dec-057), [ADR-0009](../02-architecture/adr/0009-isolate-tenant-data-in-a-shared-database.md) |
 | BR-02 | Filters, all optional and combined with AND: status (one or more), vendor, invoice number, invoice date range, upload date range, total amount range, PO number, intake channel (upload or mail). | DEC-057 |
-| BR-03 | How each filter matches (Q1): **vendor** — part of the vendor name or the vendor code, case-insensitive; **invoice number** — part of the number, ignoring case, spaces, `-`, `.` and `/` (the normalization of [DEC-042](../01-requirements/decision-log.md#dec-042)); **PO number** — the exact 7-digit number on any line of the invoice; **ranges** — both ends included, either end may be left open. | DEC-057, proposal |
-| BR-04 | The upload date is the day the invoice entered the system (upload, or mail intake of [SAPS-45](SAPS-45-mailbox-intake.md)) in the company's time zone (`tenant.time_zone`, [SAPS-42](SAPS-42-companies-and-demo-data.md)) (Q2). | proposal |
+| BR-03 | How each filter matches (Q1): **vendor** — part of the vendor name or the vendor code, case-insensitive; **invoice number** — part of the number, ignoring case, spaces, `-`, `.` and `/` (the normalization of [DEC-042](../01-requirements/decision-log.md#dec-042)); **PO number** — the exact 7-digit number on any line of the invoice; **ranges** — both ends included, either end may be left open. | DEC-057, [MTG-20270301-7](../01-requirements/meetings/2027-03-01-invoice-search.md) R1 |
+| BR-04 | The upload date is the day the invoice entered the system (upload, or mail intake of [SAPS-45](SAPS-45-mailbox-intake.md)) in the company's time zone (`tenant.time_zone`, [SAPS-42](SAPS-42-companies-and-demo-data.md)). | [MTG-20270301-7](../01-requirements/meetings/2027-03-01-invoice-search.md) R2 |
 | BR-05 | Results: newest upload first, 20 per page, "Load more" for the next page. No other sort order and no export. | DEC-057 |
-| BR-06 | Each result row shows invoice number, vendor, invoice date, total amount, status, intake channel and upload date; open exception codes and the claiming member as in the queues (Q3). A row opens the invoice detail; from there "← All invoices" returns to the same filters and results. | proposal |
+| BR-06 | Each result row shows invoice number, vendor, invoice date, total amount, status, intake channel and upload date; open exception codes and the claiming member as in the queues. A row opens the invoice detail; from there "← All invoices" returns to the same filters and results. | [MTG-20270301-7](../01-requirements/meetings/2027-03-01-invoice-search.md) R3 |
 | BR-07 | Invalid filters are refused with a message, nothing is searched: a "from" after its "to", a negative amount, a PO number that is not 7 digits, an unknown status or channel. | proposal |
 | BR-08 | The work queues (exception, approval, review) are unchanged; they keep their own screens and filters. | DEC-057 |
 
 ### 2.2 Affected NFRs
 | NFR | How this feature is affected |
 |---|---|
-| [NFR-SCAL-001](../01-requirements/nfr.md#nfr-scal-001) | About 1,000 invoices per company and day: about 365,000 rows per company and year in the searched table; indexes in §3.6. No performance target exists for search (Q4). |
+| [NFR-SCAL-001](../01-requirements/nfr.md#nfr-scal-001) | About 1,000 invoices per company and day: about 365,000 rows per company and year in the searched table; indexes in §3.6. No performance target exists for search; TS-07 measures and reports (Q4). |
 
 ### 2.3 Out of Scope
 - Export (CSV, Excel) and printing (DEC-057).
@@ -162,15 +162,16 @@ None. The page size stays 20 (DEC-057; the API keeps its maximum of 100).
 |---|---|---|
 | Extend `listInvoices` instead of a new search operation | Same access rule, paging and summary as the queues; additive change | — |
 | Filters in the URL of the Web App | Reload, back and shared links keep the search | — |
+| No performance target for search in the demo (Q4) | Not needed at demo scale; TS-07 reports measured times and a target is set with the AWS move | — |
 | Upload date in the company's time zone | Users think in their local days; the time zone is already on the company (SAPS-42) | — |
 
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | How should the text filters match? Proposal: vendor — part of the name or code, case-insensitive; invoice number — part of the number ignoring case, spaces and `-` `.` `/`; PO number — exact 7 digits on any line. | Product Owner (Customer) | before implementation | open |
-| Q2 | Upload date in the company's local time (e.g. Singapore for Demo Singapore)? Proposal: yes. | Product Owner (Customer) | before implementation | open |
-| Q3 | Columns of the result list? Proposal: invoice number, vendor, invoice date, total, status, channel (upload/mail), upload date, open exceptions, claimed by. | Product Owner (Customer) | before implementation | open |
-| Q4 | A performance target for search (NFR-PERF)? Proposal: none for the demo; TS-07 measures with one year of data and reports the times; a target is set with the AWS move. | Solution Architect / Tech Lead | before implementation | open |
+| Q1 | How should the text filters match? Proposal: vendor — part of the name or code, case-insensitive; invoice number — part of the number ignoring case, spaces and `-` `.` `/`; PO number — exact 7 digits on any line. | Product Owner (Customer) | before implementation | answered: proposal accepted ([MTG-20270301-7](../01-requirements/meetings/2027-03-01-invoice-search.md)) |
+| Q2 | Upload date in the company's local time (e.g. Singapore for Demo Singapore)? Proposal: yes. | Product Owner (Customer) | before implementation | answered: proposal accepted ([MTG-20270301-7](../01-requirements/meetings/2027-03-01-invoice-search.md)) |
+| Q3 | Columns of the result list? Proposal: invoice number, vendor, invoice date, total, status, channel (upload/mail), upload date, open exceptions, claimed by. | Product Owner (Customer) | before implementation | answered: proposal accepted ([MTG-20270301-7](../01-requirements/meetings/2027-03-01-invoice-search.md)) |
+| Q4 | A performance target for search (NFR-PERF)? Proposal: none for the demo; TS-07 measures with one year of data and reports the times; a target is set with the AWS move. | Solution Architect / Tech Lead | before implementation | answered: proposal accepted (2027-03-01) |
 
 ## 8. Documentation Checklist
 - [ ] API spec 0.7.0 (`listInvoices` filters, `InvoiceSummary` fields)
