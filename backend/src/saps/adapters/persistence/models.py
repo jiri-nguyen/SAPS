@@ -150,6 +150,10 @@ class Invoice(AuditMixin, Base):
     __table_args__ = (
         UniqueConstraint("tenant_id", "idempotency_key", name="uq_invoice_tenant_id_idempotency_key"),
         Index("ix_invoice_duplicate_check", "tenant_id", "vendor_code", "invoice_number_normalized"),
+        # The invoice list and search of SAPS-46 (migration 0010).
+        Index("ix_invoice_tenant_created", "tenant_id", "created_at", "id"),
+        Index("ix_invoice_tenant_invoice_date", "tenant_id", "invoice_date"),
+        Index("ix_invoice_tenant_total_amount", "tenant_id", "total_amount"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
