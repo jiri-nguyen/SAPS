@@ -132,6 +132,9 @@ class InvoiceSummaryView:
     open_exception_codes: Sequence[ExceptionCode]
     assigned_to: UserRef | None
     updated_at: datetime
+    invoice_date: date | None
+    channel: IntakeChannel
+    uploaded_at: datetime  # when the invoice entered the system (SAPS-46)
 
 
 @dataclass(frozen=True)
@@ -164,6 +167,17 @@ class InvoiceFilter:
     invoice_type: InvoiceType | None = None
     assignee: str | None = None  # "me" or "unassigned"
     user_id: UUID | None = None  # the caller, for assignee "me"
+    # The search of SAPS-46: every field optional, combined with AND.
+    vendor: str | None = None  # part of the vendor name or code, ignoring case
+    invoice_number: str | None = None  # already normalized (DEC-042); part of `invoice_number_normalized`
+    po_number: str | None = None  # exact, on any line
+    invoice_date_from: date | None = None
+    invoice_date_to: date | None = None
+    uploaded_from: datetime | None = None  # UTC instant, included
+    uploaded_to: datetime | None = None  # UTC instant, excluded
+    total_min: Decimal | None = None
+    total_max: Decimal | None = None
+    channel: IntakeChannel | None = None
 
 
 class InvalidPageTokenError(ValueError):
@@ -203,3 +217,7 @@ class InvoiceReader(Protocol):
         ...
 
     async def file_of(self, tenant_id: UUID, invoice_id: UUID) -> StoredInvoiceFile | None: ...
+
+    async def company_time_zone(self, tenant_id: UUID) -> str:
+        """IANA time zone of the company; the upload date filter counts local days (SAPS-46 BR-04)."""
+        ...

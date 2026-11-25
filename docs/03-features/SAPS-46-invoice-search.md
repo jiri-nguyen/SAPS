@@ -124,7 +124,7 @@ None.
 ### 3.6 Data Model Changes
 | Entity | Change | Migration | Backward compatible |
 |---|---|---|---|
-| [Invoice](../02-architecture/data-model.md#invoice) | Indexes: (`tenant_id`, `created_at` desc, `id` desc) for the default order; (`tenant_id`, `invoice_date`); (`tenant_id`, `total_amount`). Text filters (vendor, invoice number) use a trigram index (`pg_trgm`) if the volume check of §5 TS-07 needs it (decided in the plan). | `0010_invoice_search_indexes` | Yes |
+| [Invoice](../02-architecture/data-model.md#invoice) | Indexes: (`tenant_id`, `created_at` desc, `id` desc) for the default order; (`tenant_id`, `invoice_date`); (`tenant_id`, `total_amount`). The text filters (vendor, invoice number) need no index of their own: the volume check (TS-07, about 365,000 invoices of one company) answers every filter in 3 to 50 ms. | `0010_invoice_search_indexes` | Yes |
 
 ### 3.7 Security & Permissions
 - `x-roles: [ACCOUNTING_MEMBER, ACCOUNTING_MANAGER]` as today; row-level security limits every query to the caller's
@@ -174,9 +174,9 @@ None. The page size stays 20 (DEC-057; the API keeps its maximum of 100).
 | Q4 | A performance target for search (NFR-PERF)? Proposal: none for the demo; TS-07 measures with one year of data and reports the times; a target is set with the AWS move. | Solution Architect / Tech Lead | before implementation | answered: proposal accepted (2027-03-01) |
 
 ## 8. Documentation Checklist
-- [ ] API spec 0.7.0 (`listInvoices` filters, `InvoiceSummary` fields)
-- [ ] Data model: indexes of `invoice`
-- [ ] arc42 §1: UC-09 Search invoices
-- [ ] Glossary: "All invoices" screen if needed
-- [ ] Developer Guide: how to search in the demo
+- [x] API spec 0.7.0 (`listInvoices` filters, `InvoiceSummary` fields)
+- [x] Data model: indexes of `invoice`
+- [x] arc42 §1: UC-09 Search invoices
+- [x] Glossary: "All invoices" is a screen label, no new term
+- [x] Developer Guide: how to search in the demo and how to run the volume check
 - [ ] Release notes entry prepared

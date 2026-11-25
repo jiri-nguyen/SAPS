@@ -69,6 +69,7 @@ describe("App", () => {
     const menu = screen.getByRole("navigation", { name: "Main menu" });
     expect(menu).toHaveTextContent("Upload invoices");
     expect(menu).toHaveTextContent("Review queue");
+    expect(menu).toHaveTextContent("All invoices");
     expect(menu).not.toHaveTextContent("Approval queue");
     expect(menu).not.toHaveTextContent("Matching settings");
   });
@@ -99,7 +100,7 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Exception queue" })).toBeInTheDocument();
     expect(await screen.findByText("No invoices in this queue.")).toBeInTheDocument();
     unmount();
-    window.location.hash = "#/invoices/inv-12";
+    window.location.hash = "#/exceptions/inv-12";
     render(
       <App
         sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MEMBER) })}
@@ -113,6 +114,43 @@ describe("App", () => {
       "#/exceptions",
     );
     expect(screen.getByRole("link", { name: "Exception queue" })).toHaveAttribute("aria-current", "page");
+    expect(exceptionApi.getVersioned).toHaveBeenCalledWith("inv-12");
+  });
+
+  it("shows All invoices to both roles and opens an invoice from it with a way back (SAPS-46)", async () => {
+    const exceptionApi = fakeExceptionApi({
+      list: vi.fn().mockResolvedValue({ items: [summary({ status: "COMPLETED" })], nextPageToken: null }),
+    });
+    window.location.hash = "#/invoices?vendor=alpha";
+    const { unmount } = render(
+      <App
+        sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MANAGER) })}
+        checkHealth={pending}
+        exceptionApi={exceptionApi}
+      />,
+    );
+    expect(await screen.findByRole("heading", { name: "All invoices" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "All invoices" })).toHaveAttribute("aria-current", "page");
+    expect(exceptionApi.list).toHaveBeenCalledWith({ vendor: "alpha" });
+    expect(await screen.findByRole("link", { name: "AOS-2026-1013" })).toHaveAttribute(
+      "href",
+      "#/invoices/inv-12?vendor=alpha",
+    );
+    unmount();
+
+    window.location.hash = "#/invoices/inv-12?vendor=alpha";
+    render(
+      <App
+        sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MEMBER) })}
+        checkHealth={pending}
+        exceptionApi={exceptionApi}
+      />,
+    );
+    expect(await screen.findByRole("heading", { name: "Invoice" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "← All invoices" })).toHaveAttribute(
+      "href",
+      "#/invoices?vendor=alpha",
+    );
     expect(exceptionApi.getVersioned).toHaveBeenCalledWith("inv-12");
   });
 

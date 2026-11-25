@@ -159,6 +159,9 @@ class InvoiceSummary(_ReadModel):
     open_exception_codes: list[ExceptionCode]
     assigned_to: UserAccountRef | None
     updated_at: datetime
+    invoice_date: date | None
+    channel: IntakeChannel
+    uploaded_at: datetime
 
     @classmethod
     def from_view(cls, view: InvoiceSummaryView) -> InvoiceSummary:

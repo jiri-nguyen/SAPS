@@ -121,8 +121,12 @@ export interface paths {
         };
         /**
          * List invoices
-         * @description Newest first. The exception queue (DEC-016) is `status=EXCEPTION`; approvals waiting for the
-         *     Accounting Manager are `status=PENDING_APPROVAL`.
+         * @description Newest upload first. The exception queue (DEC-016) is `status=EXCEPTION`; approvals waiting for the
+         *     Accounting Manager are `status=PENDING_APPROVAL`. The screen "All invoices" (SAPS-46, DEC-057) uses the
+         *     other filters; all filters are combined with AND. Text filters match part of the value: `vendor` the vendor
+         *     name or code ignoring case; `invoiceNumber` the number ignoring case, spaces and `-` `.` `/` (DEC-042).
+         *     `poNumber` matches any line exactly. Ranges include both ends. `uploadedFrom` / `uploadedTo` are days in the
+         *     time zone of the caller's company. A data filter never matches an invoice without that data yet.
          */
         get: operations["listInvoices"];
         put?: never;
@@ -508,6 +512,15 @@ export interface components {
             assignedTo?: components["schemas"]["UserAccountRef"] | null;
             /** Format: date-time */
             updatedAt: string;
+            /** Format: date */
+            invoiceDate?: string | null;
+            /** @enum {string} */
+            channel: "UPLOAD" | "MAIL";
+            /**
+             * Format: date-time
+             * @description When the invoice entered the system (upload or mail intake)
+             */
+            uploadedAt: string;
         };
         /** @description Invoice with lines, exceptions and approval (data model Invoice) */
         Invoice: {
@@ -996,6 +1009,16 @@ export interface operations {
                 invoiceType?: components["schemas"]["InvoiceType"];
                 /** @description `me` = claimed by the caller; `unassigned` = not claimed by anyone */
                 assignee?: "me" | "unassigned";
+                vendor?: string;
+                invoiceNumber?: string;
+                poNumber?: components["schemas"]["PoNumber"];
+                invoiceDateFrom?: string;
+                invoiceDateTo?: string;
+                uploadedFrom?: string;
+                uploadedTo?: string;
+                totalMin?: components["schemas"]["Amount"];
+                totalMax?: components["schemas"]["Amount"];
+                channel?: "UPLOAD" | "MAIL";
                 pageSize?: components["parameters"]["PageSize"];
                 /** @description Opaque cursor from the previous page's nextPageToken */
                 pageToken?: components["parameters"]["PageToken"];

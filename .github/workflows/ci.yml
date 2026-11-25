@@ -317,6 +317,39 @@ jobs:
           PY
           docker compose logs worker | grep -q '"message": "mail_skipped"'
           docker compose logs worker | grep -q '"message": "mail_imported"'
+      - name: Search all invoices (SAPS-46)
+        run: |
+          web=http://localhost:5173
+          base=$web/v1
+          password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
+          field() { python3 -c 'import json, sys; d = json.load(sys.stdin); print(eval(sys.argv[1]))' "$1"; }
+          sign_in() { .github/scripts/sign-in.sh $web "$1" "$password" "$2" > /dev/null; }
+          search() { curl -fsS -b "$1" -G "$base/invoices" "${@:2}"; }
+          code() { curl -s -o /dev/null -w '%{http_code}' -b "$1" -G "$base/invoices" "${@:2}"; }
+          sign_in member1@vn.example.com search-vn-jar
+          sign_in member1@my.example.com search-my-jar
+          sign_in member1@sg.example.com search-sg-jar
+          # DS-01 is Completed in Demo Vietnam; the number typed with spaces matches (DEC-042), a Completed invoice is listed
+          vn="$(search search-vn-jar --data-urlencode 'invoiceNumber=aos 2026 1001' --data-urlencode status=COMPLETED | field '[i["id"] for i in d["items"]]')"
+          test "$(echo "$vn" | python3 -c 'import ast, sys; print(len(ast.literal_eval(sys.stdin.read())))')" = 1
+          test "$(search search-vn-jar --data-urlencode 'vendor=ALPHA office' --data-urlencode poNumber=0100001 | field 'len(d["items"])')" -ge 1
+          test "$(search search-vn-jar --data-urlencode channel=MAIL | field 'len(d["items"])')" = 0   # Demo Vietnam got no mail invoice
+          # the invoice that came by mail is in Demo Malaysia only
+          test "$(search search-my-jar --data-urlencode channel=MAIL | field '[(i["channel"], i["status"]) for i in d["items"]]')" = "[('MAIL', 'PENDING_REVIEW')]"
+          # Demo Singapore has its own DS-01: same number, another invoice
+          sg="$(search search-sg-jar --data-urlencode 'invoiceNumber=aos 2026 1001' --data-urlencode status=COMPLETED | field '[i["id"] for i in d["items"]]')"
+          test "$(echo "$sg" | python3 -c 'import ast, sys; print(len(ast.literal_eval(sys.stdin.read())))')" = 1
+          test "$sg" != "$vn"
+          # upload days in the company time zone, and the refused filters
+          yesterday="$(python3 -c 'import datetime; print(datetime.date.today() - datetime.timedelta(days=1))')"
+          tomorrow="$(python3 -c 'import datetime; print(datetime.date.today() + datetime.timedelta(days=1))')"
+          all="$(search search-vn-jar --data-urlencode pageSize=100 | field 'len(d["items"])')"
+          test "$(search search-vn-jar --data-urlencode uploadedFrom=$yesterday --data-urlencode uploadedTo=$tomorrow --data-urlencode pageSize=100 | field 'len(d["items"])')" = "$all"
+          test "$(search search-vn-jar --data-urlencode uploadedTo=2020-01-01 | field 'len(d["items"])')" = 0
+          test "$(code search-vn-jar --data-urlencode poNumber=12)" = 400
+          test "$(code search-vn-jar --data-urlencode totalMin=10 --data-urlencode totalMax=5)" = 400
+          test "$(code search-vn-jar --data-urlencode channel=FAX)" = 400
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$base/invoices")" = 401
       - name: Keycloak realm with the demo companies (SAPS-43)
         run: |
           kc=http://localhost:8080

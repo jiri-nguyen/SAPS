@@ -2,14 +2,23 @@
 
 import base64
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, tuple_
+from sqlalchemy import Select, or_, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
-from saps.adapters.persistence.models import Approval, InboundMail, Invoice, InvoiceEvent, UserAccount
+from saps.adapters.persistence.models import (
+    Approval,
+    InboundMail,
+    Invoice,
+    InvoiceEvent,
+    InvoiceLine,
+    Tenant,
+    UserAccount,
+)
 from saps.domain.invoices import ExceptionStatus, InvoiceStatus
 from saps.domain.mail_intake import IntakeChannel
 from saps.ports.invoices import (
@@ -55,6 +64,49 @@ def _upload_details(upload: NewUpload) -> dict[str, object]:
     if upload.channel is IntakeChannel.MAIL:  # SAPS-45 §3.5; the event of an upload is unchanged
         details |= {"channel": upload.channel.value, "inboundMailId": str(upload.inbound_mail_id)}
     return details
+
+
+def _search_filters(query: Select[Any], flt: InvoiceFilter) -> Select[Any]:
+    """The filters of SAPS-46, combined with AND.
+
+    A data filter never matches a NULL (EC-05); `autoescape` makes `%` and `_` plain text (EC-10).
+    """
+    if flt.vendor:
+        query = query.where(
+            or_(
+                Invoice.vendor_name.icontains(flt.vendor, autoescape=True),
+                Invoice.vendor_code.icontains(flt.vendor, autoescape=True),
+            )
+        )
+    if flt.invoice_number:
+        query = query.where(Invoice.invoice_number_normalized.contains(flt.invoice_number, autoescape=True))
+    if flt.po_number:
+        has_line = (
+            select(InvoiceLine.id)
+            .where(
+                InvoiceLine.tenant_id == Invoice.tenant_id,  # lets the PO index narrow the lines
+                InvoiceLine.invoice_id == Invoice.id,
+                InvoiceLine.po_number == flt.po_number,
+            )
+            .correlate(Invoice)
+            .exists()
+        )
+        query = query.where(has_line)
+    if flt.invoice_date_from is not None:
+        query = query.where(Invoice.invoice_date >= flt.invoice_date_from)
+    if flt.invoice_date_to is not None:
+        query = query.where(Invoice.invoice_date <= flt.invoice_date_to)
+    if flt.uploaded_from is not None:
+        query = query.where(Invoice.created_at >= flt.uploaded_from)
+    if flt.uploaded_to is not None:
+        query = query.where(Invoice.created_at < flt.uploaded_to)
+    if flt.total_min is not None:
+        query = query.where(Invoice.total_amount >= flt.total_min)
+    if flt.total_max is not None:
+        query = query.where(Invoice.total_amount <= flt.total_max)
+    if flt.channel is not None:
+        query = query.where(Invoice.channel == flt.channel)
+    return query
 
 
 _IDEMPOTENCY_CONSTRAINT = "uq_invoice_tenant_id_idempotency_key"
@@ -110,6 +162,11 @@ class SqlInvoiceRepository:
             if _IDEMPOTENCY_CONSTRAINT in str(exc.orig):
                 raise DuplicateIdempotencyKeyError(upload.idempotency_key) from exc
             raise
+
+    async def company_time_zone(self, tenant_id: UUID) -> str:
+        async with self._sessions() as session:  # the tenant table has no row-level security
+            zone = await session.scalar(select(Tenant.time_zone).where(Tenant.id == tenant_id))
+        return zone or "UTC"
 
     async def get(self, tenant_id: UUID, invoice_id: UUID) -> InvoiceView | None:
         async with self._sessions() as session:
@@ -227,6 +284,7 @@ class SqlInvoiceRepository:
             query = query.where(Invoice.assigned_to.is_(None))
         elif flt.assignee == "me":
             query = query.where(Invoice.assigned_to == flt.user_id)
+        query = _search_filters(query, flt)
         if page_token is not None:
             after = decode_token(page_token)
             query = query.where(tuple_(Invoice.created_at, Invoice.id) < tuple_(*after))
@@ -256,6 +314,9 @@ class SqlInvoiceRepository:
                 ),
                 assigned_to=UserRef(r.assigned_to, names.get(r.assigned_to, "")) if r.assigned_to else None,
                 updated_at=r.updated_at,
+                invoice_date=r.invoice_date,
+                channel=r.channel,
+                uploaded_at=r.created_at,
             )
             for r in rows
         ]

@@ -11,8 +11,15 @@ describe("routing", () => {
     ["#exceptions", { page: "exceptions" }],
     ["#/exceptions/inv-1", { page: "exceptions", invoiceId: "inv-1" }],
     ["#/approvals/inv%201", { page: "approvals", invoiceId: "inv 1" }],
-    ["#/invoices/inv-1", { page: "exceptions", invoiceId: "inv-1" }], // the old link to the exception queue
+    ["#/invoices/inv-1", { page: "invoices", invoiceId: "inv-1" }], // an invoice opened from All invoices
     ["#/invoices/", { page: "invoices" }],
+    [
+      "#/invoices?vendor=alpha&status=COMPLETED",
+      { page: "invoices", query: "vendor=alpha&status=COMPLETED" },
+    ],
+    ["#/invoices/inv-1?x=1", { page: "invoices", invoiceId: "inv-1", query: "x=1" }],
+    ["#/exceptions?", { page: "exceptions" }],
+    ["#/invoices?a=b?c", { page: "invoices", query: "a=b?c" }],
     ["#/upload/inv-1", { page: "upload" }],
   ])("parses %s", (hash, route) => {
     expect(parseHash(hash)).toEqual(route);

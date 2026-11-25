@@ -3,10 +3,14 @@
 The tenant comes from the signed-in user (ADR-0007, SAPS-27 BR-08).
 """
 
+import logging
+import time
 from collections.abc import AsyncIterator
+from dataclasses import replace
 from datetime import datetime
 from uuid import UUID
 
+from saps.domain.invoice_search import SearchCriteria, invoice_number_needle, local_day_bounds, validate
 from saps.domain.users import CurrentUser
 from saps.ports.file_storage import FileStoragePort
 from saps.ports.invoices import (
@@ -18,6 +22,8 @@ from saps.ports.invoices import (
     Page,
     StoredInvoiceFile,
 )
+
+log = logging.getLogger("saps.invoices")
 
 
 class InvoiceNotFoundError(Exception):
@@ -49,6 +55,51 @@ async def list_invoices(
     reader: InvoiceReader, user: CurrentUser, flt: InvoiceFilter, page_size: int, page_token: str | None
 ) -> Page[InvoiceSummaryView]:
     return await reader.list_invoices(user.tenant_id, flt, page_size, page_token)
+
+
+async def search_invoices(
+    reader: InvoiceReader,
+    user: CurrentUser,
+    criteria: SearchCriteria,
+    base: InvoiceFilter,
+    page_size: int,
+    page_token: str | None,
+) -> Page[InvoiceSummaryView]:
+    """The invoices of the user's company that match every filter (SAPS-46 BR-01, BR-02).
+
+    `base` carries the queue filters (status, type, assignee); `criteria` the filters of the search screen.
+    Raises `InvalidSearchError` (BR-07).
+    """
+    started = time.perf_counter()
+    validate(criteria)
+    uploaded_from = uploaded_to = None
+    if criteria.uploaded_from is not None or criteria.uploaded_to is not None:  # BR-04
+        zone = await reader.company_time_zone(user.tenant_id)
+        uploaded_from, uploaded_to = local_day_bounds(criteria.uploaded_from, criteria.uploaded_to, zone)
+    flt = replace(
+        base,
+        vendor=(criteria.vendor or "").strip() or None,
+        invoice_number=invoice_number_needle(criteria.invoice_number),
+        po_number=criteria.po_number,
+        invoice_date_from=criteria.invoice_date_from,
+        invoice_date_to=criteria.invoice_date_to,
+        uploaded_from=uploaded_from,
+        uploaded_to=uploaded_to,
+        total_min=criteria.total_min,
+        total_max=criteria.total_max,
+        channel=criteria.channel,
+    )
+    page = await reader.list_invoices(user.tenant_id, flt, page_size, page_token)
+    log.info(
+        "invoices_searched",
+        extra={
+            "tenant_id": str(user.tenant_id),
+            "filters": criteria.used(),
+            "items": len(page.items),
+            "duration_ms": round((time.perf_counter() - started) * 1000),
+        },
+    )
+    return page
 
 
 async def list_invoice_events(

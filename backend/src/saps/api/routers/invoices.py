@@ -3,6 +3,8 @@
 import hashlib
 import logging
 import time
+from datetime import date
+from decimal import Decimal
 from typing import Annotated, Literal
 from urllib.parse import quote
 from uuid import UUID
@@ -20,6 +22,7 @@ from saps.api.deps import (
     review_service,
     upload_service,
 )
+from saps.api.problems import FieldProblem
 from saps.api.schemas import (
     ApprovalCreate,
     Invoice,
@@ -44,8 +47,8 @@ from saps.application.invoices import (
     etag_of,
     get_invoice,
     list_invoice_events,
-    list_invoices,
     open_invoice_file,
+    search_invoices,
 )
 from saps.application.review import ReviewService
 from saps.application.upload import IncomingFile, UploadInvoiceService, UploadSource
@@ -57,7 +60,9 @@ from saps.domain.invoice_files import (
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
+from saps.domain.invoice_search import InvalidSearchError, SearchCriteria
 from saps.domain.invoices import ApprovalDecision, InvoiceStatus, InvoiceType
+from saps.domain.mail_intake import IntakeChannel
 from saps.domain.users import CurrentUser, Role
 from saps.ports.file_storage import FileStoragePort
 from saps.ports.invoices import InvalidPageTokenError, InvoiceFilter, InvoiceReader, InvoiceView
@@ -184,12 +189,38 @@ async def list_invoices_operation(
     statuses: Annotated[list[InvoiceStatus] | None, Query(alias="status")] = None,
     invoice_type: Annotated[InvoiceType | None, Query(alias="invoiceType")] = None,
     assignee: Literal["me", "unassigned"] | None = None,
+    vendor: Annotated[str | None, Query(min_length=1, max_length=200)] = None,
+    invoice_number: Annotated[str | None, Query(alias="invoiceNumber", min_length=1, max_length=50)] = None,
+    po_number: Annotated[str | None, Query(alias="poNumber", pattern=r"^[0-9]{7}$")] = None,
+    invoice_date_from: Annotated[date | None, Query(alias="invoiceDateFrom")] = None,
+    invoice_date_to: Annotated[date | None, Query(alias="invoiceDateTo")] = None,
+    uploaded_from: Annotated[date | None, Query(alias="uploadedFrom")] = None,
+    uploaded_to: Annotated[date | None, Query(alias="uploadedTo")] = None,
+    total_min: Annotated[Decimal | None, Query(alias="totalMin", max_digits=18, decimal_places=2)] = None,
+    total_max: Annotated[Decimal | None, Query(alias="totalMax", max_digits=18, decimal_places=2)] = None,
+    channel: IntakeChannel | None = None,
     page_size: Annotated[int, Query(alias="pageSize", ge=1, le=100)] = 20,
     page_token: Annotated[str | None, Query(alias="pageToken")] = None,
 ) -> InvoiceSummaryPage:
-    flt = InvoiceFilter(tuple(statuses or ()), invoice_type, assignee, user.user_id)
+    base = InvoiceFilter(tuple(statuses or ()), invoice_type, assignee, user.user_id)
+    criteria = SearchCriteria(
+        vendor=vendor,
+        invoice_number=invoice_number,
+        po_number=po_number,
+        invoice_date_from=invoice_date_from,
+        invoice_date_to=invoice_date_to,
+        uploaded_from=uploaded_from,
+        uploaded_to=uploaded_to,
+        total_min=total_min,
+        total_max=total_max,
+        channel=channel,
+    )
     try:
-        page = await list_invoices(reader, user, flt, page_size, page_token)
+        page = await search_invoices(reader, user, criteria, base, page_size, page_token)
+    except InvalidSearchError as exc:
+        raise FieldProblem(
+            status.HTTP_400_BAD_REQUEST, exc.message, [{"field": exc.field, "message": exc.message}]
+        ) from exc
     except InvalidPageTokenError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "The page token is not valid.") from exc
     return InvoiceSummaryPage(

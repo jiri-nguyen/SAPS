@@ -9,6 +9,7 @@ import { MENU_BY_ROLE, ROLE_LABEL } from "../auth/roles";
 import { useSession } from "../auth/session-context";
 import { ExceptionQueuePage } from "../invoices/ExceptionQueuePage";
 import { InvoiceDetailPage, type Queue } from "../invoices/InvoiceDetailPage";
+import { InvoiceSearchPage } from "../invoices/InvoiceSearchPage";
 import { StatusQueuePage } from "../invoices/StatusQueuePage";
 import { UploadPage } from "../invoices/UploadPage";
 import { NotificationBell } from "../notifications/NotificationBell";
@@ -40,17 +41,31 @@ export function AppShell({
   // A route the role may not open (or none) shows the role's first screen (SAPS-27 BR-10).
   const current = menu.find((item) => item.id === route.page) ?? menu[0];
   const queue: Queue | null =
-    current.id === "exceptions" || current.id === "approvals" || current.id === "review" ? current.id : null;
+    current.id === "exceptions" ||
+    current.id === "approvals" ||
+    current.id === "review" ||
+    current.id === "invoices"
+      ? current.id
+      : null;
   const invoiceId = route.page === current.id ? route.invoiceId : undefined;
   const detail = queue !== null && invoiceId !== undefined;
 
   let page: ReactNode;
   if (detail) {
     page = (
-      <InvoiceDetailPage key={invoiceId} api={exceptions} invoiceId={invoiceId} user={user} queue={queue} />
+      <InvoiceDetailPage
+        key={invoiceId}
+        api={exceptions}
+        invoiceId={invoiceId}
+        user={user}
+        queue={queue}
+        backQuery={route.query}
+      />
     );
   } else if (current.id === "upload") {
     page = <UploadPage api={invoices} />;
+  } else if (current.id === "invoices") {
+    page = <InvoiceSearchPage key={route.query ?? ""} api={exceptions} query={route.query ?? ""} />;
   } else if (current.id === "exceptions") {
     page = <ExceptionQueuePage api={exceptions} role={user.role} />;
   } else if (current.id === "approvals") {

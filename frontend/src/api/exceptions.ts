@@ -19,11 +19,62 @@ export interface UpdateResult extends Versioned {
   rematch: boolean;
 }
 
-export interface ListQuery {
+/** The filters of the screen "All invoices" (SAPS-46); every one is optional and the names are the API's. */
+export interface SearchFilters {
   status?: InvoiceStatus[];
+  vendor?: string;
+  invoiceNumber?: string;
+  poNumber?: string;
+  invoiceDateFrom?: string;
+  invoiceDateTo?: string;
+  uploadedFrom?: string;
+  uploadedTo?: string;
+  totalMin?: string;
+  totalMax?: string;
+  channel?: "UPLOAD" | "MAIL";
+}
+
+export interface ListQuery extends SearchFilters {
   assignee?: "me" | "unassigned";
   pageToken?: string;
   pageSize?: number;
+}
+
+const TEXT_FILTERS = [
+  "vendor",
+  "invoiceNumber",
+  "poNumber",
+  "invoiceDateFrom",
+  "invoiceDateTo",
+  "uploadedFrom",
+  "uploadedTo",
+  "totalMin",
+  "totalMax",
+  "channel",
+] as const;
+
+/** The filters as query parameters, in the order of the screen; empty values are left out. */
+export function filterParams(filters: SearchFilters): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const status of filters.status ?? []) params.append("status", status);
+  for (const name of TEXT_FILTERS) {
+    const value = filters[name]?.trim();
+    if (value) params.set(name, value);
+  }
+  return params;
+}
+
+/** The filters in a query string (`vendor=alpha&status=COMPLETED`); unknown names are ignored. */
+export function parseFilters(query: string): SearchFilters {
+  const params = new URLSearchParams(query);
+  const filters: SearchFilters = {};
+  const status = params.getAll("status") as InvoiceStatus[];
+  if (status.length > 0) filters.status = status;
+  for (const name of TEXT_FILTERS) {
+    const value = params.get(name);
+    if (value) (filters as Record<string, string>)[name] = value;
+  }
+  return filters;
 }
 
 /** Exception handling operations of the SAPS API (SAPS-20). */
@@ -58,8 +109,7 @@ export function createExceptionApi(fetchImpl: typeof fetch = fetch): ExceptionAp
       return versioned(await call(path(invoiceId)));
     },
     async list(query) {
-      const params = new URLSearchParams();
-      for (const status of query.status ?? []) params.append("status", status);
+      const params = filterParams(query);
       if (query.assignee) params.set("assignee", query.assignee);
       if (query.pageToken) params.set("pageToken", query.pageToken);
       if (query.pageSize) params.set("pageSize", String(query.pageSize));
