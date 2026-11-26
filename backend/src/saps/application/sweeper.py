@@ -15,6 +15,7 @@ RESEND_ACTION = "RESEND"
 BATCH_LIMIT = 100  # BR-06
 MAX_RESENDS = 3  # SAPS-38 BR-05; the worker passes SWEEPER_MAX_RESENDS
 PROCESS_MESSAGE = "process_invoice"
+POST_MESSAGE = "post_invoice"
 REMATCH_MESSAGE = "rematch_invoice"
 
 
@@ -60,15 +61,19 @@ class SweeperService:
             if not await repo.try_lock():
                 return None
             for invoice in await repo.lock_stuck(self._stuck_after, self._limit):
-                if invoice.status is InvoiceStatus.UPLOADED:  # BR-02
+                if invoice.status in (InvoiceStatus.UPLOADED, InvoiceStatus.POSTING):  # BR-02, SAPS-49 BR-12
                     if (
                         invoice.resends >= self._max_resends
-                    ):  # SAPS-38 BR-05: no EX1, the invoice stays Uploaded
+                    ):  # SAPS-38 BR-05: no EX1, the invoice stays as it is
                         await repo.mark_gave_up(invoice)
                         result.gave_up.append(GaveUp(invoice.id, invoice.tenant_id, invoice.resends))
                         continue
-                    await self._queue.send_process_invoice(invoice.id, invoice.tenant_id)
-                    message = PROCESS_MESSAGE
+                    if invoice.status is InvoiceStatus.POSTING:
+                        await self._queue.send_post_invoice(invoice.id, invoice.tenant_id)
+                        message = POST_MESSAGE
+                    else:
+                        await self._queue.send_process_invoice(invoice.id, invoice.tenant_id)
+                        message = PROCESS_MESSAGE
                 else:
                     await self._queue.send_rematch_invoice(invoice.id, invoice.tenant_id)
                     message = REMATCH_MESSAGE

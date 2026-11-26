@@ -51,3 +51,8 @@ class HeldInvoiceRepository(Protocol):
     async def release_oldest(self, tenant_id: UUID, limit: int, *, now: datetime) -> list[UUID]:
         """Up to `limit` invoices On hold, oldest first, back to Uploaded (`RELEASE_HOLD`); committed."""
         ...
+
+    async def release_postings(self, tenant_id: UUID, limit: int, *, now: datetime) -> list[UUID]:
+        """Up to `limit` invoices in Posting held on a closed day (DEC-070), oldest first: the hold is cleared
+        (`RELEASE_HOLD`, step posting); committed."""
+        ...

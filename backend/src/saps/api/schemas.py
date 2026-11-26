@@ -141,6 +141,8 @@ class Invoice(_ReadModel):
     source: InvoiceSource
     file: InvoiceFile
     rejected_reason: str | None
+    erp_document_number: str | None
+    posted_at: datetime | None
     lines: list[InvoiceLine]
     exceptions: list[InvoiceException]
     approval: Approval | None

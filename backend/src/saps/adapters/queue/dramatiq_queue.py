@@ -22,6 +22,9 @@ class DramatiqJobQueue:
     async def send_rematch_invoice(self, invoice_id: UUID, tenant_id: UUID) -> None:
         await self._send("rematch_invoice", invoice_id, tenant_id)
 
+    async def send_post_invoice(self, invoice_id: UUID, tenant_id: UUID) -> None:
+        await self._send("post_invoice", invoice_id, tenant_id)
+
     async def _send(self, actor_name: str, invoice_id: UUID, tenant_id: UUID) -> None:
         message: dramatiq.Message[None] = dramatiq.Message(
             queue_name=QUEUE,

@@ -20,6 +20,7 @@ from saps.adapters.persistence.models import (
     MatchingSettings,
 )
 from saps.adapters.persistence.notification_repository import SqlNotifications
+from saps.domain.acceptance import FingerprintLine, fingerprint
 from saps.domain.duplicates import normalize_invoice_number
 from saps.domain.exception_handling import InvoiceChange, InvoiceData, LineData, change_details
 from saps.domain.invoices import ApprovalDecision, ExceptionStatus, InvoiceStatus, MatchStatus
@@ -32,7 +33,6 @@ UPDATE_ACTION = "UPDATE_FIELDS"
 RESOLVE_ACTION = "RESOLVE"
 REJECT_ACTION = "REJECT"
 APPROVE_ACTION = "APPROVE"
-CONFIRM_ACTION = "CONFIRM"
 
 
 class SqlExceptionRepository(SqlNotifications):
@@ -118,33 +118,43 @@ class SqlExceptionRepository(SqlNotifications):
         self._add_event(invoice, status, UPDATE_ACTION, actor, now, change_details(change))
         await self._session.flush()
 
-    async def resolve(
-        self,
-        invoice: InvoiceForHandling,
-        *,
-        status: InvoiceStatus,
-        requires_approval: bool,
-        threshold: Decimal,
-        user_id: UUID,
-        actor: str,
-        now: datetime,
-    ) -> None:
-        await self._session.execute(
-            update(InvoiceException)
-            .where(InvoiceException.invoice_id == invoice.id, InvoiceException.status == ExceptionStatus.OPEN)
-            .values(status=ExceptionStatus.RESOLVED, resolved_by=user_id, resolved_at=now, updated_by=actor)
-        )
-        await self._update_invoice(
-            invoice.id,
-            actor,
-            status=status,
-            requires_approval=requires_approval,
-            approval_threshold_applied=threshold,
-            assigned_to=None,
-        )
-        details = {"codes": sorted({c.value for c in invoice.open_codes}), "threshold": str(threshold)}
-        self._add_event(invoice, status, RESOLVE_ACTION, actor, now, details)
-        await self._session.flush()
+    async def resolve(self, invoice: InvoiceForHandling, *, user_id: UUID, actor: str, now: datetime) -> None:
+        """Accept the open exceptions as is (SAPS-49 BR-04, BR-05): each keeps the fingerprint of the values
+        it was accepted on; the invoice goes to Matching and keeps its claim until the run decides."""
+        session = self._session
+        row = (await session.execute(select(Invoice).where(Invoice.id == invoice.id))).scalar_one()
+        lines = [
+            FingerprintLine(
+                ln.id,
+                ln.line_number,
+                ln.po_number,
+                ln.po_line_number,
+                ln.do_number,
+                ln.quantity,
+                ln.unit_price,
+            )
+            for ln in (
+                await session.execute(select(InvoiceLine).where(InvoiceLine.invoice_id == invoice.id))
+            ).scalars()
+        ]
+        for exception in (
+            await session.execute(
+                select(InvoiceException).where(
+                    InvoiceException.invoice_id == invoice.id, InvoiceException.status == ExceptionStatus.OPEN
+                )
+            )
+        ).scalars():
+            exception.status = ExceptionStatus.RESOLVED
+            exception.resolved_by = user_id
+            exception.resolved_at = now
+            exception.updated_by = actor
+            exception.accepted_fingerprint = fingerprint(
+                exception.invoice_line_id, row.vendor_code, row.invoice_number, lines
+            )
+        await self._update_invoice(invoice.id, actor, status=InvoiceStatus.MATCHING)
+        details = {"codes": sorted({c.value for c in invoice.open_codes})}
+        self._add_event(invoice, InvoiceStatus.MATCHING, RESOLVE_ACTION, actor, now, details)
+        await session.flush()
 
     async def reject(self, invoice: InvoiceForHandling, reason: str, *, actor: str, now: datetime) -> None:
         await self._update_invoice(
@@ -183,11 +193,6 @@ class SqlExceptionRepository(SqlNotifications):
         action = APPROVE_ACTION if decision is ApprovalDecision.APPROVED else REJECT_ACTION
         details = {"decision": decision.value, "comment": comment}
         self._add_event(invoice, status, action, actor, now, details)
-        await self._session.flush()
-
-    async def confirm(self, invoice: InvoiceForHandling, *, actor: str, now: datetime) -> None:
-        await self._update_invoice(invoice.id, actor, status=InvoiceStatus.COMPLETED)
-        self._add_event(invoice, InvoiceStatus.COMPLETED, CONFIRM_ACTION, actor, now, None)
         await self._session.flush()
 
     # --- helpers -----------------------------------------------------------------------------------

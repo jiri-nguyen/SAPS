@@ -107,6 +107,8 @@ class InvoiceView:
     approval: ApprovalView | None
     created_at: datetime
     updated_at: datetime
+    erp_document_number: str | None = None
+    posted_at: datetime | None = None
 
 
 @dataclass(frozen=True)

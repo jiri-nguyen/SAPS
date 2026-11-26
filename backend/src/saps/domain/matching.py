@@ -100,6 +100,7 @@ class InvoiceToMatch:
     total_amount: Decimal | None
     lines: Sequence[LineToMatch]
     invoice_date: date | None = None
+    invoice_number: str | None = None
 
 
 @dataclass(frozen=True)
@@ -531,5 +532,5 @@ def decide(has_open_exceptions: bool, total_amount: Decimal | None, rules: Match
     requires_approval = total_amount is None or total_amount > rules.approval_threshold
     if has_open_exceptions:
         return Decision(InvoiceStatus.EXCEPTION, requires_approval)
-    status = InvoiceStatus.PENDING_APPROVAL if requires_approval else InvoiceStatus.PENDING_REVIEW
+    status = InvoiceStatus.PENDING_APPROVAL if requires_approval else InvoiceStatus.POSTING  # SAPS-49 BR-01
     return Decision(status, requires_approval)

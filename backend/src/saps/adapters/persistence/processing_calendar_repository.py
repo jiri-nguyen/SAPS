@@ -166,6 +166,47 @@ class SqlHeldInvoiceRepository:
             )
             return ids
 
+    async def release_postings(self, tenant_id: UUID, limit: int, *, now: datetime) -> list[UUID]:
+        async with session_factory(self._engine, tenant_id)() as session, session.begin():
+            ids = list(
+                (
+                    await session.execute(
+                        select(Invoice.id)
+                        .where(
+                            Invoice.tenant_id == tenant_id,
+                            Invoice.status == InvoiceStatus.POSTING,
+                            Invoice.posting_held_at.is_not(None),
+                        )
+                        .order_by(Invoice.posting_held_at, Invoice.id)
+                        .limit(limit)
+                        .with_for_update(skip_locked=True)
+                    )
+                ).scalars()
+            )
+            if not ids:
+                return []
+            await session.execute(
+                update(Invoice)
+                .where(Invoice.id.in_(ids))
+                .values(posting_held_at=None, updated_by=SYSTEM_ACTOR, updated_at=func.now())
+            )
+            session.add_all(
+                InvoiceEvent(
+                    tenant_id=tenant_id,
+                    invoice_id=invoice_id,
+                    status_from=InvoiceStatus.POSTING,
+                    status_to=InvoiceStatus.POSTING,
+                    action=RELEASE_HOLD_ACTION,
+                    actor=SYSTEM_ACTOR,
+                    details={"by": "calendar", "step": "posting"},
+                    occurred_at=now,
+                    created_by=SYSTEM_ACTOR,
+                    updated_by=SYSTEM_ACTOR,
+                )
+                for invoice_id in ids
+            )
+            return ids
+
 
 class SqlInvoiceHoldRepository:
     """Process now by an Accounting Manager, in one unit of work with the invoice row locked."""

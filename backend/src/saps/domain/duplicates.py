@@ -14,6 +14,8 @@ COMPARED_STATUSES = (
     InvoiceStatus.PENDING_APPROVAL,
     InvoiceStatus.PENDING_REVIEW,
     InvoiceStatus.COMPLETED,
+    InvoiceStatus.POSTING,
+    InvoiceStatus.POSTED,
 )
 
 STATUS_LABEL = {
@@ -24,6 +26,9 @@ STATUS_LABEL = {
     InvoiceStatus.PENDING_REVIEW: "Pending review",
     InvoiceStatus.COMPLETED: "Completed",
     InvoiceStatus.REJECTED: "Rejected",
+    InvoiceStatus.ON_HOLD: "On hold",
+    InvoiceStatus.POSTING: "Posting",
+    InvoiceStatus.POSTED: "Posted",
 }
 
 
