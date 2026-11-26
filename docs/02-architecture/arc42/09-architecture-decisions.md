@@ -23,4 +23,4 @@ related: [ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, 
 | [ADR-0010](../adr/0010-use-one-keycloak-realm-with-company-groups.md) | Use one Keycloak realm with a group per company; broker Microsoft Entra ID later | accepted | 2027-03-01 | — |
 | [ADR-0011](../adr/0011-sign-in-through-keycloak-with-a-server-side-session.md) | Sign in through Keycloak in the SAPS API and keep a server-side session cookie | accepted | 2027-03-01 | Supersedes [ADR-0008](../adr/0008-use-session-cookies-for-authentication.md) |
 | [ADR-0012](../adr/0012-read-invoice-mailboxes-through-a-mail-port.md) | Poll the company mailboxes from the SAPS Worker through a mail port (Microsoft Graph later, IMAP test server for the demo) | accepted | 2027-03-01 | — |
-| [ADR-0013](../adr/0013-post-invoices-through-an-erp-posting-port.md) | Post invoices to the ERP through a posting port in a separate worker job | proposed | 2027-03-01 | — |
+| [ADR-0013](../adr/0013-post-invoices-through-an-erp-posting-port.md) | Post invoices to the ERP through a posting port in a separate worker job | accepted | 2027-03-01 | — |
