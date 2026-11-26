@@ -64,11 +64,12 @@ export function InvoiceDetailPage({
   }, [api, invoiceId, version]);
 
   const matching = loaded?.invoice.status === "MATCHING";
+  const working = matching || loaded?.invoice.status === "POSTING"; // the SAPS Worker is about to change it
   useEffect(() => {
-    if (!matching) return;
-    const timer = setInterval(() => setVersion((n) => n + 1), pollMs); // until re-matching has finished (EC-03)
+    if (!working) return;
+    const timer = setInterval(() => setVersion((n) => n + 1), pollMs); // until re-matching or posting has finished (EC-03, SAPS-49)
     return () => clearInterval(timer);
-  }, [matching, pollMs]);
+  }, [working, pollMs]);
 
   if (loaded === null) {
     return error !== null ? (

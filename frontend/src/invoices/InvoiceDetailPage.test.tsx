@@ -208,6 +208,27 @@ describe("InvoiceDetailPage", () => {
     expect(screen.queryByRole("button", { name: "Confirm" })).not.toBeInTheDocument(); // no final review
   });
 
+  it("polls an invoice in Posting until it is posted (SAPS-49)", async () => {
+    const posting = invoiceFixture({ status: "POSTING", exceptions: [] });
+    const posted = invoiceFixture({
+      status: "POSTED",
+      erpDocumentNumber: "MOCK-0A1B2C3D4E",
+      postedAt: "2027-03-05T10:00:00Z",
+      exceptions: [],
+    });
+    const getVersioned = vi
+      .fn()
+      .mockResolvedValueOnce(versioned(posting))
+      .mockResolvedValue(versioned(posted, 'W/"2"'));
+    renderPage(fakeExceptionApi({ getVersioned }), MEMBER, 20);
+    expect(await screen.findByText(/waiting to be posted to the ERP/)).toBeInTheDocument();
+    expect(await screen.findByText(/Posted to the ERP: document MOCK-0A1B2C3D4E/)).toBeInTheDocument();
+    await waitFor(() => expect(getVersioned.mock.calls.length).toBeGreaterThanOrEqual(2));
+    const calls = getVersioned.mock.calls.length;
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(getVersioned.mock.calls.length).toBe(calls); // polling stops once it is Posted
+  });
+
   it("shows an image file as an image", async () => {
     const image = invoiceFixture({
       file: { name: "scan.png", contentType: "image/png", sizeBytes: 1, sha256: "b".repeat(64) },
