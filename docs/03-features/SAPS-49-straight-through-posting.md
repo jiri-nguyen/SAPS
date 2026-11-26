@@ -5,7 +5,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2027-03-01
-related: [MTG-20270301-9, SCP-IN-04, SCP-IN-05, SCP-IN-06, SCP-IN-08, SCP-IN-14, SCP-IN-17, SCP-IN-23, DEC-009, DEC-010, DEC-014, DEC-021, DEC-023, DEC-035, DEC-037, DEC-062, DEC-063, DEC-064, NFR-MAINT-001, NFR-SCAL-001, ADR-0001, ADR-0004, ADR-0013, SAPS-19, SAPS-20, SAPS-21, SAPS-22, SAPS-37, SAPS-51, SAPS-52]
+related: [MTG-20270301-9, MTG-20270301-11, DEC-070, SCP-IN-04, SCP-IN-05, SCP-IN-06, SCP-IN-08, SCP-IN-14, SCP-IN-17, SCP-IN-23, DEC-009, DEC-010, DEC-014, DEC-021, DEC-023, DEC-035, DEC-037, DEC-062, DEC-063, DEC-064, NFR-MAINT-001, NFR-SCAL-001, ADR-0001, ADR-0004, ADR-0013, SAPS-19, SAPS-20, SAPS-21, SAPS-22, SAPS-37, SAPS-51, SAPS-52]
 ---
 
 # SAPS-49 — Straight-through posting to the ERP
@@ -38,10 +38,10 @@ its notification and its rejection point are removed.
 | BR-05 | **Accepted exceptions stay accepted.** On acceptance each open exception keeps a fingerprint of the values it was raised on: its line's PO number, PO line, DO number, quantity and unit price (a header-level exception: vendor code, invoice number and all line values). On a re-run, a finding with the same code, the same line and the same fingerprint as an accepted exception is not raised again. A changed value or a new problem raises a new exception. | DEC-063, DEC-035 |
 | BR-06 | **Non-PO invoices.** EX2 is accepted after the manual review; the re-run keeps it accepted (BR-05); the invoice is posted (or approved first). | DEC-063 |
 | BR-07 | **Rejection points.** An invoice can be rejected during exception handling (claimant, SAPS-20) and at approval (SAPS-22). Posting and Posted invoices cannot be rejected. | DEC-063, DEC-014 |
-| BR-08 | **Notifications.** Exception → Accounting Members (claimant only after a re-run, DEC-037); Pending approval → Accounting Managers. No "ready for final review" notification; no notification on posting (Q2). | DEC-063, DEC-021 |
+| BR-08 | **Notifications.** Exception → Accounting Members (claimant only after a re-run, DEC-037); Pending approval → Accounting Managers. No "ready for final review" notification; no notification on posting. | DEC-063, DEC-021, [MTG-20270301-11](../01-requirements/meetings/2027-03-01-straight-through-posting-details.md) R2 |
 | BR-09 | **Invoiced quantities and duplicates.** Posting and Posted count as invoiced (DEC-023) and are compared by the duplicate check (SAPS-23). | DEC-064 |
-| BR-10 | **Upgrade.** Invoices in Pending review at the upgrade go to Posting once (event `UPGRADE_TO_POSTING`) and are posted by the sweeper's re-send (BR-12). Completed invoices stay Completed and are not posted (Q3). | DEC-063 |
-| BR-11 | **Processing calendar.** On a closed day an invoice that reaches Posting waits; it is posted on the first open day by the hold release timer (Q1). | DEC-062, proposal Q1 |
+| BR-10 | **Upgrade.** Invoices in Pending review at the upgrade go to Posting once (event `UPGRADE_TO_POSTING`) and are posted by the sweeper's re-send (BR-12). Completed invoices stay Completed and are not posted. | DEC-063, [MTG-20270301-11](../01-requirements/meetings/2027-03-01-straight-through-posting-details.md) R3 |
+| BR-11 | **Processing calendar.** On a closed day an invoice that reaches Posting waits; it is posted on the first open day by the hold release timer. | [DEC-070](../01-requirements/decision-log.md#dec-070), [MTG-20270301-11](../01-requirements/meetings/2027-03-01-straight-through-posting-details.md) R1 |
 | BR-12 | **Recovery.** An invoice in Posting longer than `SWEEPER_STUCK_AFTER_SECONDS` gets `post_invoice` again from the sweeper, with the same limit of re-sends as Uploaded and Matching (SAPS-37, SAPS-38). | ADR-0004, ADR-0013 |
 
 ### 2.2 Affected NFRs
@@ -54,7 +54,7 @@ its notification and its rejection point are removed.
 - The MuleSoft adapter and the real ERP; the exception "Posting failed" for a posting the ERP rejects (DEC-064, later).
 - Export of results to a file (SCP-IN-17 says "or exporting"; not requested).
 - Payment (SCP-OUT-03); reversing or cancelling a posted invoice.
-- Posting invoices that were Completed before the upgrade (Q3).
+- Posting invoices that were Completed before the upgrade.
 
 ## 3. Design
 
@@ -214,10 +214,10 @@ DS-17 (rejection at final review) is withdrawn.
 ## 7. Open Questions
 | # | Question | Proposal | Asked to | Due | Status |
 |---|---|---|---|---|---|
-| Q1 | The processing calendar holds new invoices on closed days (DEC-062). Should posting to the ERP wait on closed days too (for example during month-end closing)? | Yes: an invoice that reaches Posting on a closed day waits and is posted on the first open day (BR-11) | Product Owner (Customer) | next meeting | open |
-| Q2 | Should anybody be notified when an invoice is posted? | No; the status and the document number are visible in All invoices and the invoice detail | Product Owner (Customer) | next meeting | open |
-| Q3 | Invoices that were Completed before the upgrade were "ready for posting" outside the system. Should they be posted too? | No; they stay Completed (only Pending review invoices are posted at the upgrade, MTG-20270301-9 Q13) | Product Owner (Customer) | next meeting | open |
-| Q4 | What should the Accounting Member see after posting? | The status Posted, the ERP document number and the posting time on the invoice detail; the status in All invoices | Product Owner (Customer) | next meeting | open |
+| Q1 | The processing calendar holds new invoices on closed days (DEC-062). Should posting to the ERP wait on closed days too (for example during month-end closing)? | Yes: an invoice that reaches Posting on a closed day waits and is posted on the first open day (BR-11) | Product Owner (Customer) | — | answered: yes → DEC-070 ([MTG-20270301-11](../01-requirements/meetings/2027-03-01-straight-through-posting-details.md)) |
+| Q2 | Should anybody be notified when an invoice is posted? | No; the status and the document number are visible in All invoices and the invoice detail | Product Owner (Customer) | — | answered: yes → BR-08 ([MTG-20270301-11](../01-requirements/meetings/2027-03-01-straight-through-posting-details.md)) |
+| Q3 | Invoices that were Completed before the upgrade were "ready for posting" outside the system. Should they be posted too? | No; they stay Completed (only Pending review invoices are posted at the upgrade, MTG-20270301-9 Q13) | Product Owner (Customer) | — | answered: yes → BR-10 ([MTG-20270301-11](../01-requirements/meetings/2027-03-01-straight-through-posting-details.md)) |
+| Q4 | What should the Accounting Member see after posting? | The status Posted, the ERP document number and the posting time on the invoice detail; the status in All invoices | Product Owner (Customer) | — | answered: yes → §3.4, §3.6 ([MTG-20270301-11](../01-requirements/meetings/2027-03-01-straight-through-posting-details.md)) |
 
 ## 8. Documentation Checklist
 - [ ] API spec updated (`api/*.yaml`, 0.10.0)
