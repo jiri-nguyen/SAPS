@@ -85,7 +85,7 @@ describe("StatusQueuePage", () => {
     await Promise.resolve();
   });
 
-  it("serves the review queue with its own status, links and empty text (SAPS-21)", async () => {
+  it("serves a queue with its own status, links and empty text", async () => {
     const list = vi
       .fn()
       .mockResolvedValueOnce(page([]))

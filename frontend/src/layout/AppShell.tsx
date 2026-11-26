@@ -48,10 +48,7 @@ export function AppShell({
   // A route the role may not open (or none) shows the role's first screen (SAPS-27 BR-10).
   const current = menu.find((item) => item.id === route.page) ?? menu[0];
   const queue: Queue | null =
-    current.id === "exceptions" ||
-    current.id === "approvals" ||
-    current.id === "review" ||
-    current.id === "invoices"
+    current.id === "exceptions" || current.id === "approvals" || current.id === "invoices"
       ? current.id
       : null;
   const invoiceId = route.page === current.id ? route.invoiceId : undefined;
@@ -83,16 +80,6 @@ export function AppShell({
         queue="approvals"
         label="Approval queue"
         emptyText="No invoices wait for approval."
-      />
-    );
-  } else if (current.id === "review") {
-    page = (
-      <StatusQueuePage
-        api={exceptions}
-        status="PENDING_REVIEW"
-        queue="review"
-        label="Review queue"
-        emptyText="No invoices wait for the final review."
       />
     );
   } else if (current.id === "processing-calendar") {

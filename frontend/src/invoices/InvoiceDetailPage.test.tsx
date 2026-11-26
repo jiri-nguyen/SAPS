@@ -186,6 +186,28 @@ describe("InvoiceDetailPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("The invoice is not on hold.");
   });
 
+  it("shows the ERP document of a posted invoice and the earlier states (SAPS-49)", async () => {
+    const posted = invoiceFixture({
+      status: "POSTED",
+      erpDocumentNumber: "MOCK-0A1B2C3D4E",
+      postedAt: "2027-03-05T10:00:00Z",
+      exceptions: [],
+    });
+    const { unmount } = renderPage(
+      fakeExceptionApi({ getVersioned: vi.fn().mockResolvedValue(versioned(posted)) }),
+    );
+    expect(
+      await screen.findByText("Posted to the ERP: document MOCK-0A1B2C3D4E on 2027-03-05 10:00 UTC."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Accept as is" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reject" })).not.toBeInTheDocument(); // BR-07
+    unmount();
+    const old = invoiceFixture({ status: "PENDING_REVIEW", exceptions: [] });
+    renderPage(fakeExceptionApi({ getVersioned: vi.fn().mockResolvedValue(versioned(old)) }));
+    expect(await screen.findByText(/state of an earlier version/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Confirm" })).not.toBeInTheDocument(); // no final review
+  });
+
   it("shows an image file as an image", async () => {
     const image = invoiceFixture({
       file: { name: "scan.png", contentType: "image/png", sizeBytes: 1, sha256: "b".repeat(64) },
@@ -248,7 +270,7 @@ describe("InvoiceDetailPage", () => {
       .fn()
       .mockResolvedValueOnce(versioned(claimedBy(MEMBER)))
       .mockResolvedValueOnce(versioned(claimedBy(MEMBER, { status: "MATCHING" }), 'W/"2"'))
-      .mockResolvedValue(versioned(invoiceFixture({ status: "PENDING_REVIEW", exceptions: [] }), 'W/"3"'));
+      .mockResolvedValue(versioned(invoiceFixture({ status: "POSTING", exceptions: [] }), 'W/"3"'));
     renderPage(fakeExceptionApi({ getVersioned, update }), MEMBER, 20);
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Correct data" }));
@@ -264,8 +286,8 @@ describe("InvoiceDetailPage", () => {
     expect(
       await screen.findByText("Saved. Matching runs again with the corrected data."),
     ).toBeInTheDocument();
-    expect(await screen.findByText(/waits for your final review/)).toBeInTheDocument(); // next step (SAPS-21)
-    expect(screen.getByText("Pending review", { selector: ".badge" })).toBeInTheDocument();
+    expect(await screen.findByText(/waiting to be posted to the ERP/)).toBeInTheDocument(); // SAPS-49
+    expect(screen.getByText("Posting", { selector: ".badge" })).toBeInTheDocument();
     await waitFor(() => expect(getVersioned.mock.calls.length).toBeGreaterThanOrEqual(3));
   });
 
@@ -314,14 +336,16 @@ describe("InvoiceDetailPage", () => {
     expect(screen.getByRole("textbox", { name: "Line, row 1" })).toHaveValue("1");
   });
 
-  it("accepts acceptable exceptions as is and names the next step", async () => {
-    const resolve = vi.fn().mockResolvedValue(versioned(invoiceFixture({ status: "PENDING_APPROVAL" })));
+  it("accepts acceptable exceptions as is, then matching runs again (SAPS-49 BR-04)", async () => {
+    const resolve = vi.fn().mockResolvedValue(versioned(invoiceFixture({ status: "MATCHING" })));
     renderPage(
       fakeExceptionApi({ getVersioned: vi.fn().mockResolvedValue(versioned(claimedBy(MEMBER))), resolve }),
     );
     await userEvent.setup().click(await screen.findByRole("button", { name: "Accept as is" }));
     expect(resolve).toHaveBeenCalledWith("inv-12", 'W/"1"');
-    expect(await screen.findByText("Accepted. Next step: Pending approval.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Accepted. Matching runs again; the invoice is posted when it passes."),
+    ).toBeInTheDocument();
   });
 
   it("explains why some exceptions cannot be accepted as is", async () => {
