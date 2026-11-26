@@ -150,7 +150,7 @@ jobs:
           nogroup="$(admin "$kc/admin/realms/saps/users?username=nogroup@vn.example.com&exact=true" | field 'd[0]["id"]')"
           admin -X DELETE "$kc/admin/realms/saps/users/$nogroup"
           test "$refused" = "$web/?signIn=no_company"
-      - name: Whole invoice flow from upload to Completed (SAPS-17 … SAPS-23)
+      - name: Whole invoice flow from upload to Posted (SAPS-17 … SAPS-23, SAPS-49)
         run: |
           base=http://localhost:5173/v1
           origin="Origin: http://localhost:5173"
