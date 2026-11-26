@@ -241,7 +241,7 @@ jobs:
           field() { python3 -c 'import json, sys; d = json.load(sys.stdin); print(eval(sys.argv[1]))' "$1"; }
           list() { curl -fsS -b "notify-$1-jar" "$base/notifications$2"; }
           types() { list "$1" "" | field 'sorted({i["type"] for i in d["items"]})'; }
-          test "$(types member1)" = "['EXCEPTION_RAISED', 'REVIEW_REQUESTED']"   # the exceptions and the reviews of the flow above
+          test "$(types member1)" = "['EXCEPTION_RAISED']"   # the exceptions of the flow above; no final review any more (DEC-063)
           test "$(types manager1)" = "['APPROVAL_REQUESTED']"   # DS-03 waited for approval
           unread="$(list member1 '?unreadOnly=true' | field 'd["unreadCount"]')"
           test "$unread" -gt 1
