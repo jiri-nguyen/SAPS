@@ -5,7 +5,7 @@ from saps.domain.invoices import ApprovalDecision, InvoiceStatus, ensure_transit
 
 
 def test_next_status() -> None:  # BR-04, BR-05
-    assert NEXT_STATUS[ApprovalDecision.APPROVED] is InvoiceStatus.PENDING_REVIEW
+    assert NEXT_STATUS[ApprovalDecision.APPROVED] is InvoiceStatus.POSTING  # SAPS-49 BR-01
     assert NEXT_STATUS[ApprovalDecision.REJECTED] is InvoiceStatus.REJECTED
     for status in NEXT_STATUS.values():
         ensure_transition(InvoiceStatus.PENDING_APPROVAL, status)  # the lifecycle allows both

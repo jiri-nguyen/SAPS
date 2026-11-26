@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     # Ports (ADR-0001)
     extraction_adapter: str = "dummy"
     erp_adapter: str = "dummy"
+    erp_posting_adapter: str = "mock"  # SAPS-49, ADR-0013; `mulesoft` later (SAPS-48)
     fixtures_dir: Path = Path("fixtures")
 
     # Sessions and CSRF (ADR-0008)

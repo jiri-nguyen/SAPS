@@ -46,7 +46,7 @@ async def _fix_and_rematch(api: Api, sample: str, body: dict[str, Any]) -> tuple
 async def test_ds09_correct_the_po_number(api: Api) -> None:
     body = {"lines": [line(1, "Printer paper, A3", "0100009", 1, "3", "30.00", "90.00")]}
     _, invoice = await _fix_and_rematch(api, "ds-09/invoices/ds-09-invalid-po-number.pdf", body)
-    assert (invoice["status"], invoice["assignedTo"]) == ("PENDING_REVIEW", None)
+    assert (invoice["status"], invoice["assignedTo"]) == ("POSTING", None)
     [ex3] = [e for e in invoice["exceptions"] if e["code"] == "EX3"]
     assert ex3["status"] == "RESOLVED" and ex3["resolvedBy"] is None  # resolved by the system (DEC-024)
     assert invoice["lines"][0]["matchStatus"] == "MATCHED"
@@ -65,7 +65,7 @@ def _lot_line(po: str, qty: str, do: str | None) -> dict[str, Any]:
 )
 async def test_ds22_ds23_correct_the_do_number(api: Api, sample: str, po: str, do_number: str) -> None:
     _, invoice = await _fix_and_rematch(api, sample, {"lines": [_lot_line(po, "6", do_number)]})
-    assert invoice["status"] == "PENDING_REVIEW"
+    assert invoice["status"] == "POSTING"
     [item] = invoice["lines"]
     assert item["matchStatus"] == "MATCHED" and item["expectedQuantity"] == "6.000"
     assert item["doNumber"] == item["matchedDoNumber"] == do_number and item["pirUnitPrice"] == "40.0000"
@@ -80,13 +80,13 @@ async def test_ds24_the_invoice_date_selects_another_pir(api: Api) -> None:  # E
     assert response.status_code == 202
     await api.rematch(invoice_id)
     invoice = await api.get(invoice_id)
-    assert invoice["status"] == "PENDING_REVIEW" and invoice["lines"][0]["pirUnitPrice"] == "25.0000"
+    assert invoice["status"] == "POSTING" and invoice["lines"][0]["pirUnitPrice"] == "25.0000"
 
 
 async def test_ds13_correct_the_quantity(api: Api) -> None:
     body = {"lines": [line(1, "Monitor stand", "0100013", 1, "6", "18.00", "108.00")]}
     _, invoice = await _fix_and_rematch(api, "ds-13/invoices/ds-13-quantity-above-expected.pdf", body)
-    assert invoice["status"] == "PENDING_REVIEW" and invoice["lines"][0]["expectedQuantity"] == "6.000"
+    assert invoice["status"] == "POSTING" and invoice["lines"][0]["expectedQuantity"] == "6.000"
 
 
 async def test_ds07_enter_the_data_manually_after_ex1(api: Api) -> None:  # EC-06
@@ -105,14 +105,14 @@ async def test_ds07_enter_the_data_manually_after_ex1(api: Api) -> None:  # EC-0
     assert (await api.update("alice", invoice_id, body)).status_code == 202
     await api.rematch(invoice_id)
     invoice = await api.get(invoice_id)
-    assert invoice["status"] == "PENDING_REVIEW" and invoice["invoiceNumber"] == "MANUAL-0007"
+    assert invoice["status"] == "POSTING" and invoice["invoiceNumber"] == "MANUAL-0007"
     assert invoice["exceptions"][0]["status"] == "RESOLVED"
 
 
 async def test_ds11_remove_the_non_trade_line(api: Api) -> None:
     body = {"lines": [line(1, "Filing cabinet", "0100011", 1, "1", "120.00", "120.00")]}
     _, invoice = await _fix_and_rematch(api, "ds-11/invoices/ds-11-trade-and-non-trade.pdf", body)
-    assert invoice["status"] == "PENDING_REVIEW" and len(invoice["lines"]) == 1
+    assert invoice["status"] == "POSTING" and len(invoice["lines"]) == 1
     assert invoice["invoiceType"] == "TRADE_PO"
 
 
@@ -164,7 +164,7 @@ async def test_the_exception_queue(api: Api) -> None:
         str(ds12),
     ]  # newest first
     assert await ids("manager", "status=EXCEPTION") == [str(ds08), str(ds12)]
-    assert await ids("alice", "status=EXCEPTION&status=PENDING_REVIEW") == [str(ds01), str(ds08), str(ds12)]
+    assert await ids("alice", "status=EXCEPTION&status=POSTING") == [str(ds01), str(ds08), str(ds12)]
     assert await ids("alice", "invoiceType=NON_PO") == [str(ds08)]
     await api.claim("alice", ds12)
     assert await ids("alice", "status=EXCEPTION&assignee=unassigned") == [str(ds08)]
@@ -235,7 +235,7 @@ async def test_every_action_is_recorded(api: Api) -> None:
     assert Decimal(old_line["unitPrice"]) == Decimal("20.60") and Decimal(new_line["unitPrice"]) == Decimal(
         "20.00"
     )
-    assert events[-1]["statusTo"] == "PENDING_REVIEW"
+    assert events[-1]["statusTo"] == "POSTING"
 
     second = await api.request("alice", "GET", f"/v1/invoices/{invoice_id}/events?pageSize=3")
     first_page = second.json()
@@ -266,10 +266,10 @@ async def test_resolve_and_reject_are_recorded(api: Api) -> None:
     assert (last["action"], last["statusFrom"], last["statusTo"], last["actor"]) == (
         "RESOLVE",
         "EXCEPTION",
-        "PENDING_REVIEW",
+        "MATCHING",  # SAPS-49 BR-04: the workflow runs again
         "Member",
     )
-    assert last["details"] == {"codes": ["EX6"], "threshold": "300.00"}
+    assert last["details"] == {"codes": ["EX6"]}
     last = (await api.request("alice", "GET", f"/v1/invoices/{rejected}/events")).json()["items"][-1]
     assert (last["action"], last["statusTo"], last["details"]) == (
         "REJECT",

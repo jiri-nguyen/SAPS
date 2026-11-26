@@ -9,7 +9,7 @@ export interface Route {
 }
 
 /** Screens that open an invoice: `#/{screen}/{invoiceId}`; `invoices` is the list "All invoices" (SAPS-46). */
-const DETAIL_QUEUES: ReadonlySet<string> = new Set(["exceptions", "approvals", "review", "invoices"]);
+const DETAIL_QUEUES: ReadonlySet<string> = new Set(["exceptions", "approvals", "invoices"]);
 
 export function parseHash(hash: string): Route {
   const [path = "", ...rest] = hash.replace(/^#\/?/, "").split("?");

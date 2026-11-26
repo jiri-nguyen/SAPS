@@ -95,7 +95,7 @@ describe("notification bell (SAPS-24 BR-06)", () => {
   it.each([
     ["EXCEPTION_RAISED", "#/exceptions/inv-12"],
     ["APPROVAL_REQUESTED", "#/approvals/inv-12"],
-    ["REVIEW_REQUESTED", "#/review/inv-12"],
+    ["REVIEW_REQUESTED", "#/invoices/inv-12"], // notifications of earlier versions (DEC-063)
   ] as const)("opens the invoice of a %s notification and marks it read", async (type, hash) => {
     const list = vi
       .fn()

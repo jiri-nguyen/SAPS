@@ -50,14 +50,14 @@ describe("approval on the invoice page (SAPS-22)", () => {
     expect(screen.queryByRole("button", { name: "Accept as is" })).not.toBeInTheDocument();
   });
 
-  it("approves and names the next step", async () => {
-    const decide = vi.fn().mockResolvedValue(versioned(invoiceFixture({ status: "PENDING_REVIEW" })));
+  it("approves and says that the invoice is posted next (SAPS-49)", async () => {
+    const decide = vi.fn().mockResolvedValue(versioned(invoiceFixture({ status: "POSTING" })));
     render_(
       fakeExceptionApi({ getVersioned: vi.fn().mockResolvedValue(versioned(waitingInvoice())), decide }),
     );
     await userEvent.setup().click(await screen.findByRole("button", { name: "Approve" }));
     expect(decide).toHaveBeenCalledWith("inv-12", "APPROVED");
-    expect(await screen.findByText("Approved. Next step: Pending review.")).toBeInTheDocument();
+    expect(await screen.findByText("Approved. The invoice is posting.")).toBeInTheDocument();
   });
 
   it("rejects with a comment, and asks for one first", async () => {
@@ -79,19 +79,15 @@ describe("approval on the invoice page (SAPS-22)", () => {
   it("says when another manager decided first", async () => {
     const decide = vi
       .fn()
-      .mockRejectedValue(problem(409, "The invoice does not wait for approval (status Pending review)."));
+      .mockRejectedValue(problem(409, "The invoice does not wait for approval (status Posting)."));
     const getVersioned = vi
       .fn()
       .mockResolvedValueOnce(versioned(waitingInvoice()))
-      .mockResolvedValue(versioned(invoiceFixture({ status: "PENDING_REVIEW" })));
+      .mockResolvedValue(versioned(invoiceFixture({ status: "POSTING" })));
     render_(fakeExceptionApi({ getVersioned, decide }));
     await userEvent.setup().click(await screen.findByRole("button", { name: "Approve" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "does not wait for approval (status Pending review)",
-    );
-    expect(
-      await screen.findByText("This invoice waits for the final review by an Accounting Member."),
-    ).toBeInTheDocument(); // the other manager approved it: next step SAPS-21
+    expect(await screen.findByRole("alert")).toHaveTextContent("does not wait for approval (status Posting)");
+    expect(await screen.findByText("This invoice is waiting to be posted to the ERP.")).toBeInTheDocument(); // the other manager approved it: next step SAPS-49
     expect(screen.queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
   });
 

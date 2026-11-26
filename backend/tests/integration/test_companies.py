@@ -170,11 +170,9 @@ async def test_each_company_matches_against_its_own_erp_data(engine: AsyncEngine
     vn, sg = await _company(engine, "vn"), await _company(engine, "sg")
 
     first_vn = await uploaded(engine, DS01, vn)
-    assert await _process(engine, first_vn, vn[0]) is InvoiceStatus.PENDING_REVIEW
+    assert await _process(engine, first_vn, vn[0]) is InvoiceStatus.POSTING
     same_in_sg = await uploaded(engine, DS01, sg)  # same sample file, other company (BR-04)
-    assert (
-        await _process(engine, same_in_sg, sg[0]) is InvoiceStatus.PENDING_REVIEW
-    )  # no EX9, quantities not used
+    assert await _process(engine, same_in_sg, sg[0]) is InvoiceStatus.POSTING  # no EX9, quantities not used
     second_vn = await uploaded(engine, DS01, vn)
     assert (
         await _process(engine, second_vn, vn[0]) is InvoiceStatus.EXCEPTION

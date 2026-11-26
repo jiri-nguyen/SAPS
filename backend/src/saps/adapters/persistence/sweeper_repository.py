@@ -15,7 +15,7 @@ SWEEPER_LOCK_KEY = 3700037  # pg_try_advisory_xact_lock key shared by all SAPS W
 SWEEPER_ACTOR = "system"
 SWEEPER_ACTION = "RESEND"
 SWEEPER_LIMIT_ACTION = "RESEND_LIMIT"
-STUCK_STATUSES = (InvoiceStatus.UPLOADED, InvoiceStatus.MATCHING)
+STUCK_STATUSES = (InvoiceStatus.UPLOADED, InvoiceStatus.MATCHING, InvoiceStatus.POSTING)  # SAPS-49 BR-12
 
 
 class SqlSweeperRepository:
@@ -43,6 +43,9 @@ class SqlSweeperRepository:
             select(Invoice.id, Invoice.tenant_id, Invoice.status, resends.label("resends"))
             .where(
                 Invoice.status.in_(STUCK_STATUSES),
+                Invoice.posting_held_at.is_(
+                    None
+                ),  # a posting held on a closed day waits on purpose (DEC-070)
                 Invoice.updated_at < func.now() - timedelta(seconds=older_than_seconds),  # database clock
                 ~gave_up,  # SAPS-38 BR-05: an invoice the sweeper gave up on is never selected again
             )

@@ -41,7 +41,7 @@ async def notify_status(
     port: NotificationPort, invoice: NamedInvoice, status: InvoiceStatus, codes: Sequence[ExceptionCode]
 ) -> None:
     """Exception → Accounting Members (only the claimant of a claimed invoice); PendingApproval → Accounting
-    Managers; PendingReview → Accounting Members."""
+    Managers. Posting and Posted notify nobody: there is no final review any more (SAPS-49 BR-08, DEC-063)."""
     name = invoice_display_name(invoice)
     if status is InvoiceStatus.EXCEPTION:
         kind = NotificationType.EXCEPTION_RAISED
@@ -55,9 +55,7 @@ async def notify_status(
         message = f"{name} needs approval."
         recipients = await port.active_user_ids(invoice.tenant_id, Role.ACCOUNTING_MANAGER)
     else:
-        kind = NotificationType.REVIEW_REQUESTED
-        message = f"{name} is ready for final review."
-        recipients = await port.active_user_ids(invoice.tenant_id, Role.ACCOUNTING_MEMBER)
+        return
     if not recipients:  # EC-04
         log.warning("notification_no_recipient", extra={"invoice_id": str(invoice.id), "type": kind.value})
         return

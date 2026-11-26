@@ -152,11 +152,11 @@ async def _notified(engine: AsyncEngine, invoice_id: uuid.UUID) -> list[tuple[st
         return [(name, kind) for name, kind in rows]
 
 
-async def test_matched_invoice_is_saved_and_members_are_notified(engine: AsyncEngine) -> None:  # TS-09
+async def test_matched_invoice_is_saved_and_goes_to_posting(engine: AsyncEngine) -> None:  # TS-09
     erp = MemoryErp()
     invoice_id = await _invoice(engine, erp.po_number, "2")
     outcome = await _match(engine, erp, invoice_id)
-    assert outcome is not None and outcome.status is InvoiceStatus.PENDING_REVIEW
+    assert outcome is not None and outcome.status is InvoiceStatus.POSTING
 
     async with session_factory(engine)() as session:
         invoice = await session.get_one(Invoice, invoice_id)
@@ -178,12 +178,9 @@ async def test_matched_invoice_is_saved_and_members_are_notified(engine: AsyncEn
             "MATCH",
             "system",
             InvoiceStatus.MATCHING,
-            InvoiceStatus.PENDING_REVIEW,
+            InvoiceStatus.POSTING,
         )
-    assert await _notified(engine, invoice_id) == [
-        ("member1@vn.example.com", NotificationType.REVIEW_REQUESTED),
-        ("member2@vn.example.com", NotificationType.REVIEW_REQUESTED),
-    ]
+    assert await _notified(engine, invoice_id) == []  # no final review any more (SAPS-49 BR-08)
 
 
 async def test_invoice_above_threshold_notifies_managers(engine: AsyncEngine) -> None:  # TS-09
@@ -215,9 +212,7 @@ async def test_exception_then_rematch_resolves_it_and_stale_message_is_skipped(
         (await session.get_one(Invoice, invoice_id)).status = InvoiceStatus.MATCHING
 
     second = await _match(engine, erp, invoice_id)
-    assert (
-        second is not None and second.status is InvoiceStatus.PENDING_REVIEW and second.resolved == (EX.EX6,)
-    )
+    assert second is not None and second.status is InvoiceStatus.POSTING and second.resolved == (EX.EX6,)
     async with session_factory(engine)() as session:
         exception = (
             await session.execute(select(InvoiceException).where(InvoiceException.invoice_id == invoice_id))
@@ -237,7 +232,7 @@ async def test_exception_then_rematch_resolves_it_and_stale_message_is_skipped(
     ("status", "counts"),
     [
         (InvoiceStatus.PENDING_APPROVAL, True),
-        (InvoiceStatus.PENDING_REVIEW, True),
+        (InvoiceStatus.POSTING, True),
         (InvoiceStatus.COMPLETED, True),
         (InvoiceStatus.EXCEPTION, False),
         (InvoiceStatus.REJECTED, False),
@@ -265,7 +260,7 @@ async def test_parallel_invoices_cannot_use_the_same_quantity(engine: AsyncEngin
     first = await _invoice(engine, erp.po_number, "6")
     second = await _invoice(engine, erp.po_number, "6")
     outcomes = await asyncio.gather(_match(engine, erp, first), _match(engine, erp, second))
-    assert sorted(o.status for o in outcomes if o) == [InvoiceStatus.EXCEPTION, InvoiceStatus.PENDING_REVIEW]
+    assert sorted(o.status for o in outcomes if o) == [InvoiceStatus.EXCEPTION, InvoiceStatus.POSTING]
 
 
 async def test_worker_job_uses_the_dummy_erp_fixtures(
@@ -283,7 +278,7 @@ async def test_worker_job_uses_the_dummy_erp_fixtures(
                 await conn.execute(text("SELECT tenant_id FROM invoice WHERE id = :id"), {"id": invoice_id})
             ).scalar_one()
         outcome = await run_matching(invoice_id, tenant)
-        assert outcome is not None and outcome.status is InvoiceStatus.PENDING_REVIEW
+        assert outcome is not None and outcome.status is InvoiceStatus.POSTING
         assert await run_matching(invoice_id, tenant) is None
     finally:
         await dispose_engines()
@@ -320,7 +315,7 @@ async def test_the_matched_lot_and_the_pir_price_are_stored(engine: AsyncEngine)
     erp = MemoryErp(lots=(("DO-A", "6"), ("DO-B", "4")))
     invoice_id = await _invoice(engine, erp.po_number, "4", do_number="do b")
     outcome = await _match(engine, erp, invoice_id)
-    assert outcome is not None and outcome.status is InvoiceStatus.PENDING_REVIEW
+    assert outcome is not None and outcome.status is InvoiceStatus.POSTING
     line = await _line(engine, invoice_id)
     assert (line.do_number, line.matched_do_number) == ("do b", "DO-B")  # the user's value stays as entered
     assert (line.pir_unit_price, line.expected_quantity) == (D("10.00"), D("4"))
@@ -329,14 +324,14 @@ async def test_the_matched_lot_and_the_pir_price_are_stored(engine: AsyncEngine)
 async def test_a_second_invoice_cannot_use_a_lot_that_is_taken(engine: AsyncEngine) -> None:
     erp = MemoryErp(lots=(("DO-A", "6"), ("DO-B", "4")))
     await _invoice(
-        engine, erp.po_number, "3", status=InvoiceStatus.PENDING_REVIEW, do_number="DO-B", matched_do="DO-B"
+        engine, erp.po_number, "3", status=InvoiceStatus.POSTING, do_number="DO-B", matched_do="DO-B"
     )
     taken = await _match(engine, erp, await _invoice(engine, erp.po_number, "2", do_number="DO-B"))
     assert taken is not None and taken.open_codes == (EX.EX7,)
     free = await _match(engine, erp, await _invoice(engine, erp.po_number, "1", do_number="DO-B"))
-    assert free is not None and free.status is InvoiceStatus.PENDING_REVIEW
+    assert free is not None and free.status is InvoiceStatus.POSTING
     other_lot = await _match(engine, erp, await _invoice(engine, erp.po_number, "6", do_number="DO-A"))
-    assert other_lot is not None and other_lot.status is InvoiceStatus.PENDING_REVIEW
+    assert other_lot is not None and other_lot.status is InvoiceStatus.POSTING
 
 
 @pytest.mark.parametrize(
@@ -358,7 +353,7 @@ async def test_an_invoice_matched_before_saps_51_counts_for_the_po_line_only(
     erp = MemoryErp(ordered="12", lots=(("DO-A", "6"), ("DO-B", "4")))
     await _invoice(engine, erp.po_number, "7", status=InvoiceStatus.COMPLETED)  # no matched lot
     ok = await _match(engine, erp, await _invoice(engine, erp.po_number, "3", do_number="DO-A"))
-    assert ok is not None and ok.status is InvoiceStatus.PENDING_REVIEW
+    assert ok is not None and ok.status is InvoiceStatus.POSTING
     over = await _match(engine, erp, await _invoice(engine, erp.po_number, "1", do_number="DO-B"))
     assert over is not None and over.open_codes == (EX.EX7,)  # 10 received, 7 + 3 invoiced
 
@@ -379,7 +374,7 @@ async def test_the_worker_matches_the_demo_lot_scenarios(
     from saps.worker.jobs import run_matching
 
     cases = [
-        ("0100021", "4", "DO-7000021B", "40.00", InvoiceStatus.PENDING_REVIEW, ()),
+        ("0100021", "4", "DO-7000021B", "40.00", InvoiceStatus.POSTING, ()),
         ("0100022", "6", None, "40.00", InvoiceStatus.EXCEPTION, (EX.EX11,)),
         ("0100023", "6", "DO-7000023X", "40.00", InvoiceStatus.EXCEPTION, (EX.EX13,)),
         ("0100024", "3", None, "25.00", InvoiceStatus.EXCEPTION, (EX.EX12,)),

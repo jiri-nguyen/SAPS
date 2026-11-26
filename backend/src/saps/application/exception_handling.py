@@ -12,7 +12,6 @@ from typing import Any
 from uuid import UUID
 
 from saps.application.invoices import InvoiceNotFoundError, etag_matches, etag_of
-from saps.application.notifications import notify_status
 from saps.domain.duplicates import STATUS_LABEL
 from saps.domain.exception_handling import (
     LineData,
@@ -20,7 +19,6 @@ from saps.domain.exception_handling import (
     apply_update,
     ensure_can_release,
     refused_codes,
-    status_after_acceptance,
 )
 from saps.domain.invoices import InvoiceStatus, ensure_transition
 from saps.domain.users import AccessDeniedError, CurrentUser
@@ -145,21 +143,9 @@ class ExceptionHandlingService:
                 raise UnprocessableError(
                     f"{codes} cannot be accepted as is: correct the data or reject the invoice."
                 )
-            threshold = invoice.approval_threshold_applied
-            if threshold is None:
-                threshold = await repo.current_approval_threshold(invoice.tenant_id)
-            status, requires_approval = status_after_acceptance(invoice.total_amount, threshold)
-            ensure_transition(invoice.status, status)
-            await repo.resolve(
-                invoice,
-                status=status,
-                requires_approval=requires_approval,
-                threshold=threshold,
-                user_id=user.user_id,
-                actor=user.username,
-                now=self._clock(),
-            )
-            await notify_status(repo, invoice, status, [])
+            ensure_transition(invoice.status, InvoiceStatus.MATCHING)
+            await repo.resolve(invoice, user_id=user.user_id, actor=user.username, now=self._clock())
+        await self._queue_rematch(invoice_id, user.tenant_id)  # SAPS-49 BR-04: the workflow runs again
         return await self._view(user, invoice_id)
 
     async def reject(
@@ -169,9 +155,8 @@ class ExceptionHandlingService:
         Member, no claim: SAPS-21 BR-02, BR-04). Returns the invoice and the status it was rejected from."""
         async with self._uow() as repo:
             invoice = await self._lock(repo, user, invoice_id)
-            if invoice.status is not InvoiceStatus.PENDING_REVIEW:
-                _ensure_in_exception(invoice)  # Pending approval is rejected by a manager (SAPS-22)
-                _ensure_claimant(user, invoice)
+            _ensure_in_exception(invoice)  # Pending approval is rejected by a manager (SAPS-22, DEC-063)
+            _ensure_claimant(user, invoice)
             ensure_transition(invoice.status, InvoiceStatus.REJECTED)
             await repo.reject(invoice, reason, actor=user.username, now=self._clock())
         return await self._view(user, invoice_id), invoice.status

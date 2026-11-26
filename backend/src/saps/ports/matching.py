@@ -20,6 +20,15 @@ class OpenException:
 
 
 @dataclass(frozen=True)
+class AcceptedException:
+    """An exception accepted as is, with the values it was accepted on (SAPS-49 BR-05)."""
+
+    code: ExceptionCode
+    line_id: UUID | None
+    fingerprint: str
+
+
+@dataclass(frozen=True)
 class InvoiceForMatching:
     id: UUID
     tenant_id: UUID
@@ -32,6 +41,7 @@ class InvoiceForMatching:
     open_exceptions: tuple[OpenException, ...]
     company_code: str = ""
     """Selects the company's ERP data (SAPS-42 BR-03)."""
+    accepted: tuple[AcceptedException, ...] = ()
 
 
 @dataclass(frozen=True)

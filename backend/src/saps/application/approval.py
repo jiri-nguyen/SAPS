@@ -1,30 +1,39 @@
 """Approval use case (SAPS-22): an Accounting Manager approves or rejects an invoice in PendingApproval.
 
 One transaction with the invoice row locked. Check order: 404 (tenant), 409 (status: not PendingApproval, also
-when another manager decided first, EC-01), 422 (comment).
+when another manager decided first, EC-01), 422 (comment). An approval sends `post_invoice` after the commit
+(SAPS-49 BR-01); a failed send is recovered by the sweeper (BR-12).
 """
 
+import logging
 from collections.abc import Callable
 from datetime import datetime
 from uuid import UUID
 
 from saps.application.exception_handling import ConflictError, UnprocessableError
 from saps.application.invoices import InvoiceNotFoundError
-from saps.application.notifications import notify_status
 from saps.domain.approval import NEXT_STATUS, CommentRequiredError, checked_comment
 from saps.domain.duplicates import STATUS_LABEL
 from saps.domain.invoices import ApprovalDecision, InvoiceStatus, ensure_transition
 from saps.domain.users import CurrentUser
 from saps.ports.exception_handling import ApprovalUnitOfWork
 from saps.ports.invoices import InvoiceReader, InvoiceView
+from saps.ports.job_queue import JobQueuePort
+
+log = logging.getLogger("saps.approval")
 
 
 class ApprovalService:
     def __init__(
-        self, unit_of_work: ApprovalUnitOfWork, reader: InvoiceReader, clock: Callable[[], datetime]
+        self,
+        unit_of_work: ApprovalUnitOfWork,
+        reader: InvoiceReader,
+        queue: JobQueuePort,
+        clock: Callable[[], datetime],
     ) -> None:
         self._uow = unit_of_work
         self._reader = reader
+        self._queue = queue
         self._clock = clock
 
     async def decide(
@@ -53,8 +62,11 @@ class ApprovalService:
                 actor=user.username,
                 now=self._clock(),
             )
-            if decision is ApprovalDecision.APPROVED:  # BR-04; a rejection notifies nobody (BR-05, DEC-040)
-                await notify_status(repo, invoice, status, [])
+        if decision is ApprovalDecision.APPROVED:  # a rejection notifies nobody (BR-05, DEC-040)
+            try:
+                await self._queue.send_post_invoice(invoice_id, user.tenant_id)
+            except Exception:  # the invoice stays in Posting until the sweeper re-sends the message
+                log.warning("posting_not_sent", extra={"invoice_id": str(invoice_id)})
         view = await self._reader.get(user.tenant_id, invoice_id)
         if view is None:  # pragma: no cover - read right after a committed change in the same tenant
             raise InvoiceNotFoundError(invoice_id)

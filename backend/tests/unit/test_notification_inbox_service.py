@@ -111,3 +111,12 @@ async def test_no_recipient_is_logged_as_a_warning(caplog: pytest.LogCaptureFixt
     assert port.added == []
     [record] = caplog.records
     assert (record.levelno, record.getMessage()) == (logging.WARNING, "notification_no_recipient")
+
+
+@pytest.mark.parametrize(
+    "status", [InvoiceStatus.POSTING, InvoiceStatus.POSTED, InvoiceStatus.PENDING_REVIEW]
+)
+async def test_posting_and_final_states_notify_nobody(status: InvoiceStatus) -> None:  # SAPS-49 BR-08
+    port = MemoryPort([uuid4()])
+    await notify_status(port, Invoice(uuid4(), uuid4()), status, [])
+    assert port.added == []

@@ -12,7 +12,7 @@ const PAGE_SIZE = 20;
 const QUEUE_OF: Record<NotificationType, string> = {
   EXCEPTION_RAISED: "exceptions",
   APPROVAL_REQUESTED: "approvals",
-  REVIEW_REQUESTED: "review",
+  REVIEW_REQUESTED: "invoices", // notifications of earlier versions; the final review no longer exists (DEC-063)
 };
 
 /**

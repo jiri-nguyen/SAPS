@@ -14,6 +14,8 @@ class InvoiceStatus(StrEnum):
     COMPLETED = "COMPLETED"
     REJECTED = "REJECTED"
     ON_HOLD = "ON_HOLD"  # received on a closed day of the processing calendar (SAPS-52)
+    POSTING = "POSTING"  # waiting to be posted to the ERP (SAPS-49, DEC-064)
+    POSTED = "POSTED"  # posted; final
 
 
 class InvoiceType(StrEnum):
@@ -70,13 +72,17 @@ class NotificationType(StrEnum):
 _S = InvoiceStatus
 ALLOWED_TRANSITIONS: dict[InvoiceStatus, frozenset[InvoiceStatus]] = {
     _S.UPLOADED: frozenset({_S.MATCHING, _S.EXCEPTION, _S.ON_HOLD}),
-    _S.MATCHING: frozenset({_S.EXCEPTION, _S.PENDING_APPROVAL, _S.PENDING_REVIEW}),
-    _S.EXCEPTION: frozenset({_S.MATCHING, _S.PENDING_APPROVAL, _S.PENDING_REVIEW, _S.REJECTED}),
-    _S.PENDING_APPROVAL: frozenset({_S.PENDING_REVIEW, _S.REJECTED}),
-    _S.PENDING_REVIEW: frozenset({_S.COMPLETED, _S.REJECTED}),
+    _S.MATCHING: frozenset({_S.EXCEPTION, _S.PENDING_APPROVAL, _S.POSTING}),
+    _S.EXCEPTION: frozenset({_S.MATCHING, _S.REJECTED}),
+    _S.PENDING_APPROVAL: frozenset({_S.POSTING, _S.REJECTED}),
+    # Pending review and Completed exist only for invoices of earlier versions (DEC-063): the migration moves
+    # Pending review to Posting.
+    _S.PENDING_REVIEW: frozenset({_S.POSTING}),
     _S.COMPLETED: frozenset(),
     _S.REJECTED: frozenset(),
     _S.ON_HOLD: frozenset({_S.UPLOADED}),
+    _S.POSTING: frozenset({_S.POSTED}),
+    _S.POSTED: frozenset(),
 }
 
 

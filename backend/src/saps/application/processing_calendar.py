@@ -113,7 +113,8 @@ class HoldReleaseService:
         self._batch = batch_size
 
     async def release_due(self) -> int:
-        """One tick: for every company that is open today, the oldest held invoices go back to Uploaded."""
+        """One tick: for every company that is open today, the oldest held invoices go back to Uploaded and
+        the held postings are sent again (DEC-070)."""
         released = 0
         for company in await self._repo.list_companies():
             snapshot = await self._repo.snapshot(company.tenant_id)
@@ -129,4 +130,15 @@ class HoldReleaseService:
             if ids:
                 log.info("invoices_released", extra={"tenant_id": str(company.tenant_id), "count": len(ids)})
             released += len(ids)
+            posting = await self._repo.release_postings(company.tenant_id, self._batch, now=now)  # DEC-070
+            for invoice_id in posting:
+                try:
+                    await self._queue.send_post_invoice(invoice_id, company.tenant_id)
+                except Exception:  # the sweeper re-sends it (the hold is cleared)
+                    log.warning("posting_not_sent", extra={"invoice_id": str(invoice_id)})
+            if posting:
+                log.info(
+                    "postings_released", extra={"tenant_id": str(company.tenant_id), "count": len(posting)}
+                )
+            released += len(posting)
         return released

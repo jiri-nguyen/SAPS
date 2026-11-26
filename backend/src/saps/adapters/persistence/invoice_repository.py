@@ -228,6 +228,8 @@ class SqlInvoiceRepository:
                 invoice.file_name, invoice.file_content_type, invoice.file_size_bytes, invoice.file_sha256
             ),
             rejected_reason=invoice.rejected_reason,
+            erp_document_number=invoice.erp_document_number,
+            posted_at=invoice.posted_at,
             lines=[
                 InvoiceLineView(
                     ln.id,

@@ -241,7 +241,7 @@ An uploaded vendor invoice and its processing state.
 | Attribute | Type | Null | Key | Class. | Description |
 |---|---|---|---|---|---|
 | id | uuid | No | PK | Internal | Surrogate key |
-| status | enum | No | — | Internal | `UPLOADED`, `MATCHING`, `EXCEPTION`, `PENDING_APPROVAL`, `PENDING_REVIEW`, `COMPLETED`, `REJECTED`, `ON_HOLD` (§5) |
+| status | enum | No | — | Internal | `UPLOADED`, `MATCHING`, `EXCEPTION`, `PENDING_APPROVAL`, `POSTING`, `POSTED`, `REJECTED`, `ON_HOLD`, and `PENDING_REVIEW`, `COMPLETED` for invoices of earlier versions (§5) |
 | invoice_type | enum | Yes | — | Internal | `TRADE_PO`, `NON_TRADE_PO`, `NON_PO`; null until derived ([DEC-005](../01-requirements/decision-log.md#dec-005)) |
 | vendor_code | string(20) | Yes | — | Confidential | Vendor identifier from extraction; with `invoice_number` used for duplicate detection ([DEC-008](../01-requirements/decision-log.md#dec-008)) |
 | vendor_name | string(200) | Yes | — | Confidential | Vendor name from extraction |
@@ -267,6 +267,9 @@ An uploaded vendor invoice and its processing state.
 | idempotency_key | string(64) | No | UK (with tenant_id) | Internal | `Idempotency-Key` of the upload request; a repeated request returns this invoice ([SAPS-17](../03-features/SAPS-17-invoice-upload.md)) |
 | rejected_reason | string(1000) | Yes | — | Internal | Reason entered at rejection ([DEC-014](../01-requirements/decision-log.md#dec-014)) |
 | released_from_hold_at | timestamp UTC | Yes | — | Internal | Set when an Accounting Manager let the invoice through a closed period ("Process now", [SAPS-52](../03-features/SAPS-52-processing-calendar.md)); it is then never held again |
+| erp_document_number | string(50) | Yes | — | Internal | ERP document of the posting; set when the status is `POSTED` ([SAPS-49](../03-features/SAPS-49-straight-through-posting.md), [DEC-064](../01-requirements/decision-log.md#dec-064)); `MOCK-…` until the ERP integration |
+| posted_at | timestamp UTC | Yes | — | Internal | Posting time; set with `erp_document_number` |
+| posting_held_at | timestamp UTC | Yes | — | Internal | Set while an invoice in `POSTING` waits for the end of a closed period ([DEC-070](../01-requirements/decision-log.md#dec-070)); the sweeper skips it, the release timer clears it |
 
 Unique index: (`tenant_id`, `idempotency_key`). Index (not unique): (`tenant_id`, `vendor_code`, `invoice_number_normalized`) for duplicate detection. It is not a unique
 key because a duplicate is stored and raised as EX9; rejected invoices are ignored by the check ([DEC-043](../01-requirements/decision-log.md#dec-043)).
@@ -383,11 +386,12 @@ An exception raised for an invoice; an invoice can have several, at most one ope
 | id | uuid | No | PK | Internal | Surrogate key |
 | invoice_id | uuid | No | FK → Invoice | Internal | Invoice concerned |
 | invoice_line_id | uuid | Yes | FK → InvoiceLine | Internal | Line concerned; null for header-level exceptions (EX1, EX2, EX5, EX9) |
-| code | enum | No | — | Internal | `EX1` … `EX10` ([DEC-033](../01-requirements/decision-log.md#dec-033)) |
+| code | enum | No | — | Internal | `EX1` … `EX13` ([DEC-033](../01-requirements/decision-log.md#dec-033), [DEC-068](../01-requirements/decision-log.md#dec-068)) |
 | message | string(1000) | No | — | Internal | Human-readable details, e.g. expected vs. invoiced value |
 | status | enum | No | — | Internal | `OPEN`, `RESOLVED` |
 | resolved_by | uuid | Yes | FK → UserAccount | Internal | User who resolved it; null when resolved by re-matching |
 | resolved_at | timestamp UTC | Yes | — | Internal | Resolution time |
+| accepted_fingerprint | string(64) | Yes | — | Internal | SHA-256 of the values an Accounting Member accepted the exception on (line: PO, PO line, DO number, quantity, unit price; header: vendor, normalized invoice number, all lines); a re-run does not raise a finding with the same code, line and fingerprint again ([SAPS-49](../03-features/SAPS-49-straight-through-posting.md) BR-05) |
 
 ### Approval
 The Accounting Manager's decision on an invoice above the approval threshold ([DEC-009](../01-requirements/decision-log.md#dec-009), [DEC-013](../01-requirements/decision-log.md#dec-013)).
@@ -488,7 +492,7 @@ Field names of SAP / MuleSoft are mapped in the adapters later.
 
 Derived values used in matching ([DEC-007](../01-requirements/decision-log.md#dec-007)):
 - **Already invoiced quantity** of a PO line = sum of `InvoiceLine.quantity` for that PO line on invoices in status
-  `PENDING_APPROVAL`, `PENDING_REVIEW` or `COMPLETED` ([DEC-023](../01-requirements/decision-log.md#dec-023)); Exception and Rejected invoices do not count.
+  `PENDING_APPROVAL`, `POSTING`, `POSTED`, and `PENDING_REVIEW` or `COMPLETED` of earlier versions ([DEC-023](../01-requirements/decision-log.md#dec-023), [DEC-064](../01-requirements/decision-log.md#dec-064)); Exception and Rejected invoices do not count.
 - **Received lot** of a PO line = the goods receipt lines with the same normalized DO number ([DEC-042](../01-requirements/decision-log.md#dec-042), [SAPS-51](../03-features/SAPS-51-trade-po-lot-matching.md) BR-02).
 - **Already invoiced quantity of a lot** = sum of `InvoiceLine.quantity` of the same PO line and the same normalized `matched_do_number`, in the statuses above.
 - **Received-not-invoiced quantity** of a lot = its received quantity − its already invoiced quantity; of a PO line (the second check, [SAPS-51](../03-features/SAPS-51-trade-po-lot-matching.md) BR-07) = all goods receipt lines − the already invoiced quantity of the PO line.
@@ -508,31 +512,33 @@ stateDiagram-v2
     OnHold --> Uploaded: open day, or Process now by an Accounting Manager
     Uploaded --> Exception: EX1 extraction failed or unknown file
     Uploaded --> Matching: data extracted
-    Matching --> Exception: EX2–EX10
+    Matching --> Exception: EX2–EX13
     Matching --> PendingApproval: matched, total above threshold
-    Matching --> PendingReview: matched, total at or below threshold
-    Exception --> Matching: matching field updated (DEC-010)
-    Exception --> PendingApproval: resolved, total above threshold
-    Exception --> PendingReview: resolved, total at or below threshold
+    Matching --> Posting: matched, total at or below threshold
+    Exception --> Matching: matching field updated (DEC-010) or exceptions accepted (DEC-063)
     Exception --> Rejected: rejected by Accounting Member (DEC-014)
-    PendingApproval --> PendingReview: approved by Accounting Manager
+    PendingApproval --> Posting: approved by Accounting Manager
     PendingApproval --> Rejected: rejected by Accounting Manager (DEC-014)
-    PendingReview --> Completed: confirmed by Accounting Member
-    PendingReview --> Rejected: rejected at final review (DEC-014)
-    Completed --> [*]
+    Posting --> Posted: ERP posting port answers ok (DEC-064)
+    Posted --> [*]
     Rejected --> [*]
 ```
+
+Pending review and Completed (the final review of the PoC, removed by [DEC-063](../01-requirements/decision-log.md#dec-063)) exist only
+for invoices of earlier versions: the upgrade moves Pending review to Posting ([SAPS-49](../03-features/SAPS-49-straight-through-posting.md)
+BR-10); Completed stays. An invoice in Posting waits on a closed day ([DEC-070](../01-requirements/decision-log.md#dec-070)).
 
 | State | Meaning | Waiting for |
 |---|---|---|
 | Uploaded | File received; processing message sent | SAPS Worker |
 | OnHold | Received on a closed day of the company's processing calendar; not extracted or matched | End of the closed period, or "Process now" by an Accounting Manager |
-| Matching | Extraction, duplicate check, type derivation and matching in progress | SAPS Worker |
-| Exception | Automatic processing stopped (EX1–EX10); in the shared exception queue | Accounting Member |
+| Matching | Extraction, duplicate check, type derivation and matching in progress; also after exceptions were accepted (extraction is not repeated) | SAPS Worker |
+| Exception | Automatic processing stopped (EX1–EX13); in the shared exception queue | Accounting Member |
 | PendingApproval | Total amount above the approval threshold | Accounting Manager |
-| PendingReview | Ready for the final check | Accounting Member |
-| Completed | Final result confirmed | — |
+| Posting | Passed the workflow (and the approval); waiting to be posted to the ERP | SAPS Worker (`post_invoice`) |
+| Posted | Posted to the ERP; final | — |
 | Rejected | Invoice rejected; final state | — |
+| PendingReview, Completed | Earlier versions only (see above) | — |
 
 ### Tenant isolation
 Implemented in [SAPS-41](../03-features/SAPS-41-tenant-isolation.md) following [ADR-0009](adr/0009-isolate-tenant-data-in-a-shared-database.md)

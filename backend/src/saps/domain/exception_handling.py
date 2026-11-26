@@ -7,8 +7,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from saps.domain.invoices import ExceptionCode, InvoiceStatus
-from saps.domain.matching import MatchingRules, decide
+from saps.domain.invoices import ExceptionCode
 from saps.domain.users import AccessDeniedError, CurrentUser, Role
 
 # BR-06 (DEC-035): exceptions a member may accept as is; the others need corrected data or a rejection.
@@ -117,17 +116,6 @@ def apply_update(
                 _matching_key(line) for line in old_lines
             ]
     return InvoiceChange(data, changed, lines_change, matching)
-
-
-def status_after_acceptance(
-    total_amount: Decimal | None, approval_threshold: Decimal
-) -> tuple[InvoiceStatus, bool]:
-    """BR-06 (DEC-013): PendingApproval above the approval threshold, else PendingReview, and the flag.
-
-    A missing total amount counts as above the threshold, like in matching (SAPS-19 EC-11).
-    """
-    decision = decide(False, total_amount, MatchingRules(Decimal(0), approval_threshold))
-    return decision.status, decision.requires_approval
 
 
 def ensure_can_release(user: CurrentUser, assigned_to: UUID | None) -> bool:

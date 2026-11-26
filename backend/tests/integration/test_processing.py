@@ -28,7 +28,7 @@ async def test_known_sample_is_extracted_and_matched(engine: AsyncEngine) -> Non
     invoice_id = await uploaded(engine, FIXTURES / "ds-01/invoices/ds-01-trade-po.pdf")
     outcome = await process(engine, invoice_id)
     assert outcome is not None and outcome.found and outcome.line_count == 2
-    assert outcome.matching is not None and outcome.matching.status is InvoiceStatus.PENDING_REVIEW
+    assert outcome.matching is not None and outcome.matching.status is InvoiceStatus.POSTING
     async with session_factory(engine)() as session:
         invoice = await session.get_one(Invoice, invoice_id)
         lines = (
@@ -55,7 +55,7 @@ async def test_known_sample_is_extracted_and_matched(engine: AsyncEngine) -> Non
     ]
     assert [tuple(e) for e in events] == [
         ("EXTRACT", InvoiceStatus.UPLOADED, InvoiceStatus.MATCHING),
-        ("MATCH", InvoiceStatus.MATCHING, InvoiceStatus.PENDING_REVIEW),
+        ("MATCH", InvoiceStatus.MATCHING, InvoiceStatus.POSTING),
     ]
 
 
@@ -95,13 +95,13 @@ async def test_unknown_file_raises_ex1_and_notifies_members(engine: AsyncEngine)
 
 # First run of every sample, each in its own tenant (demo scenarios, Test Strategy §11).
 DEMO_OUTCOMES = {
-    "ds-01/invoices/ds-01-trade-po.pdf": ("PENDING_REVIEW", ()),
-    "ds-02/invoices/ds-02-non-trade-po.jpg": ("PENDING_REVIEW", ()),
+    "ds-01/invoices/ds-01-trade-po.pdf": ("POSTING", ()),
+    "ds-02/invoices/ds-02-non-trade-po.jpg": ("POSTING", ()),
     "ds-03/invoices/ds-03-above-threshold.pdf": ("PENDING_APPROVAL", ()),
-    "ds-04/invoices/ds-04-first-delivery.pdf": ("PENDING_REVIEW", ()),
-    "ds-04/invoices/ds-04-second-delivery.pdf": ("PENDING_REVIEW", ()),
-    "ds-05/invoices/ds-05-two-pos.pdf": ("PENDING_REVIEW", ()),
-    "ds-06/invoices/ds-06-price-within-tolerance.pdf": ("PENDING_REVIEW", ()),
+    "ds-04/invoices/ds-04-first-delivery.pdf": ("POSTING", ()),
+    "ds-04/invoices/ds-04-second-delivery.pdf": ("POSTING", ()),
+    "ds-05/invoices/ds-05-two-pos.pdf": ("POSTING", ()),
+    "ds-06/invoices/ds-06-price-within-tolerance.pdf": ("POSTING", ()),
     "ds-08/invoices/ds-08-non-po.pdf": ("EXCEPTION", ("EX2",)),
     "ds-09/invoices/ds-09-invalid-po-number.pdf": ("EXCEPTION", ("EX3",)),
     "ds-10/invoices/ds-10-po-not-found.pdf": ("EXCEPTION", ("EX4",)),
@@ -110,14 +110,14 @@ DEMO_OUTCOMES = {
     "ds-13/invoices/ds-13-quantity-above-expected.pdf": ("EXCEPTION", ("EX7",)),
     "ds-14/invoices/ds-14-missing-goods-receipt.pdf": ("EXCEPTION", ("EX8",)),
     "ds-15/invoices/ds-15-duplicate-scan.png": (
-        "PENDING_REVIEW",
+        "POSTING",
         (),
     ),  # alone; after DS-01 → EX9 (test_duplicates)
     "ds-16/invoices/ds-16-rejected-at-approval.pdf": ("PENDING_APPROVAL", ()),
-    "ds-17/invoices/ds-17-rejected-at-review.pdf": ("PENDING_REVIEW", ()),
+    "ds-17/invoices/ds-17-rejected-at-review.pdf": ("POSTING", ()),
     "ds-18/invoices/ds-18-settings-tolerance.pdf": ("EXCEPTION", ("EX6",)),  # matches after tolerance 1.00
     "ds-20/invoices/ds-20-vendor-mismatch.pdf": ("EXCEPTION", ("EX10",)),
-    "ds-21/invoices/ds-21-lot-by-do-number.pdf": ("PENDING_REVIEW", ()),  # SAPS-51
+    "ds-21/invoices/ds-21-lot-by-do-number.pdf": ("POSTING", ()),  # SAPS-51
     "ds-22/invoices/ds-22-do-number-missing.pdf": ("EXCEPTION", ("EX11",)),
     "ds-23/invoices/ds-23-invalid-do-number.pdf": ("EXCEPTION", ("EX13",)),
     "ds-24/invoices/ds-24-no-purchasing-info-record.pdf": ("EXCEPTION", ("EX12",)),
@@ -165,7 +165,7 @@ async def test_worker_job_runs_extraction_and_matching(
         tenant = await _tenant_of(engine, invoice_id)
         outcome = await run_processing(invoice_id, tenant)
         assert outcome is not None and outcome.matching is not None
-        assert outcome.matching.status is InvoiceStatus.PENDING_REVIEW
+        assert outcome.matching.status is InvoiceStatus.POSTING
         assert await run_processing(invoice_id, tenant) is None
         unknown = await uploaded(engine, FIXTURES / "ds-07/unregistered/ds-07-unknown-invoice.pdf")
         outcome = await run_processing(unknown, await _tenant_of(engine, unknown))

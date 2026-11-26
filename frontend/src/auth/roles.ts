@@ -15,7 +15,6 @@ export const MENU_BY_ROLE: Record<Role, readonly [MenuItem, ...MenuItem[]]> = {
   ACCOUNTING_MEMBER: [
     { id: "upload", label: "Upload invoices" },
     { id: "exceptions", label: "Exception queue" },
-    { id: "review", label: "Review queue" },
     { id: "invoices", label: "All invoices" },
   ],
   ACCOUNTING_MANAGER: [

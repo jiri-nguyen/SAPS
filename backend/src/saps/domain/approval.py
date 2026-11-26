@@ -3,7 +3,7 @@
 from saps.domain.invoices import ApprovalDecision, InvoiceStatus
 
 NEXT_STATUS = {
-    ApprovalDecision.APPROVED: InvoiceStatus.PENDING_REVIEW,  # BR-04 (DEC-013)
+    ApprovalDecision.APPROVED: InvoiceStatus.POSTING,  # SAPS-49 BR-01 (DEC-063): posted, no final review
     ApprovalDecision.REJECTED: InvoiceStatus.REJECTED,  # BR-05 (DEC-014): a final state
 }
 

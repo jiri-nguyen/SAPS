@@ -69,7 +69,7 @@ describe("App", () => {
     );
     const menu = screen.getByRole("navigation", { name: "Main menu" });
     expect(menu).toHaveTextContent("Upload invoices");
-    expect(menu).toHaveTextContent("Review queue");
+    expect(menu).not.toHaveTextContent("Review queue"); // the final review is gone (DEC-063)
     expect(menu).toHaveTextContent("All invoices");
     expect(menu).not.toHaveTextContent("Processing calendar");
     expect(menu).not.toHaveTextContent("Approval queue");
@@ -224,28 +224,6 @@ describe("App", () => {
     await userEvent.setup().click(screen.getByRole("link", { name: "AOS-2026-1013" }));
     expect(await screen.findByRole("link", { name: "← Approval queue" })).toBeInTheDocument();
     expect(exceptionApi.getVersioned).toHaveBeenCalledWith("inv-12");
-  });
-
-  it("shows the review queue and an invoice to review to a member (SAPS-21)", async () => {
-    const exceptionApi = fakeExceptionApi({
-      list: vi.fn().mockResolvedValue({
-        items: [{ ...summary(), status: "PENDING_REVIEW", openExceptionCodes: [] }],
-        nextPageToken: null,
-      }),
-    });
-    window.location.hash = "#/review";
-    render(
-      <App
-        sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MEMBER) })}
-        checkHealth={pending}
-        exceptionApi={exceptionApi}
-      />,
-    );
-    expect(await screen.findByRole("heading", { name: "Review queue" })).toBeInTheDocument();
-    expect(exceptionApi.list).toHaveBeenCalledWith({ status: ["PENDING_REVIEW"] });
-    await userEvent.setup().click(await screen.findByRole("link", { name: "AOS-2026-1013" }));
-    expect(await screen.findByRole("link", { name: "← Review queue" })).toBeInTheDocument();
-    expect(window.location.hash).toBe("#/review/inv-12");
   });
 
   it("does not open the review queue for a manager", async () => {

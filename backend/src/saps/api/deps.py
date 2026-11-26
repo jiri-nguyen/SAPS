@@ -28,7 +28,6 @@ from saps.application.exception_handling import ExceptionHandlingService
 from saps.application.matching_settings import MatchingSettingsService
 from saps.application.notifications import NotificationInboxService
 from saps.application.processing_calendar import InvoiceHoldService, ProcessingCalendarService
-from saps.application.review import ReviewService
 from saps.application.upload import UploadInvoiceService
 from saps.config import get_settings
 from saps.domain.users import AccessDeniedError, CurrentUser, Role, SessionPolicy, ensure_role
@@ -203,19 +202,11 @@ async def exception_service(
 async def approval_service(
     repository: Annotated[SqlInvoiceRepository, Depends(invoice_repository)],
     user: User,
+    queue: Annotated[JobQueuePort, Depends(job_queue)],
 ) -> ApprovalService:
     """SAPS-22: one transaction per decision; the invoice row lock makes the first decision win."""
     sessions = session_factory(app_engine(), user.tenant_id)
-    return ApprovalService(SqlExceptionUnitOfWork(sessions), repository, utc_now)
-
-
-async def review_service(
-    repository: Annotated[SqlInvoiceRepository, Depends(invoice_repository)],
-    user: User,
-) -> ReviewService:
-    """SAPS-21: one transaction per confirmation; the invoice row lock makes the first action win."""
-    sessions = session_factory(app_engine(), user.tenant_id)
-    return ReviewService(SqlExceptionUnitOfWork(sessions), repository, utc_now)
+    return ApprovalService(SqlExceptionUnitOfWork(sessions), repository, queue, utc_now)
 
 
 # --- Processing calendar (SAPS-52) -------------------------------------------------------------------------

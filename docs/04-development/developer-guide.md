@@ -96,7 +96,7 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   "SAPS API: ok".
 - Single Sign-On ([SAPS-44](../03-features/SAPS-44-single-sign-on.md)): click the button; Keycloak shows its sign-in page. Sign in as
   `member1@vn.example.com` (Demo Vietnam) with the `SEED_USER_PASSWORD` from `.env`: the header shows "Accounting Member 1 (Accounting Member)"
-  and the menu shows Upload invoices, Exception queue and Review queue. Sign out (this ends the Keycloak session too), then sign in as
+  and the menu shows Upload invoices, Exception queue and All invoices. Sign out (this ends the Keycloak session too), then sign in as
   `manager1@vn.example.com`: the menu shows Approval queue and Matching settings. In the Keycloak admin console, remove a user from its
   company group: the next sign-in shows "Your account is not assigned to exactly one company"; an open session ends within 5 minutes
   (the next token refresh). **Users → Sessions → Sign out** ends the SAPS session at once (back-channel logout).
@@ -107,26 +107,27 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
 - `cd backend && uv run pytest` and `cd frontend && npm test` — all tests pass.
 - Upload, extraction and matching ([SAPS-17](https://linear.app/jiringuyen/issue/SAPS-17), [SAPS-18](https://linear.app/jiringuyen/issue/SAPS-18), [SAPS-19](https://linear.app/jiringuyen/issue/SAPS-19)):
   as `member1@vn.example.com`, open **Upload invoices** and drop `backend/fixtures/ds-01/invoices/ds-01-trade-po.pdf`; the row shows the
-  progress, then Pending review. Then upload `ds-15/invoices/ds-15-duplicate-scan.png` (same vendor and invoice number):
+  progress, then Posting and Posted (a mock ERP document `MOCK-…` shows on the invoice detail in All invoices). Then upload `ds-15/invoices/ds-15-duplicate-scan.png` (same vendor and invoice number):
   Exception with EX9 and EX7 ([SAPS-23](https://linear.app/jiringuyen/issue/SAPS-23)).
   `ds-12-price-outside-tolerance.pdf` ends in Exception (EX6); any file outside the sample set,
   e.g. `ds-07/unregistered/ds-07-unknown-invoice.pdf`, ends in Exception (EX1). `docker compose logs worker` shows
   `extraction_completed` and `matching_completed`.
 - Exception handling ([SAPS-20](https://linear.app/jiringuyen/issue/SAPS-20)): as `member1@vn.example.com`, upload `ds-12-price-outside-tolerance.pdf`
   and `ds-08-non-po.pdf`, open **Exception queue**, **Claim** DS-12, **Correct data** (unit price `20.00`), **Save**: the page
-  shows "Re-matching in progress", then Pending review. Claim DS-08 and **Accept as is**: Pending approval. As `manager1@vn.example.com`, the
+  shows "Re-matching in progress", then Posted. Claim DS-08 and **Accept as is**: matching runs again (EX2 stays accepted), then Pending approval. As `manager1@vn.example.com`, the
   Exception queue is read-only; open a claimed invoice and **Release claim**.
 - Approval ([SAPS-22](https://linear.app/jiringuyen/issue/SAPS-22)): as `manager1@vn.example.com`, open **Approval queue** (DS-08 after it was accepted, or
   `ds-03-above-threshold.pdf` uploaded by `member1@vn.example.com`), open the invoice (the accepted EX2 shows who accepted it and when) and
-  **Approve** (Pending review, members are notified) or **Reject** with a comment (Rejected, no notification). A member sees that the
+  **Approve** (Posting, then Posted; nobody is notified) or **Reject** with a comment (Rejected, no notification). A member sees that the
   invoice waits for a manager and has no decision buttons.
-- Final review ([SAPS-21](https://linear.app/jiringuyen/issue/SAPS-21)): as `member2@vn.example.com`, open **Review queue**, open DS-01 and **Confirm**
-  (Completed: ready for posting), or DS-17 and **Reject** with a reason. The whole demo chain: `member1@vn.example.com` uploads DS-03 →
-  `manager1@vn.example.com` approves → `member2@vn.example.com` confirms (the review screen shows the approval).
+- Posting ([SAPS-49](../03-features/SAPS-49-straight-through-posting.md)): there is no final review and no Review queue any more. The whole demo chain:
+  `member1@vn.example.com` uploads DS-03 → `manager1@vn.example.com` approves → the invoice is Posted with a mock ERP document number
+  (`ERP_POSTING_ADAPTER=mock`). With a closed day in the processing calendar the invoice waits in Posting and is posted when the
+  calendar opens ([DEC-070](../01-requirements/decision-log.md#dec-070)); `docker compose logs worker` shows `posting_held`, `postings_released`, `invoice_posted`.
 - Matching settings ([SAPS-28](https://linear.app/jiringuyen/issue/SAPS-28), DS-18): as `member1@vn.example.com`, the menu has no **Matching settings**.
   As `manager1@vn.example.com`, open **Matching settings**: it shows 0.50 and 300.00 and who changed them last (`system` at first). Enter a price
   tolerance of `1.00` and **Save settings**: "Saved. The new values apply to the next matching runs." Then, as `member1@vn.example.com`, upload
-  `ds-18/invoices/ds-18-settings-tolerance.pdf` (50.80 against the PO price 50.00): Pending review instead of Exception (EX6).
+  `ds-18/invoices/ds-18-settings-tolerance.pdf` (50.80 against the PO price 50.00): Posted instead of Exception (EX6).
   Invoices processed earlier keep the tolerance they were processed with. A negative value or a tolerance with more than 4
   decimals (threshold: 2) is refused. Set 0.50 again afterwards; uploading DS-18 twice raises EX9.
 - Notifications ([SAPS-24](https://linear.app/jiringuyen/issue/SAPS-24)): as `member1@vn.example.com`, upload `ds-12-price-outside-tolerance.pdf`
@@ -160,7 +161,7 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   `MAIL_ADAPTER=none` stops the intake.
 - Sweeper ([SAPS-37](https://linear.app/jiringuyen/issue/SAPS-37)): `docker compose stop worker`, upload `ds-17-rejected-at-review.pdf` as
   `member1@vn.example.com` (it stays Uploaded), `docker compose exec redis redis-cli FLUSHALL` (the message is lost), `docker compose start worker`.
-  After `SWEEPER_STUCK_AFTER_SECONDS` (60 s by default) the next tick sends it again: the invoice reaches Pending review, its
+  After `SWEEPER_STUCK_AFTER_SECONDS` (60 s by default) the next tick sends it again: the invoice reaches Posted, its
   history shows `RESEND` by `system`, and `docker compose logs worker` shows `sweeper_resent`.
 
 ## 3. Project Structure

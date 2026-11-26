@@ -30,10 +30,16 @@ from saps.domain.matching import (
     PoLineKey,
 )
 from saps.domain.references import normalize_reference
-from saps.ports.matching import InvoiceForMatching, MatchUpdate, OpenException
+from saps.ports.matching import AcceptedException, InvoiceForMatching, MatchUpdate, OpenException
 
 # DEC-023: invoices whose quantities are already taken from the PO line.
-INVOICED_STATUSES = (InvoiceStatus.PENDING_APPROVAL, InvoiceStatus.PENDING_REVIEW, InvoiceStatus.COMPLETED)
+INVOICED_STATUSES = (
+    InvoiceStatus.PENDING_APPROVAL,
+    InvoiceStatus.PENDING_REVIEW,
+    InvoiceStatus.COMPLETED,
+    InvoiceStatus.POSTING,  # SAPS-49 BR-09
+    InvoiceStatus.POSTED,
+)
 
 
 class SqlMatchingRepository(SqlNotifications):
@@ -61,6 +67,7 @@ class SqlMatchingRepository(SqlNotifications):
                 vendor_code=invoice.vendor_code,
                 total_amount=invoice.total_amount,
                 invoice_date=invoice.invoice_date,
+                invoice_number=invoice.invoice_number,
                 lines=[
                     LineToMatch(
                         ln.id,
@@ -80,6 +87,11 @@ class SqlMatchingRepository(SqlNotifications):
                 if e.status is ExceptionStatus.OPEN
             ),
             company_code=company_code or "",
+            accepted=tuple(
+                AcceptedException(e.code, e.invoice_line_id, e.accepted_fingerprint)
+                for e in invoice.exceptions
+                if e.status is ExceptionStatus.RESOLVED and e.accepted_fingerprint is not None
+            ),
         )
 
     async def get_rules(self, tenant_id: UUID) -> MatchingRules:

@@ -199,6 +199,9 @@ class Invoice(AuditMixin, Base):
     inbound_mail_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("inbound_mail.id"))
     # Set when an Accounting Manager lets the invoice through a closed period; never held again (SAPS-52).
     released_from_hold_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    erp_document_number: Mapped[str | None] = mapped_column(String(50))  # SAPS-49: set when Posted
+    posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    posting_held_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # DEC-070
     file_name: Mapped[str] = mapped_column(String(255))
     file_content_type: Mapped[str] = mapped_column(String(100))
     file_size_bytes: Mapped[int] = mapped_column(BigInteger)
@@ -268,6 +271,9 @@ class InvoiceException(AuditMixin, Base):
     invoice_line_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("invoice_line.id"))
     code: Mapped[ExceptionCode] = mapped_column(_enum(ExceptionCode, "exception_code"))
     message: Mapped[str] = mapped_column(String(1000))
+    accepted_fingerprint: Mapped[str | None] = mapped_column(
+        String(64)
+    )  # values it was accepted on (SAPS-49 BR-05)
     status: Mapped[ExceptionStatus] = mapped_column(
         _enum(ExceptionStatus, "exception_status"), server_default=ExceptionStatus.OPEN.value
     )

@@ -63,18 +63,9 @@ class ExceptionRepository(NotificationPort, Protocol):
         `UPDATE_FIELDS` with old and new values."""
         ...
 
-    async def resolve(
-        self,
-        invoice: InvoiceForHandling,
-        *,
-        status: InvoiceStatus,
-        requires_approval: bool,
-        threshold: Decimal,
-        user_id: UUID,
-        actor: str,
-        now: datetime,
-    ) -> None:
-        """Resolve all open exceptions as the user, set the next status, clear the claim, record `RESOLVE`."""
+    async def resolve(self, invoice: InvoiceForHandling, *, user_id: UUID, actor: str, now: datetime) -> None:
+        """Accept the open exceptions as the user, each with the fingerprint of its values (SAPS-49 BR-05);
+        the invoice goes to Matching and keeps its claim; record `RESOLVE`."""
         ...
 
     async def reject(self, invoice: InvoiceForHandling, reason: str, *, actor: str, now: datetime) -> None:
@@ -104,18 +95,6 @@ class ApprovalRepository(NotificationPort, Protocol):
 
 ApprovalUnitOfWork = Callable[[], AbstractAsyncContextManager[ApprovalRepository]]
 
-
-class ReviewRepository(Protocol):
-    """SAPS-21: the final review of an invoice in PendingReview."""
-
-    async def lock_invoice(self, tenant_id: UUID, invoice_id: UUID) -> InvoiceForHandling | None: ...
-
-    async def confirm(self, invoice: InvoiceForHandling, *, actor: str, now: datetime) -> None:
-        """Status Completed ("ready for posting") and InvoiceEvent CONFIRM."""
-        ...
-
-
-ReviewUnitOfWork = Callable[[], AbstractAsyncContextManager[ReviewRepository]]
 
 ExceptionUnitOfWork = Callable[[], AbstractAsyncContextManager[ExceptionRepository]]
 """Starts a transaction and gives its repository; commits when the block ends, rolls back on an error."""

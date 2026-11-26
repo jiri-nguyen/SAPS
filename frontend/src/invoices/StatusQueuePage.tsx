@@ -8,7 +8,7 @@ import { decimal, text, timestamp } from "./format";
 
 /**
  * A shared queue of invoices in one status, without claims: the approval queue (Pending approval, Accounting Managers,
- * SAPS-22, DEC-038) and the review queue (Pending review, Accounting Members, SAPS-21, DEC-041).
+ * SAPS-22, DEC-038). The final review queue of SAPS-21 was removed with DEC-063.
  */
 export function StatusQueuePage({
   api,

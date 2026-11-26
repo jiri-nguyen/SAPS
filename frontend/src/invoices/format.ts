@@ -10,6 +10,8 @@ export const STATUS_LABEL: Record<InvoiceStatus, string> = {
   PENDING_APPROVAL: "Pending approval",
   PENDING_REVIEW: "Pending review",
   COMPLETED: "Completed",
+  POSTING: "Posting",
+  POSTED: "Posted",
   REJECTED: "Rejected",
   ON_HOLD: "On hold",
 };

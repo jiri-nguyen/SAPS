@@ -6,6 +6,7 @@ from datetime import datetime
 from uuid import UUID
 
 from saps.application.notifications import notify_status
+from saps.domain.acceptance import FingerprintLine, fingerprint
 from saps.domain.duplicates import DuplicateCandidate, duplicate_finding, normalize_invoice_number
 from saps.domain.invoices import (
     ExceptionCode,
@@ -76,6 +77,7 @@ class MatchingService:
         result = evaluate(invoice.invoice, derivation, rules, purchase_orders, receipts, invoiced, pirs)
 
         findings = result.findings + ((duplicate_finding(duplicates),) if duplicates else ())
+        findings = _without_accepted(invoice, findings)  # SAPS-49 BR-05
         opened, resolved, messages = _reconcile(invoice, findings)
         open_codes = sorted(
             {e.code for e in invoice.open_exceptions if e.id not in resolved} | {f.code for f in opened},
@@ -142,6 +144,29 @@ def _pir_keys(
         if order and po_line and po_line.material_number:
             keys.add((order.vendor_code, po_line.material_number))
     return sorted(keys)
+
+
+def _without_accepted(invoice: InvoiceForMatching, findings: tuple[Finding, ...]) -> tuple[Finding, ...]:
+    """SAPS-49 BR-05: a finding with the code, line and values of an accepted exception is dropped."""
+    if not invoice.accepted:
+        return findings
+    lines = [
+        FingerprintLine(
+            ln.id, ln.line_number, ln.po_number, ln.po_line_number, ln.do_number, ln.quantity, ln.unit_price
+        )
+        for ln in invoice.invoice.lines
+    ]
+    accepted = {(a.code, a.line_id, a.fingerprint) for a in invoice.accepted}
+    return tuple(
+        f
+        for f in findings
+        if (
+            f.code,
+            f.line_id,
+            fingerprint(f.line_id, invoice.invoice.vendor_code, invoice.invoice_number, lines),
+        )
+        not in accepted
+    )
 
 
 def _code_order(code: ExceptionCode) -> int:

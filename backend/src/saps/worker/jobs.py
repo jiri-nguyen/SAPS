@@ -11,20 +11,26 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from saps.adapters.erp.dummy_erp import DummyErpAdapter
+from saps.adapters.erp.mock_posting import MockErpPostingAdapter
 from saps.adapters.extraction.dummy_extraction import DummyExtractionAdapter
 from saps.adapters.persistence.db import get_engine, session_factory
 from saps.adapters.persistence.matching_repository import SqlMatchingRepository
 from saps.adapters.persistence.models import Invoice
+from saps.adapters.persistence.posting_repository import SqlPostingUnitOfWork
 from saps.adapters.persistence.processing_repository import SqlProcessingRepository
 from saps.application.matching import MatchingService, MatchOutcome
+from saps.application.posting import PostingService, PostOutcome
 from saps.application.processing import FailedProcessingService, ProcessInvoiceService, ProcessOutcome
 from saps.config import Settings, get_settings
-from saps.domain.invoices import ExceptionCode
+from saps.domain.invoices import ExceptionCode, InvoiceStatus
 from saps.ports.erp import ErpDataPort
+from saps.ports.erp_posting import ErpPostingPort
 from saps.ports.extraction import ExtractionPort
+from saps.ports.job_queue import JobQueuePort
 
 log = logging.getLogger("saps.worker.matching")
 processing_log = logging.getLogger("saps.worker.processing")
+posting_log = logging.getLogger("saps.worker.posting")
 
 
 @lru_cache
@@ -33,6 +39,14 @@ def erp_adapter(name: str, fixtures_dir: Path) -> ErpDataPort:
     if name != "dummy":
         raise ValueError(f"Unknown ERP_ADAPTER: {name}")
     return DummyErpAdapter(fixtures_dir)
+
+
+@lru_cache
+def posting_adapter(name: str) -> ErpPostingPort:
+    """Selected by ERP_POSTING_ADAPTER; only `mock` exists until MuleSoft (ADR-0013, DEC-064)."""
+    if name != "mock":
+        raise ValueError(f"Unknown ERP_POSTING_ADAPTER: {name}")
+    return MockErpPostingAdapter()
 
 
 @lru_cache
@@ -47,6 +61,7 @@ def load_adapters(settings: Settings) -> None:
     """Build the adapters at worker start-up: broken fixtures stop the worker before any job (EC-04)."""
     extraction_adapter(settings.extraction_adapter, settings.fixtures_dir)
     erp_adapter(settings.erp_adapter, settings.fixtures_dir)
+    posting_adapter(settings.erp_posting_adapter)
 
 
 def _utc_now() -> datetime:
@@ -92,7 +107,20 @@ def _sessions(tenant_id: UUID) -> async_sessionmaker[AsyncSession]:
     return session_factory(get_engine(get_settings().app_database_url), tenant_id)
 
 
-async def run_matching(invoice_id: UUID, tenant_id: UUID | None = None) -> MatchOutcome | None:
+async def send_post_invoice(queue: JobQueuePort | None, invoice_id: UUID, tenant_id: UUID) -> None:
+    """After the commit of a run that ended in Posting (SAPS-49 BR-01); a failed send is recovered by the
+    sweeper (BR-12, EC-04)."""
+    if queue is None:
+        return
+    try:
+        await queue.send_post_invoice(invoice_id, tenant_id)
+    except Exception:
+        posting_log.warning("posting_not_sent", extra={"invoice_id": str(invoice_id)})
+
+
+async def run_matching(
+    invoice_id: UUID, tenant_id: UUID | None = None, queue: JobQueuePort | None = None
+) -> MatchOutcome | None:
     """Lock the invoice, match it and commit; a stale or duplicate message changes nothing (SAPS-19 EC-03)."""
     settings = get_settings()
     started = time.perf_counter()
@@ -107,10 +135,14 @@ async def run_matching(invoice_id: UUID, tenant_id: UUID | None = None) -> Match
         log.info("matching_skipped", extra={"invoice_id": str(invoice_id)})
         return None
     _log_matching(outcome, started)
+    if outcome.status is InvoiceStatus.POSTING:
+        await send_post_invoice(queue, outcome.invoice_id, outcome.tenant_id)
     return outcome
 
 
-async def run_processing(invoice_id: UUID, tenant_id: UUID | None = None) -> ProcessOutcome | None:
+async def run_processing(
+    invoice_id: UUID, tenant_id: UUID | None = None, queue: JobQueuePort | None = None
+) -> ProcessOutcome | None:
     """`process_invoice`: extraction, then matching, in one transaction (SAPS-18 BR-01, ADR-0004)."""
     settings = get_settings()
     started = time.perf_counter()
@@ -145,6 +177,33 @@ async def run_processing(invoice_id: UUID, tenant_id: UUID | None = None) -> Pro
     )
     if outcome.matching is not None:
         _log_matching(outcome.matching, started)
+        if outcome.matching.status is InvoiceStatus.POSTING:
+            await send_post_invoice(queue, outcome.invoice_id, outcome.tenant_id)
+    return outcome
+
+
+async def run_posting(invoice_id: UUID, tenant_id: UUID | None = None) -> PostOutcome | None:
+    """`post_invoice`: post an invoice in Posting through the ERP Posting Port (SAPS-49, ADR-0013)."""
+    settings = get_settings()
+    tenant = await tenant_of(invoice_id, tenant_id)
+    if tenant is None:
+        posting_log.info("posting_skipped", extra={"invoice_id": str(invoice_id)})
+        return None
+    port = posting_adapter(settings.erp_posting_adapter)
+    outcome = await PostingService(SqlPostingUnitOfWork(_sessions(tenant)), port, _utc_now).post(invoice_id)
+    if outcome is None:
+        posting_log.info("posting_skipped", extra={"invoice_id": str(invoice_id)})
+    elif outcome.held:  # DEC-070: a closed day; the release timer sends the job again
+        posting_log.info("posting_held", extra={"invoice_id": str(invoice_id), "tenant_id": str(tenant)})
+    else:
+        posting_log.info(
+            "invoice_posted",
+            extra={
+                "invoice_id": str(invoice_id),
+                "tenant_id": str(tenant),
+                "document_number": outcome.document_number,
+            },
+        )
     return outcome
 
 

@@ -57,9 +57,9 @@ async def test_parallel_claims_have_one_winner(api: Api) -> None:  # EC-01
 
 
 async def test_only_invoices_in_exception_can_be_claimed(api: Api) -> None:
-    invoice_id = await api.sample(DS01)  # Pending review
+    invoice_id = await api.sample(DS01)  # Posting
     response = await api.claim("alice", invoice_id)
-    assert response.status_code == 409 and "Pending review" in response.json()["detail"]
+    assert response.status_code == 409 and "Posting" in response.json()["detail"]
     assert (await api.claim("alice", uuid.uuid4())).status_code == 404
 
 
@@ -235,8 +235,8 @@ async def test_nothing_can_be_done_while_matching(api: Api) -> None:  # EC-03
     ("sample", "code", "status", "requires_approval"),
     [
         (DS08, "EX2", "PENDING_APPROVAL", True),  # 450.00 is above the threshold of 300
-        (DS12, "EX6", "PENDING_REVIEW", False),
-        (DS13, "EX7", "PENDING_REVIEW", False),
+        (DS12, "EX6", "POSTING", False),
+        (DS13, "EX7", "POSTING", False),
     ],
 )
 async def test_acceptable_exceptions_are_resolved(
@@ -246,12 +246,18 @@ async def test_acceptable_exceptions_are_resolved(
     assert await _codes(api, invoice_id) == [code]
     await api.claim("alice", invoice_id)
     response = await api.resolve("alice", invoice_id)
-    assert response.status_code == 200
-    body = response.json()
+    assert response.status_code == 202  # SAPS-49 BR-04: the workflow runs again
+    assert (
+        response.json()["status"] == "MATCHING" and response.json()["assignedTo"]["displayName"] == "Member"
+    )
+    assert api.queue.rematch == [invoice_id]
+    await api.rematch(invoice_id)  # the SAPS Worker: the accepted exception is not raised again (BR-05)
+    body = await api.get(invoice_id)
     assert (body["status"], body["requiresApproval"], body["assignedTo"]) == (status, requires_approval, None)
     assert body["approvalThresholdApplied"] == "300.00"
     [exception] = [e for e in body["exceptions"] if e["code"] == code]
     assert exception["status"] == "RESOLVED" and exception["resolvedBy"]["displayName"] == "Member"
+    assert [e for e in body["exceptions"] if e["status"] == "OPEN"] == []
 
 
 async def test_a_duplicate_can_be_accepted_as_is(api: Api) -> None:  # EX9 (and EX7 of the same invoice)
@@ -261,7 +267,9 @@ async def test_a_duplicate_can_be_accepted_as_is(api: Api) -> None:  # EX9 (and 
     assert await _codes(api, second) == ["EX7", "EX9"]
     await api.claim("bob", second)
     response = await api.resolve("bob", second)
-    assert response.status_code == 200 and response.json()["status"] == "PENDING_REVIEW"
+    assert response.status_code == 202 and response.json()["status"] == "MATCHING"
+    await api.rematch(second)  # EX7 and EX9 stay accepted: the values are unchanged (SAPS-49 BR-05)
+    assert (await api.get(second))["status"] == "POSTING"
 
 
 @pytest.mark.parametrize(
@@ -354,8 +362,8 @@ async def test_claim_ends_when_rematch_passes_and_resolve_notifies(api: Api) -> 
     assert (await api.update("alice", invoice_id, PRICE_OK)).status_code == 202
     await api.rematch(invoice_id)  # the SAPS Worker
     body = await api.get(invoice_id)
-    assert (body["status"], body["assignedTo"]) == ("PENDING_REVIEW", None)
-    assert (await _notifications(api, invoice_id))["Bob"][-1] is NotificationType.REVIEW_REQUESTED
+    assert (body["status"], body["assignedTo"]) == ("POSTING", None)
+    assert (await _notifications(api, invoice_id))["Bob"] == [NotificationType.EXCEPTION_RAISED]  # no review
 
 
 async def test_exception_again_after_rematch_notifies_only_the_claimant(api: Api) -> None:  # BR-10, DEC-037
@@ -375,8 +383,13 @@ async def test_resolve_notifies_the_next_step(api: Api) -> None:
     approval = await api.sample(DS08)
     await api.claim("alice", approval)
     await api.resolve("alice", approval)
+    assert "Manager" not in await _notifications(api, approval)  # the re-run decides, not the acceptance
+    await api.rematch(approval)
     assert (await _notifications(api, approval))["Manager"] == [NotificationType.APPROVAL_REQUESTED]
-    review = await api.sample(DS12)
-    await api.claim("alice", review)
-    await api.resolve("alice", review)
-    assert (await _notifications(api, review))["Bob"][-1] is NotificationType.REVIEW_REQUESTED
+    posting = await api.sample(DS12)
+    await api.claim("alice", posting)
+    await api.resolve("alice", posting)
+    await api.rematch(posting)
+    assert (await _notifications(api, posting))["Bob"] == [
+        NotificationType.EXCEPTION_RAISED
+    ]  # posted: no news
