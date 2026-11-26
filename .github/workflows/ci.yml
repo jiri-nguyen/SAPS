@@ -182,7 +182,7 @@ jobs:
           ds01="$(upload backend/fixtures/ds-01/invoices/ds-01-trade-po.pdf "ci-ds01-$GITHUB_RUN_ID")"
           wait_for "$ds01" PENDING_REVIEW ""
           ds15="$(upload backend/fixtures/ds-15/invoices/ds-15-duplicate-scan.png "ci-ds15-$GITHUB_RUN_ID")"
-          wait_for "$ds15" EXCEPTION EX7,EX9   # duplicate of DS-01 (SAPS-23), quantity already invoiced
+          wait_for "$ds15" EXCEPTION EX4,EX9   # duplicate of DS-01 (SAPS-23); DS-01 invoiced the whole PO: not open (SAPS-51)
           ds12="$(upload backend/fixtures/ds-12/invoices/ds-12-price-outside-tolerance.pdf "ci-ds12-$GITHUB_RUN_ID")"
           wait_for "$ds12" EXCEPTION EX6
           test "$(curl -s -o /dev/null -w '%{http_code}' -b upload-jar -H "$origin" -X POST "$base/invoices/$ds12/claim")" = 200
@@ -388,6 +388,42 @@ jobs:
           wait_for "$second" PENDING_APPROVAL   # DS-03: above the approval threshold
           docker compose logs worker | grep -q '"message": "invoice_held"'
           docker compose logs worker | grep -q '"message": "invoices_released"'
+      - name: Trade PO invoices are matched per received lot (SAPS-51, DS-21 to DS-25)
+        run: |
+          web=http://localhost:5173
+          base=$web/v1
+          origin="Origin: http://localhost:5173"
+          password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
+          field() { python3 -c 'import json, sys; d = json.load(sys.stdin); print(eval(sys.argv[1]))' "$1"; }
+          .github/scripts/sign-in.sh $web member1@vn.example.com "$password" lot-jar > /dev/null
+          upload() { curl -fsS -b lot-jar -H "$origin" -H "Idempotency-Key: $2-$GITHUB_RUN_ID" -F "file=@$1;type=application/pdf" "$base/invoices" | field 'd["id"]'; }
+          state_of() { curl -fsS -b lot-jar "$base/invoices/$1" | field 'd["status"] + " " + ",".join(sorted({e["code"] for e in d["exceptions"] if e["status"] == "OPEN"}, key=lambda c: int(c[2:])))'; }
+          wait_for() {  # $1 invoice id, $2 expected status, $3 expected open exception codes
+            for i in $(seq 1 40); do [ "$(state_of "$1")" = "$2 $3" ] && return 0; sleep 1; done
+            echo "invoice $1 is '$(state_of "$1")', expected '$2 $3'"; docker compose logs worker; return 1
+          }
+          fixtures=backend/fixtures
+          ds21="$(upload $fixtures/ds-21/invoices/ds-21-lot-by-do-number.pdf ci-ds21)"
+          wait_for "$ds21" PENDING_REVIEW ""   # the second lot of a two-lot PO, found by its DO number
+          curl -fsS -b lot-jar "$base/invoices/$ds21" | python3 -c 'import json, sys
+          line = json.load(sys.stdin)["lines"][0]
+          assert line["doNumber"] == line["matchedDoNumber"] == "DO-7000021B", line
+          assert line["pirUnitPrice"] == "40.0000" and line["expectedQuantity"] == "4.000", line'
+          ds22="$(upload $fixtures/ds-22/invoices/ds-22-do-number-missing.pdf ci-ds22)"
+          wait_for "$ds22" EXCEPTION EX11
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b lot-jar -H "$origin" -X POST "$base/invoices/$ds22/claim")" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b lot-jar -H "$origin" -H 'Content-Type: application/json' -X POST "$base/invoices/$ds22/resolution")" != 200   # EX11 cannot be accepted as is (DEC-068)
+          ds23="$(upload $fixtures/ds-23/invoices/ds-23-invalid-do-number.pdf ci-ds23)"
+          wait_for "$ds23" EXCEPTION EX13
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b lot-jar -H "$origin" -X POST "$base/invoices/$ds23/claim")" = 200
+          etag="$(curl -fsS -b lot-jar -D - -o /dev/null "$base/invoices/$ds23" | tr -d '\r' | awk -F': ' 'tolower($1)=="etag" {print $2}')"
+          fix='{"lines":[{"lineNumber":1,"description":"Label printer","poNumber":"0100023","poLineNumber":1,"doNumber":"DO-7000023A","quantity":"6","unitPrice":"40.00","lineAmount":"240.00"}]}'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b lot-jar -H "$origin" -H "If-Match: $etag" -H 'Content-Type: application/json' -X PATCH -d "$fix" "$base/invoices/$ds23")" = 202
+          wait_for "$ds23" PENDING_REVIEW ""   # the DO number is a matching field: the worker re-matches (DEC-069)
+          ds24="$(upload $fixtures/ds-24/invoices/ds-24-no-purchasing-info-record.pdf ci-ds24)"
+          wait_for "$ds24" EXCEPTION EX12
+          ds25="$(upload $fixtures/ds-25/invoices/ds-25-po-not-open.pdf ci-ds25)"
+          wait_for "$ds25" EXCEPTION EX4
       - name: Keycloak realm with the demo companies (SAPS-43)
         run: |
           kc=http://localhost:8080

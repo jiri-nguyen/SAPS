@@ -26,7 +26,7 @@ Scope: Proof of Concept ([DEC-003](../01-requirements/decision-log.md#dec-003)).
 | Unit | Matching rules, type derivation, tolerance, approval and state transitions | SAPS API / SAPS Worker domain logic; SAPS Web App components | Dev | pytest; Vitest + React Testing Library | Yes | CI on every PR |
 | Integration | SAPS API and SAPS Worker with real PostgreSQL, Redis and SeaweedFS; redelivery after a worker stop; sweeper recovers invoices without a message; idempotent actors | SAPS API, SAPS Worker | Dev | pytest + Testcontainers (PostgreSQL, Redis, SeaweedFS, GreenMail test mail server for the mail intake, SAPS-45) | Yes | CI on every PR |
 | Contract | SAPS API matches its OpenAPI specification | SAPS API | Dev | Schemathesis (proposal) | Yes | CI on every PR, against [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
-| End-to-end | Demo scenarios DS-01 … DS-20 (§11) | UC-01 … UC-08 | SA | Playwright | Yes | local, clean Docker Compose stack, before each demo rehearsal |
+| End-to-end | Demo scenarios DS-01 … DS-25 (§11) | UC-01 … UC-08 | SA | Playwright | Yes | local, clean Docker Compose stack, before each demo rehearsal |
 | Regression | Previously passing demo scenarios still pass | E2E suite | SA | Playwright | Yes | local, before merging to main |
 | Security | Vulnerable dependencies, insecure code patterns | all code | Dev | pip-audit, npm audit; Ruff security rules `S` (Bandit-derived) | Yes | CI on every PR |
 | Demo acceptance | Product Owner accepts the PoC | all demo scenarios | Product Owner (SA supports) | live demo | No | demo on 2027-02-22 |
@@ -55,7 +55,7 @@ There are no dev / stg / prod environments in the PoC ([CON-01](../02-architectu
 |---|---|---|
 | Pull request | Build green; unit + integration tests pass; coverage ≥ 90 % on changed code; no high findings in runtime dependencies (pip-audit; `npm audit --omit=dev`) or from Ruff security rules; high findings in dev-only dependencies without an available fix are reported, not blocking ([DEC-044](../01-requirements/decision-log.md#dec-044)); review approved | PR checks |
 | Merge to main | Pull request gate + E2E regression suite passes | PR checks |
-| Demo readiness | All demo scenarios DS-01 … DS-20 pass on a freshly created demo stack; no open Critical or High defects | Demo rehearsal checklist |
+| Demo readiness | All demo scenarios DS-01 … DS-25 pass on a freshly created demo stack; no open Critical or High defects | Demo rehearsal checklist |
 
 ## 6. Entry & Exit Criteria
 | Phase | Entry criteria | Exit criteria |
@@ -127,8 +127,13 @@ Scalability is verified by review (NFR-SCAL-001). Load tests and PSRs start afte
 | DS-18 | Change matching settings | Manager sets tolerance to 1.00 USD; an invoice with a 0.80 USD difference matches; Member cannot open the settings | Completed | UC-07; DEC-015 |
 | DS-19 | Sign-in and role access | Signed-out user is redirected to sign-in; Member cannot approve; Manager can | — | UC-01; NFR-SEC-001 |
 | DS-20 | EX10 vendor does not match the PO | Invoice of vendor V001 refers to a trade PO of vendor V002; Member rejects | Rejected | EX10; [DEC-033](../01-requirements/decision-log.md#dec-033) |
+| DS-21 | Phase 2: lot matched by DO number | PO with two goods receipts (6 and 4); the invoice for 4 carries the DO number of the second | Pending review (posted after SAPS-49); matched lot shown | [SAPS-51](../03-features/SAPS-51-trade-po-lot-matching.md); DEC-065, DEC-066 |
+| DS-22 | Phase 2: EX11 DO number missing | Same PO shape; the invoice has no DO number; Member claims it, cannot accept it as is | Exception | EX11; DEC-068 |
+| DS-23 | Phase 2: EX13 invalid DO number | The invoice carries an unknown DO number; Member corrects it to a known DO number; matching re-runs | Pending review | EX13; DEC-068, DEC-069 |
+| DS-24 | Phase 2: EX12 no purchasing info record | The only PIR is valid after the invoice date; Member can fix the date | Exception | EX12; DEC-066, DEC-068 |
+| DS-25 | Phase 2: PO not open | PO closed in the ERP | Exception | EX4; DEC-067 |
 
-Every exception type EX1–EX10 ([DEC-033](../01-requirements/decision-log.md#dec-033)) and every invoice type has at least one scenario.
+Every exception type EX1–EX13 ([DEC-033](../01-requirements/decision-log.md#dec-033), [DEC-068](../01-requirements/decision-log.md#dec-068)) and every invoice type has at least one scenario. DS-15 after DS-01 shows EX4 and EX9 in Phase 2: DS-01 invoices the whole PO, so the PO is not open ([DEC-067](../01-requirements/decision-log.md#dec-067)).
 In each scenario the test also checks the notifications: exceptions and final reviews to Accounting Members, approvals to the Accounting Manager ([DEC-021](../01-requirements/decision-log.md#dec-021)).
 
 ## 12. Roles & Responsibilities

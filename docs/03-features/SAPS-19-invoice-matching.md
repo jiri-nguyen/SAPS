@@ -10,6 +10,10 @@ related: [UC-02, UC-03, SCP-IN-03, DEC-005, DEC-006, DEC-007, DEC-010, DEC-015, 
 
 # SAPS-19 — Invoice matching
 
+> **Note ([SAPS-51](SAPS-51-trade-po-lot-matching.md), 2027-03-01):** for trade PO invoices BR-06 (price against the PO) is
+> replaced by the PIR price check and BR-07 (all goods receipts summed) by matching per received lot, with BR-07 kept as a
+> second check per PO line. PO and non-trade rules are unchanged; only open POs are matched. New exceptions EX11 – EX13.
+
 ## 1. Summary
 After extraction and the duplicate check, the SAPS Worker derives the invoice type from the PO numbers, compares every
 line with its purchase order line (2-way) or with its purchase order line and goods receipts (3-way), and sets the next

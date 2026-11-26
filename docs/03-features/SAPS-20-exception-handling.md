@@ -10,6 +10,10 @@ related: [UC-03, UC-05, SCP-IN-04, SCP-IN-14, DEC-010, DEC-013, DEC-014, DEC-016
 
 # SAPS-20 — Exception handling
 
+> **Note ([SAPS-51](SAPS-51-trade-po-lot-matching.md), 2027-03-01):** EX11, EX12 and EX13 cannot be accepted as is
+> (BR-06, [DEC-068](../01-requirements/decision-log.md#dec-068)). The DO number of a line and the invoice date are
+> matching fields ([DEC-069](../01-requirements/decision-log.md#dec-069), BR-05).
+
 ## 1. Summary
 When matching ([SAPS-19](SAPS-19-invoice-matching.md)) or extraction raises exceptions, the invoice enters the shared
 exception queue. An Accounting Member picks (claims) an invoice, sees the file, the extracted data and every open

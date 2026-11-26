@@ -168,7 +168,7 @@ Existing trade fixtures get material numbers, DO numbers and PIRs at the prices 
 their results. DS-04 (two deliveries) gets DO numbers on both invoices.
 
 ### 3.9 Observability
-- Logs: `matching_completed` adds the counts of EX11 – EX13; `erp_fixture_loaded` adds the number of PIRs per company.
+- Logs: unchanged; `matching_completed` already lists the opened exception codes, EX11 – EX13 included.
 - Metrics, alerts: none ([NFR-OBS](../01-requirements/nfr.md) unchanged).
 
 ## 4. Rollout & Rollback
@@ -219,11 +219,11 @@ lot matched by DO number; EX11; EX13 corrected; EX12; PO not open (EX4).
 | Q5 | When every line of a PO is fully invoiced, EX4 "PO is not open" replaces EX7 (BR-01). Is that the intended message for the Accounting Member? | Yes, as agreed in MTG-20270301-9 Q11 | Product Owner (Customer) | — | answered: yes → BR-01 ([MTG-20270301-10](../01-requirements/meetings/2027-03-01-trade-po-lot-matching-details.md)) |
 
 ## 8. Documentation Checklist
-- [ ] API spec updated (`api/*.yaml`, 0.9.0)
-- [ ] Data model updated (`data-model.md`: InvoiceLine, §4.2 external entities and derived values)
-- [ ] Glossary updated for new terms (Delivery order (DO), Received lot, Purchasing info record (PIR), Open PO, EX11 – EX13)
-- [ ] SAPS-19 spec: note that BR-06 and BR-07 are refined by SAPS-51 for trade PO invoices
-- [ ] SAPS-20 spec: EX11 – EX13 not acceptable as is; DO number and invoice date are matching fields (DEC-069)
-- [ ] Test strategy: new demo scenarios DS-21 … DS-25
-- [ ] Developer Guide: fixture fields of the dummy ERP
+- [x] API spec updated (`api/*.yaml`, 0.9.0)
+- [x] Data model updated (`data-model.md`: InvoiceLine, §4.2 external entities and derived values)
+- [x] Glossary updated for new terms (Delivery order (DO), Received lot, Purchasing info record (PIR), Open PO, EX11 – EX13)
+- [x] SAPS-19 spec: note that BR-06 and BR-07 are refined by SAPS-51 for trade PO invoices
+- [x] SAPS-20 spec: EX11 – EX13 not acceptable as is; DO number and invoice date are matching fields (DEC-069)
+- [x] Test strategy: new demo scenarios DS-21 … DS-25
+- [x] Developer Guide: fixture fields of the dummy ERP
 - [ ] Release notes entry prepared
