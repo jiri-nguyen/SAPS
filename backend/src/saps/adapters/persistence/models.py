@@ -36,6 +36,7 @@ from saps.domain.invoices import (
     NotificationType,
 )
 from saps.domain.mail_intake import InboundMailStatus, IntakeChannel
+from saps.domain.processing_calendar import RuleKind
 from saps.domain.users import Role
 
 
@@ -143,6 +144,22 @@ class InboundMail(AuditMixin, Base):
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class ProcessingCalendarRule(AuditMixin, Base):
+    """One rule of a company's processing calendar (SAPS-52 BR-01); `position` keeps the manager's order."""
+
+    __tablename__ = "processing_calendar_rule"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), index=True)
+    position: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[RuleKind] = mapped_column(_enum(RuleKind, "rule_kind"))
+    from_day: Mapped[int | None] = mapped_column(Integer)
+    to_day: Mapped[int | None] = mapped_column(Integer)
+    weekday: Mapped[int | None] = mapped_column(Integer)
+    day: Mapped[date | None] = mapped_column(Date)
+    label: Mapped[str | None] = mapped_column(String(100))
+
+
 class Invoice(AuditMixin, Base):
     """An uploaded vendor invoice and its processing state (data model §4.1)."""
 
@@ -154,6 +171,8 @@ class Invoice(AuditMixin, Base):
         Index("ix_invoice_tenant_created", "tenant_id", "created_at", "id"),
         Index("ix_invoice_tenant_invoice_date", "tenant_id", "invoice_date"),
         Index("ix_invoice_tenant_total_amount", "tenant_id", "total_amount"),
+        # The release of held invoices, oldest first (SAPS-52, migration 0011).
+        Index("ix_invoice_tenant_status_created", "tenant_id", "status", "created_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
@@ -178,6 +197,8 @@ class Invoice(AuditMixin, Base):
         _enum(IntakeChannel, "intake_channel"), server_default=IntakeChannel.UPLOAD.value
     )
     inbound_mail_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("inbound_mail.id"))
+    # Set when an Accounting Manager lets the invoice through a closed period; never held again (SAPS-52).
+    released_from_hold_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     file_name: Mapped[str] = mapped_column(String(255))
     file_content_type: Mapped[str] = mapped_column(String(100))
     file_size_bytes: Mapped[int] = mapped_column(BigInteger)

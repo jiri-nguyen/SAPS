@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     imap_ssl: bool = False
     imap_password: SecretStr = SecretStr("")
 
+    # Processing calendar (SAPS-52): held invoices are released on open days, oldest first.
+    hold_release_seconds: int = Field(default=60, gt=0)
+    hold_release_batch: int = Field(default=200, gt=0)
+
     # SAPS File Storage (ADR-0006)
     s3_endpoint_url: str = "http://localhost:8333"
     s3_bucket: str = "invoices"

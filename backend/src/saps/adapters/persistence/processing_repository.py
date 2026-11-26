@@ -7,13 +7,16 @@ from sqlalchemy import select, update
 
 from saps.adapters.persistence.models import Invoice, InvoiceEvent, InvoiceException, InvoiceLine
 from saps.adapters.persistence.notification_repository import SqlNotifications
+from saps.adapters.persistence.processing_calendar_repository import calendar_snapshot
 from saps.domain.duplicates import normalize_invoice_number
 from saps.domain.extraction import ExtractedInvoice
 from saps.domain.invoices import ExceptionCode, InvoiceStatus
 from saps.ports.extraction import StoredFile
 from saps.ports.processing import InvoiceToProcess
+from saps.ports.processing_calendar import CalendarSnapshot
 
 EXTRACT_ACTION = "EXTRACT"
+HOLD_ACTION = "HOLD"  # SAPS-52
 
 
 class SqlProcessingRepository(SqlNotifications):
@@ -32,7 +35,22 @@ class SqlProcessingRepository(SqlNotifications):
             assigned_to=invoice.assigned_to,
             invoice_number=invoice.invoice_number,
             vendor_name=invoice.vendor_name,
+            released_from_hold_at=invoice.released_from_hold_at,
         )
+
+    async def calendar_of(self, tenant_id: UUID) -> CalendarSnapshot:
+        return await calendar_snapshot(self._session, tenant_id)
+
+    async def hold(self, invoice: InvoiceToProcess, *, actor: str, now: datetime) -> None:
+        await self._session.execute(
+            update(Invoice)
+            .where(Invoice.id == invoice.id)
+            .values(status=InvoiceStatus.ON_HOLD, updated_by=actor)
+        )
+        self._add_event(
+            invoice, InvoiceStatus.ON_HOLD, {"reason": "closed day"}, actor, now, action=HOLD_ACTION
+        )
+        await self._session.flush()
 
     async def save_extraction(
         self, invoice: InvoiceToProcess, extracted: ExtractedInvoice, *, actor: str, now: datetime
@@ -104,6 +122,7 @@ class SqlProcessingRepository(SqlNotifications):
         details: dict[str, object],
         actor: str,
         now: datetime,
+        action: str = EXTRACT_ACTION,
     ) -> None:
         self._session.add(
             InvoiceEvent(
@@ -111,7 +130,7 @@ class SqlProcessingRepository(SqlNotifications):
                 invoice_id=invoice.id,
                 status_from=invoice.status,
                 status_to=status_to,
-                action=EXTRACT_ACTION,
+                action=action,
                 actor=actor,
                 details=details,
                 occurred_at=now,

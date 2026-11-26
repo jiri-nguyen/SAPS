@@ -1,8 +1,8 @@
 """Dramatiq actors of the SAPS Worker.
 
 Start with: `dramatiq saps.worker.actors`. `process_invoice` runs extraction and matching (SAPS-18, SAPS-19);
-`rematch_invoice` runs matching again (SAPS-19). The sweeper (SAPS-37) and the mail intake (SAPS-45) are
-timers started by middlewares.
+`rematch_invoice` runs matching again (SAPS-19). The sweeper (SAPS-37), the mail intake (SAPS-45) and
+the release of held invoices (SAPS-52) are timers started by middlewares.
 `ping` checks the path SAPS API → SAPS Message Broker → SAPS Worker.
 Failing invoice actors are retried by Dramatiq with exponential back-off (ADR-0004 S4); after the last
 retry of `process_invoice`, `process_invoice_failed` raises EX1 (SAPS-38).
@@ -20,6 +20,7 @@ from saps.application.processing import describe_failure
 from saps.config import get_settings
 from saps.logging_config import configure_logging
 from saps.worker.broker import install_broker
+from saps.worker.hold_release import run_hold_release
 from saps.worker.jobs import load_adapters, run_failure, run_matching, run_processing
 from saps.worker.mail_intake import build_mailbox, run_mail_intake
 from saps.worker.sweeper import SweeperMiddleware, run_sweep
@@ -41,6 +42,13 @@ if settings.mail_adapter != "none":  # SAPS-45: one more timer, read like the sw
             partial(run_mail_intake, settings, DramatiqJobQueue(broker), build_mailbox(settings)),
         )
     )
+broker.add_middleware(  # SAPS-52: held invoices are released when the company is open again
+    TimerMiddleware(
+        "hold-release",
+        settings.hold_release_seconds,
+        partial(run_hold_release, settings, DramatiqJobQueue(broker)),
+    )
+)
 load_adapters(settings)  # broken fixtures stop the worker here, not during a demo (SAPS-18 EC-04)
 log = logging.getLogger("saps.worker")
 

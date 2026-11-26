@@ -17,6 +17,7 @@ from saps.api.deps import (
     approval_service,
     exception_service,
     file_storage,
+    invoice_hold_service,
     invoice_reader,
     require_roles,
     review_service,
@@ -50,6 +51,7 @@ from saps.application.invoices import (
     open_invoice_file,
     search_invoices,
 )
+from saps.application.processing_calendar import InvoiceHoldService
 from saps.application.review import ReviewService
 from saps.application.upload import IncomingFile, UploadInvoiceService, UploadSource
 from saps.domain.exception_handling import LineData
@@ -235,6 +237,23 @@ async def claim_invoice(invoice_id: UUID, response: Response, user: Member, serv
     except (InvoiceNotFoundError, HandlingError) as exc:
         raise _problem(exc) from exc
     log.info("invoice_claimed", extra={"invoice_id": str(invoice_id), "user_id": str(user.user_id)})
+    return _invoice_response(response, view)
+
+
+@router.post("/{invoice_id}/release", operation_id="releaseInvoice", response_model_by_alias=True)
+async def release_invoice(
+    invoice_id: UUID,
+    response: Response,
+    user: Manager,
+    service: Annotated[InvoiceHoldService, Depends(invoice_hold_service)],
+    reader: Annotated[InvoiceReader, Depends(invoice_reader)],
+) -> Invoice:
+    """Process now: a held invoice goes back to Uploaded although the company is closed (SAPS-52 BR-06)."""
+    try:
+        await service.release(user, invoice_id)
+        view = await get_invoice(reader, user, invoice_id)
+    except (InvoiceNotFoundError, HandlingError) as exc:
+        raise _problem(exc) from exc
     return _invoice_response(response, view)
 
 
