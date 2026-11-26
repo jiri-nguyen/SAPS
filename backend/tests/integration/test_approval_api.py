@@ -36,7 +36,7 @@ async def _approvals(api: Api, invoice_id: uuid.UUID) -> int:
 # TS-01 -----------------------------------------------------------------------------------------------
 
 
-async def test_approve_goes_to_review_and_notifies_the_members(api: Api) -> None:
+async def test_approve_goes_to_posting_and_notifies_nobody(api: Api) -> None:  # SAPS-49 BR-01, BR-08
     invoice_id = await _waiting(api)
     waiting = await api.notifications(invoice_id)  # the managers were asked to approve, the members not yet
     assert waiting == {
@@ -46,13 +46,12 @@ async def test_approve_goes_to_review_and_notifies_the_members(api: Api) -> None
     response = await api.decide("manager", invoice_id, "APPROVED", "  Within budget.  ")
     assert response.status_code == 200 and response.headers["etag"].startswith('W/"')
     body = response.json()
-    assert body["status"] == "PENDING_REVIEW"
+    assert body["status"] == "POSTING"
     assert body["approval"]["decision"] == "APPROVED" and body["approval"]["comment"] == "Within budget."
     assert body["approval"]["decidedBy"]["displayName"] == "Manager"
     notified = await api.notifications(invoice_id)
-    assert notified["Member"] == [NotificationType.REVIEW_REQUESTED]  # BR-04
-    assert notified["Bob"] == [NotificationType.REVIEW_REQUESTED]
-    assert notified["Manager"] == waiting["Manager"]  # no new notification for the managers
+    assert api.queue.posting == [invoice_id]  # the SAPS Worker posts it (BR-01)
+    assert notified == waiting  # no final review any more: nobody is notified of the approval (DEC-063)
     assert await _approvals(api, invoice_id) == 1
 
 
@@ -136,7 +135,7 @@ async def test_only_invoices_waiting_for_approval(api: Api) -> None:  # EC-04
     approved = await _waiting(api)
     await api.decide("manager", approved, "APPROVED")
     again = await api.decide("manager2", approved, "APPROVED")
-    assert again.status_code == 409 and "Pending review" in again.json()["detail"]
+    assert again.status_code == 409 and "Posting" in again.json()["detail"]
     assert (await api.decide("manager", uuid.uuid4(), "APPROVED")).status_code == 404
 
 
@@ -174,7 +173,7 @@ async def test_decisions_are_recorded_as_events(api: Api) -> None:  # BR-08
     assert (last["action"], last["statusFrom"], last["statusTo"], last["actor"]) == (
         "APPROVE",
         "PENDING_APPROVAL",
-        "PENDING_REVIEW",
+        "POSTING",
         "Manager",
     )
     assert last["details"] == {"decision": "APPROVED", "comment": "OK."}
@@ -188,7 +187,12 @@ async def test_ds08_a_member_accepts_ex2_and_the_manager_sees_it_before_approvin
 ) -> None:  # BR-07, EC-06
     invoice_id = await api.sample(DS08)
     await api.claim("alice", invoice_id)
-    assert (await api.resolve("alice", invoice_id)).json()["status"] == "PENDING_APPROVAL"
+    resolved = await api.resolve("alice", invoice_id)
+    assert resolved.status_code == 202 and resolved.json()["status"] == "MATCHING"  # SAPS-49 BR-04
+    await api.rematch(
+        invoice_id
+    )  # the workflow runs again: EX2 stays accepted, the total is above the threshold
+    assert (await api.get(invoice_id))["status"] == "PENDING_APPROVAL"
     body = await api.get(invoice_id, "manager")
     [accepted] = [e for e in body["exceptions"] if e["status"] == "RESOLVED"]
     assert (
@@ -197,7 +201,7 @@ async def test_ds08_a_member_accepts_ex2_and_the_manager_sees_it_before_approvin
         and accepted["resolvedAt"]
     )
     response = await api.decide("manager", invoice_id, "APPROVED")
-    assert response.status_code == 200 and response.json()["status"] == "PENDING_REVIEW"
+    assert response.status_code == 200 and response.json()["status"] == "POSTING"
 
 
 async def test_the_manager_queue_lists_what_waits_for_approval(api: Api) -> None:

@@ -101,7 +101,7 @@ async def test_an_invoice_that_moved_on_is_left_alone(api: Api) -> None:  # BR-0
     invoice_id = await api.sample(DS01, processed=False)
     await process(api.engine, invoice_id)  # a late retry finished the job: Pending review
     assert await _fail(api, invoice_id, "too late") is False
-    assert (await api.get(invoice_id))["status"] == "PENDING_REVIEW"
+    assert (await api.get(invoice_id))["status"] == "POSTING"
 
 
 async def test_an_unknown_invoice_is_ignored(api: Api) -> None:

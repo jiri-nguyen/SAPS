@@ -1,6 +1,7 @@
 """Calendar service, "Process now" and the release timer with in-memory ports (SAPS-52 TS-01 to TS-05)."""
 
 import logging
+from collections import defaultdict
 from collections.abc import Sequence
 from datetime import UTC, date, datetime
 from uuid import UUID, uuid4
@@ -155,6 +156,8 @@ class FakeHeld:
     def __init__(self, companies: dict[Company, CalendarSnapshot], held: dict[UUID, list[UUID]]) -> None:
         self.companies, self.held = companies, held
         self.asked: list[tuple[UUID, int]] = []
+        self.postings: dict[UUID, list[UUID]] = defaultdict(list)  # held postings (DEC-070)
+        self.asked_postings: list[tuple[UUID, int]] = []
 
     async def list_companies(self) -> list[Company]:
         return list(self.companies)
@@ -165,6 +168,11 @@ class FakeHeld:
     async def release_oldest(self, tenant_id: UUID, limit: int, *, now: datetime) -> list[UUID]:
         self.asked.append((tenant_id, limit))
         ids, self.held[tenant_id] = self.held[tenant_id][:limit], self.held[tenant_id][limit:]
+        return ids
+
+    async def release_postings(self, tenant_id: UUID, limit: int, *, now: datetime) -> list[UUID]:
+        self.asked_postings.append((tenant_id, limit))
+        ids, self.postings[tenant_id] = self.postings[tenant_id][:limit], self.postings[tenant_id][limit:]
         return ids
 
 
@@ -185,6 +193,33 @@ async def test_the_timer_releases_only_the_companies_that_are_open_oldest_first(
     assert repo.asked == [(open_company.tenant_id, 3)]  # the closed company is not even asked
     assert set(queue.tenant_of.values()) == {open_company.tenant_id}
     assert len(held[open_company.tenant_id]) == 2 and len(held[closed_company.tenant_id]) == 1
+
+
+async def test_the_timer_sends_held_postings_of_open_companies_only() -> None:  # DEC-070, SAPS-49 BR-11
+    open_company, closed_company = Company(uuid4(), "Open"), Company(uuid4(), "Closed")
+    repo = FakeHeld(
+        {
+            open_company: CalendarSnapshot((SATURDAY,), "UTC"),
+            closed_company: CalendarSnapshot((RANGE_25_TO_5,), "UTC"),
+        },
+        {open_company.tenant_id: [], closed_company.tenant_id: []},
+    )
+    waiting = [uuid4() for _ in range(3)]
+    repo.postings[open_company.tenant_id] = list(waiting)
+    repo.postings[closed_company.tenant_id] = [uuid4()]
+    queue = MemoryQueue()
+    released = await HoldReleaseService(repo, queue, lambda: NOW, 2).release_due()  # type: ignore[arg-type]
+    assert released == 2 and queue.posting == waiting[:2] and queue.sent == []  # a batch of 2, oldest first
+    assert repo.asked_postings == [(open_company.tenant_id, 2)]  # the closed company is not asked
+
+
+async def test_a_failed_send_of_a_held_posting_is_logged(caplog: pytest.LogCaptureFixture) -> None:
+    company = Company(uuid4(), "Open")
+    repo = FakeHeld({company: CalendarSnapshot((), "UTC")}, {company.tenant_id: []})
+    repo.postings[company.tenant_id] = [uuid4()]
+    with caplog.at_level(logging.WARNING):
+        released = await HoldReleaseService(repo, MemoryQueue(fail=True), lambda: NOW, 10).release_due()  # type: ignore[arg-type]
+    assert released == 1 and caplog.text.count("posting_not_sent") == 1
 
 
 async def test_a_failed_send_does_not_stop_the_release(caplog: pytest.LogCaptureFixture) -> None:

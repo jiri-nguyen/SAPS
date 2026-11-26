@@ -247,7 +247,7 @@ def test_vendor_mismatch_raises_ex10_and_skips_price_and_quantity() -> None:
     ("open_exceptions", "total", "status", "approval"),
     [
         (True, "100", InvoiceStatus.EXCEPTION, False),
-        (False, "300.00", InvoiceStatus.PENDING_REVIEW, False),
+        (False, "300.00", InvoiceStatus.POSTING, False),  # SAPS-49 BR-01
         (False, "300.01", InvoiceStatus.PENDING_APPROVAL, True),
         (False, None, InvoiceStatus.PENDING_APPROVAL, True),
     ],

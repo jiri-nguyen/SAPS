@@ -147,7 +147,7 @@ async def test_ds18_matches_after_the_tolerance_is_raised(api: Api) -> None:
 
     ds18 = await api.sample(DS18)
     body = await api.get(ds18)
-    assert body["status"] == "PENDING_REVIEW" and body["exceptions"] == []
+    assert body["status"] == "POSTING" and body["exceptions"] == []
     assert D(body["priceToleranceApplied"]) == D("1")
     assert D((await api.get(processed_before))["priceToleranceApplied"]) == D("0.5")  # keeps its own value
     stuck_after = await api.get(stuck)
@@ -164,4 +164,4 @@ async def test_a_higher_threshold_does_not_move_an_invoice_already_waiting(api: 
     assert (await _put(api, "manager", "0.5", "1000")).status_code == 200
     body = await api.get(waiting)
     assert body["status"] == "PENDING_APPROVAL" and D(body["approvalThresholdApplied"]) == D("300")
-    assert (await api.decide("manager", waiting, "APPROVED")).json()["status"] == "PENDING_REVIEW"
+    assert (await api.decide("manager", waiting, "APPROVED")).json()["status"] == "POSTING"

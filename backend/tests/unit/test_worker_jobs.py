@@ -18,7 +18,7 @@ async def test_rematch_actor_runs_matching(monkeypatch: pytest.MonkeyPatch) -> N
 
     called: list[object] = []
 
-    async def fake_run(invoice_id: object, tenant_id: object) -> None:
+    async def fake_run(invoice_id: object, tenant_id: object, queue: object) -> None:
         called.append((invoice_id, tenant_id))
 
     monkeypatch.setattr(actors, "run_matching", fake_run)

@@ -16,10 +16,8 @@ from saps.domain.exception_handling import (
     change_details,
     ensure_can_release,
     refused_codes,
-    status_after_acceptance,
 )
 from saps.domain.invoices import ExceptionCode as EX
-from saps.domain.invoices import InvoiceStatus
 from saps.domain.users import AccessDeniedError, CurrentUser, Role
 
 LINE1 = LineData(1, "Paper", "0100001", 1, D("2"), D("10.00"), D("20.00"))
@@ -127,17 +125,3 @@ def test_release_rules() -> None:  # BR-03, DEC-036
     assert ensure_can_release(member, None) is False  # nothing to release
     with pytest.raises(AccessDeniedError):
         ensure_can_release(member, other.user_id)
-
-
-@pytest.mark.parametrize(
-    ("total", "status", "approval"),
-    [
-        (D("300.00"), InvoiceStatus.PENDING_REVIEW, False),
-        (D("300.01"), InvoiceStatus.PENDING_APPROVAL, True),
-        (None, InvoiceStatus.PENDING_APPROVAL, True),
-    ],
-)
-def test_next_status_after_acceptance(
-    total: D | None, status: InvoiceStatus, approval: bool
-) -> None:  # BR-06
-    assert status_after_acceptance(total, D("300")) == (status, approval)

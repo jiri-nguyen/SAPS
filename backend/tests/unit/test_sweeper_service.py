@@ -100,3 +100,12 @@ async def test_a_matching_invoice_is_never_limited() -> None:  # SAPS-38 BR-05
     assert (
         queue.rematch == [matching.id] and repo.gave_up == [] and result is not None and result.gave_up == []
     )
+
+
+async def test_posting_gets_post_invoice_with_the_same_resend_limit() -> None:  # SAPS-49 BR-12
+    posting, exhausted = _invoice(InvoiceStatus.POSTING), _invoice(InvoiceStatus.POSTING, resends=3)
+    repo, queue = MemoryRepo([posting, exhausted]), MemoryQueue()
+    result = await SweeperService(_uow(repo), queue, 60, max_resends=3).sweep()
+    assert queue.posting == [posting.id] and queue.sent == [] and queue.rematch == []
+    assert repo.marked == [(posting, "post_invoice")] and repo.gave_up == [exhausted]
+    assert result is not None and [r.message for r in result.resent] == ["post_invoice"]

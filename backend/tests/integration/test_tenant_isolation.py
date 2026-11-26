@@ -326,7 +326,7 @@ async def test_worker_jobs_run_as_the_company_of_the_message(
     try:
         outcome = await run_processing(with_company, a.id)
         assert outcome is not None and outcome.matching is not None
-        assert outcome.matching.status is InvoiceStatus.PENDING_REVIEW
+        assert outcome.matching.status is InvoiceStatus.POSTING
 
         outcome = await run_processing(old_message)  # sent before SAPS-41: no company (EC-05)
         assert outcome is not None and outcome.tenant_id == a.id

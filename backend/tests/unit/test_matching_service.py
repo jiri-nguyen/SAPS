@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from saps.application.matching import MatchingService
+from saps.domain.acceptance import FingerprintLine, fingerprint
 from saps.domain.duplicates import DuplicateCandidate
 from saps.domain.invoices import ExceptionCode as EX
 from saps.domain.invoices import (
@@ -30,7 +31,7 @@ from saps.domain.matching import (
     PurchasingInfoRecord,
 )
 from saps.domain.users import Role
-from saps.ports.matching import InvoiceForMatching, MatchUpdate, OpenException
+from saps.ports.matching import AcceptedException, InvoiceForMatching, MatchUpdate, OpenException
 
 NOW = datetime(2026, 12, 15, 10, 0, tzinfo=UTC)
 MEMBERS = [uuid4(), uuid4()]
@@ -157,10 +158,12 @@ async def test_unknown_invoice_is_skipped() -> None:
     assert outcome is None
 
 
-async def test_matched_invoice_below_threshold_goes_to_review_and_notifies_members() -> None:
+async def test_matched_invoice_below_threshold_goes_to_posting_and_notifies_nobody() -> (
+    None
+):  # SAPS-49 BR-01, BR-08
     erp = FakeErp()
     repo, outcome = await _match(_invoice(), erp)
-    assert outcome is not None and outcome.status is InvoiceStatus.PENDING_REVIEW
+    assert outcome is not None and outcome.status is InvoiceStatus.POSTING
     assert outcome.invoice_type is InvoiceType.TRADE_PO
     assert erp.calls == ["orders", "receipts", "pirs"] and repo.locked == [("0100001", 1)]
     assert erp.pir_keys == [("V001", "MAT1")] and repo.invoiced_for == [
@@ -177,13 +180,7 @@ async def test_matched_invoice_below_threshold_goes_to_review_and_notifies_membe
         "priceTolerance": "0.5",
         "approvalThreshold": "300",
     }
-    assert repo.notifications == [
-        (
-            MEMBERS,
-            NotificationType.REVIEW_REQUESTED,
-            "Invoice INV-1 from Alpha Supplies is ready for final review.",
-        )
-    ]
+    assert repo.notifications == []
 
 
 async def test_matched_invoice_above_threshold_notifies_managers() -> None:
@@ -289,7 +286,7 @@ async def test_duplicate_gets_its_matching_exceptions_too() -> None:  # TS-05
 async def test_ex9_is_resolved_when_the_duplicate_is_gone() -> None:  # EC-04
     open_ex9 = OpenException(uuid4(), EX.EX9, None)
     repo, outcome = await _match(_invoice(open_exceptions=(open_ex9,)))
-    assert outcome is not None and outcome.status is InvoiceStatus.PENDING_REVIEW
+    assert outcome is not None and outcome.status is InvoiceStatus.POSTING
     assert outcome.resolved == (EX.EX9,) and repo.saved is not None and repo.saved.resolved == [open_ex9.id]
 
 
@@ -306,3 +303,56 @@ async def test_no_check_without_vendor_code() -> None:  # EC-06
     invoice = replace(invoice, invoice=replace(invoice.invoice, vendor_code=None))
     repo, _ = await _match(invoice, duplicates=[OTHER])
     assert repo.duplicate_keys == []
+
+
+# SAPS-49 BR-05: accepted exceptions stay accepted while their values are unchanged ----------------
+
+
+def _accepted(
+    code: EX, line: LineToMatch, invoice_number: str | None = "INV-1", *, header: bool = False
+) -> AcceptedException:
+    """What `resolveInvoiceExceptions` stores: the fingerprint of the values the exception was accepted on."""
+    fingerprint_line = FingerprintLine(
+        line.id,
+        line.line_number,
+        line.po_number,
+        line.po_line_number,
+        line.do_number,
+        line.quantity,
+        line.unit_price,
+    )
+    line_id = None if header else line.id
+    return AcceptedException(code, line_id, fingerprint(line_id, "V001", invoice_number, [fingerprint_line]))
+
+
+async def test_an_accepted_exception_is_not_raised_again_with_the_same_values() -> None:  # EC-05
+    overpriced = replace(LINE, unit_price=D("10.60"))  # EX6 on this line
+    invoice = _invoice(overpriced, accepted=(_accepted(EX.EX6, overpriced),))
+    repo, outcome = await _match(invoice)
+    assert outcome is not None and outcome.status is InvoiceStatus.POSTING and outcome.open_codes == ()
+    assert repo.saved is not None and repo.saved.opened == []
+
+
+async def test_a_changed_value_raises_the_exception_again() -> None:  # EC-08
+    accepted = _accepted(EX.EX6, replace(LINE, unit_price=D("10.60")))
+    changed = replace(LINE, unit_price=D("10.70"))  # accepted at 10.60, now 10.70
+    _, outcome = await _match(_invoice(changed, accepted=(accepted,)))
+    assert outcome is not None and outcome.open_codes == (EX.EX6,)
+
+
+async def test_a_new_code_is_raised_although_another_one_was_accepted() -> None:  # EC-07
+    accepted = _accepted(EX.EX7, LINE)  # EX7 was accepted; now the price is off (EX6)
+    _, outcome = await _match(_invoice(replace(LINE, unit_price=D("11.00")), accepted=(accepted,)))
+    assert outcome is not None and outcome.open_codes == (EX.EX6,)
+
+
+async def test_an_accepted_header_exception_follows_the_invoice_number() -> None:
+    erp = FakeErp()
+    non_po = replace(LINE, po_number=None, po_line_number=None)
+    accepted = _accepted(EX.EX2, non_po, header=True)
+    _, outcome = await _match(_invoice(non_po, accepted=(accepted,)), erp)
+    assert outcome is not None and outcome.status is InvoiceStatus.POSTING  # EX2 stays accepted (BR-06)
+    _, outcome = await _match(_invoice(non_po, invoice_number="INV-2", accepted=(accepted,)), erp)
+    assert outcome is not None and outcome.open_codes == (
+        EX.EX2,
+    )  # another number: not the same invoice data

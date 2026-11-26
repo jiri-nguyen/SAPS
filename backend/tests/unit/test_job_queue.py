@@ -20,13 +20,38 @@ async def test_process_invoice_actor_runs_the_job(monkeypatch) -> None:
 
     called: list[object] = []
 
-    async def fake_run(invoice_id: object, tenant_id: object) -> None:
+    async def fake_run(invoice_id: object, tenant_id: object, queue: object) -> None:
         called.append((invoice_id, tenant_id))
 
     monkeypatch.setattr(actors, "run_processing", fake_run)
     invoice_id, tenant_id = uuid4(), uuid4()
     await actors.process_invoice.fn.__wrapped__(str(invoice_id), str(tenant_id))
     await actors.process_invoice.fn.__wrapped__(str(invoice_id))  # sent before SAPS-41: no company (EC-05)
+    assert called == [(invoice_id, tenant_id), (invoice_id, None)]
+
+
+async def test_post_invoice_message_carries_the_invoice_and_its_company() -> None:  # SAPS-49 §3.5
+    broker = StubBroker()
+    broker.declare_queue(QUEUE)
+    invoice_id, tenant_id = uuid4(), uuid4()
+    await DramatiqJobQueue(broker).send_post_invoice(invoice_id, tenant_id)
+    message = broker.queues[QUEUE].get_nowait()
+    assert b'"actor_name":"post_invoice"' in message
+    assert f'"args":["{invoice_id}","{tenant_id}"]'.encode() in message
+
+
+async def test_post_invoice_actor_runs_the_job(monkeypatch) -> None:
+    from saps.worker import actors
+
+    called: list[object] = []
+
+    async def fake_run(invoice_id: object, tenant_id: object) -> None:
+        called.append((invoice_id, tenant_id))
+
+    monkeypatch.setattr(actors, "run_posting", fake_run)
+    invoice_id, tenant_id = uuid4(), uuid4()
+    await actors.post_invoice.fn.__wrapped__(str(invoice_id), str(tenant_id))
+    await actors.post_invoice.fn.__wrapped__(str(invoice_id))
     assert called == [(invoice_id, tenant_id), (invoice_id, None)]
 
 

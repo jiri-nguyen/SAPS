@@ -18,7 +18,7 @@ from tests.integration.pipeline import FIXTURES, process, uploaded
 pytestmark = pytest.mark.integration
 
 PATH = "/v1/notifications"
-DS01 = "ds-01/invoices/ds-01-trade-po.pdf"  # → Pending review
+DS13 = "ds-13/invoices/ds-13-quantity-above-expected.pdf"  # → Exception (EX7)
 DS03 = "ds-03/invoices/ds-03-above-threshold.pdf"  # → Pending approval
 DS12 = "ds-12/invoices/ds-12-price-outside-tolerance.pdf"  # → Exception (EX6)
 
@@ -73,16 +73,19 @@ async def test_the_exception_reaches_the_members_and_not_the_manager(api: Api) -
     assert await _list(api, "manager") == {"items": [], "nextPageToken": None, "unreadCount": 0}
 
 
-async def test_approval_then_review_notify_the_right_roles_newest_first(api: Api) -> None:
+async def test_exception_and_approval_notify_the_right_roles_newest_first(api: Api) -> None:
     waiting = await api.sample(DS03)
     assert await _types(api, "manager") == ["APPROVAL_REQUESTED"]
     assert await _types(api, "manager2") == ["APPROVAL_REQUESTED"]
-    assert await _types(api, "alice") == []  # members are not asked before the approval
+    assert await _types(api, "alice") == []  # members are not asked for an approval
     await api.decide("manager", waiting, "APPROVED")
-    reviewed = await api.sample(DS01)
-    assert await _types(api, "alice") == ["REVIEW_REQUESTED", "REVIEW_REQUESTED"]
+    assert (
+        await _types(api, "alice") == []
+    )  # no final review any more: nobody is told of the posting (DEC-063)
+    raised = await api.sample(DS13)
+    assert await _types(api, "alice") == ["EXCEPTION_RAISED"]
     items = (await _list(api, "bob"))["items"]
-    assert [i["invoiceId"] for i in items] == [str(reviewed), str(waiting)]  # newest first
+    assert [i["invoiceId"] for i in items] == [str(raised)]
     assert await _types(api, "manager") == ["APPROVAL_REQUESTED"]  # no new one for managers
 
 
@@ -91,7 +94,7 @@ async def test_approval_then_review_notify_the_right_roles_newest_first(api: Api
 
 async def test_mark_one_read_is_idempotent_and_updates_the_count(api: Api) -> None:
     await api.sample(DS12)
-    await api.sample(DS01)
+    await api.sample(DS13)
     first, second = (await _list(api, "alice"))["items"]
     assert (await _list(api, "alice"))["unreadCount"] == 2
 
@@ -118,7 +121,7 @@ async def test_a_read_notification_keeps_its_first_read_time(api: Api) -> None:
 
 async def test_mark_all_read_touches_only_the_caller(api: Api) -> None:
     await api.sample(DS12)
-    await api.sample(DS01)
+    await api.sample(DS13)
     assert (await api.request("alice", "POST", f"{PATH}/read-all")).status_code == 204
     assert (await api.request("alice", "POST", f"{PATH}/read-all")).status_code == 204  # idempotent
     page = await _list(api, "alice")
@@ -205,8 +208,8 @@ async def test_inactive_users_and_users_created_later_receive_nothing(api: Api) 
             newcomer.id, newcomer.tenant_id, newcomer.username, newcomer.display_name, newcomer.role
         )
     assert await _list(api, "newcomer") == {"items": [], "nextPageToken": None, "unreadCount": 0}
-    await api.sample(DS01)
-    assert await _types(api, "newcomer") == ["REVIEW_REQUESTED"]  # only what happens after joining
+    await api.sample(DS12)
+    assert await _types(api, "newcomer") == ["EXCEPTION_RAISED"]  # only what happens after joining
 
 
 # TS-03 / BR-02, EC-05 ----------------------------------------------------------------------------------

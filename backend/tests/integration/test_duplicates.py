@@ -55,7 +55,7 @@ async def _open_codes(engine: AsyncEngine, invoice_id: uuid.UUID) -> list[str]:
     [
         (InvoiceStatus.EXCEPTION, True),
         (InvoiceStatus.PENDING_APPROVAL, True),
-        (InvoiceStatus.PENDING_REVIEW, True),
+        (InvoiceStatus.POSTING, True),
         (InvoiceStatus.COMPLETED, True),
         (InvoiceStatus.UPLOADED, False),
         (InvoiceStatus.MATCHING, False),
@@ -102,7 +102,7 @@ async def test_ds15_after_ds01_gets_ex9_and_its_matching_exceptions(
             )
         )
         stored = await session.get_one(Invoice, first)
-    assert message == "Duplicate of invoice AOS-2026-1001 (Pending review)."
+    assert message == "Duplicate of invoice AOS-2026-1001 (Posting)."
     assert stored.invoice_number_normalized == "aos20261001"  # set when extraction saves the header
 
 
@@ -141,7 +141,7 @@ async def test_corrected_number_resolves_ex9_on_rematch(engine: AsyncEngine) -> 
 async def test_third_copy_names_both_earlier_invoices(engine: AsyncEngine) -> None:  # EC-05
     tenant = await new_tenant(engine)
     await _other(engine, tenant, InvoiceStatus.COMPLETED, number="AOS-2026-1017")
-    await _other(engine, tenant, InvoiceStatus.PENDING_REVIEW, number="aos20261017")
+    await _other(engine, tenant, InvoiceStatus.POSTING, number="aos20261017")
     invoice_id = await uploaded(engine, DS17, tenant)
     outcome = await process(engine, invoice_id)
     assert outcome is not None and outcome.matching is not None and len(outcome.matching.duplicate_of) == 2
@@ -151,4 +151,4 @@ async def test_third_copy_names_both_earlier_invoices(engine: AsyncEngine) -> No
                 InvoiceException.invoice_id == invoice_id, InvoiceException.code == ExceptionCode.EX9
             )
         )
-    assert message == "Duplicate of invoices AOS-2026-1017 (Completed), aos20261017 (Pending review)."
+    assert message == "Duplicate of invoices AOS-2026-1017 (Completed), aos20261017 (Posting)."

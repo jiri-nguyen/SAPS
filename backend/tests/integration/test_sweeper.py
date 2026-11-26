@@ -31,7 +31,7 @@ async def calm_database(engine: AsyncEngine) -> AsyncIterator[None]:
         await session.execute(
             update(Invoice)
             .where(
-                Invoice.status.in_([InvoiceStatus.UPLOADED, InvoiceStatus.MATCHING]),
+                Invoice.status.in_([InvoiceStatus.UPLOADED, InvoiceStatus.MATCHING, InvoiceStatus.POSTING]),
                 Invoice.updated_at < datetime.now(UTC) - timedelta(seconds=STUCK_AFTER),
             )
             .values(updated_at=datetime.now(UTC))
@@ -100,6 +100,28 @@ async def _status(engine: AsyncEngine, invoice_id: uuid.UUID) -> InvoiceStatus:
 # TS-02 -----------------------------------------------------------------------------------------------
 
 
+async def test_a_stuck_posting_is_sent_again_unless_it_is_held_on_a_closed_day(
+    engine: AsyncEngine,
+) -> None:  # SAPS-49 BR-12, DEC-070
+    stuck = await _invoice(engine, InvoiceStatus.POSTING)
+    held = await _invoice(engine, InvoiceStatus.POSTING)
+    async with session_factory(engine)() as session, session.begin():
+        await session.execute(
+            update(Invoice).where(Invoice.id == held).values(posting_held_at=datetime.now(UTC))
+        )
+    queue = MemoryQueue()
+    resent = await _sweep(engine, queue)
+    assert resent is not None and set(resent) == {stuck}
+    assert (queue.posting, queue.sent, queue.rematch) == ([stuck], [], [])
+    [event] = await _events(engine, stuck)
+    assert (event.status_from, event.status_to, event.details) == (
+        InvoiceStatus.POSTING,
+        InvoiceStatus.POSTING,
+        {"message": "post_invoice"},
+    )
+    assert await _events(engine, held) == []
+
+
 async def test_only_stuck_uploaded_and_matching_invoices_are_sent_again(engine: AsyncEngine) -> None:
     uploaded_old = await _invoice(engine)
     matching_old = await _invoice(engine, InvoiceStatus.MATCHING)
@@ -135,7 +157,7 @@ async def test_a_resent_invoice_is_processed_to_pending_review(engine: AsyncEngi
     await _sweep(engine, queue)
     assert queue.sent == [invoice_id]
     await process(engine, invoice_id)  # what the SAPS Worker does with the message
-    assert await _status(engine, invoice_id) is InvoiceStatus.PENDING_REVIEW
+    assert await _status(engine, invoice_id) is InvoiceStatus.POSTING
 
 
 # TS-03 -----------------------------------------------------------------------------------------------
@@ -213,7 +235,7 @@ async def test_a_lost_rematch_message_after_a_correction_is_recovered(api: Api) 
     assert await _sweep(api.engine, queue) == [invoice_id]
     assert queue.rematch == [invoice_id]
     await api.rematch(invoice_id)  # what the SAPS Worker does with the message
-    assert (await api.get(invoice_id))["status"] == "PENDING_REVIEW"
+    assert (await api.get(invoice_id))["status"] == "POSTING"
 
 
 async def test_invoices_of_every_tenant_are_swept(engine: AsyncEngine) -> None:  # BR-05

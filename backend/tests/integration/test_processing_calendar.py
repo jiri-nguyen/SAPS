@@ -181,7 +181,7 @@ async def test_a_closed_day_holds_the_invoice_and_process_now_lets_it_through(
 
     outcome = await process(engine, invoice_id)  # the closed day does not hold it again
     assert outcome is not None and not outcome.held and outcome.matching is not None
-    assert await _status(engine, invoice_id) is InvoiceStatus.PENDING_REVIEW
+    assert await _status(engine, invoice_id) is InvoiceStatus.POSTING
 
 
 async def test_an_open_day_processes_as_before(api: Api, engine: AsyncEngine) -> None:
@@ -190,7 +190,7 @@ async def test_an_open_day_processes_as_before(api: Api, engine: AsyncEngine) ->
     invoice_id = await uploaded(engine, DS01, api.world.tenant)
     outcome = await process(engine, invoice_id)
     assert outcome is not None and not outcome.held
-    assert await _status(engine, invoice_id) is InvoiceStatus.PENDING_REVIEW
+    assert await _status(engine, invoice_id) is InvoiceStatus.POSTING
 
 
 async def test_a_message_sent_again_does_not_change_a_held_invoice(api: Api, engine: AsyncEngine) -> None:
