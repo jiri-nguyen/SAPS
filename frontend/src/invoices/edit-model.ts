@@ -21,6 +21,7 @@ export interface LineValues {
   description: string;
   poNumber: string;
   poLineNumber: string;
+  doNumber: string;
   quantity: string;
   unitPrice: string;
   lineAmount: string;
@@ -30,6 +31,7 @@ const AMOUNT = /^-?\d{1,16}(\.\d{1,2})?$/;
 const UNIT_PRICE = /^-?\d{1,14}(\.\d{1,4})?$/;
 const QUANTITY = /^\d{1,15}(\.\d{1,3})?$/;
 const PO_NUMBER = /^\d{7}$/;
+const DO_NUMBER_MAX = 50;
 const POSITIVE = /^[1-9]\d*$/;
 const AMOUNT_KEYS: readonly HeaderKey[] = ["subtotalAmount", "taxAmount", "totalAmount"];
 
@@ -54,6 +56,7 @@ export function linesOf(invoice: Invoice): LineValues[] {
     description: plain(line.description),
     poNumber: plain(line.poNumber),
     poLineNumber: line.poLineNumber == null ? "" : String(line.poLineNumber),
+    doNumber: plain(line.doNumber),
     quantity: line.quantity == null ? "" : decimal(line.quantity, 0),
     unitPrice: amount(line.unitPrice),
     lineAmount: amount(line.lineAmount),
@@ -67,6 +70,7 @@ export function emptyLine(lines: readonly LineValues[]): LineValues {
     description: "",
     poNumber: "",
     poLineNumber: "",
+    doNumber: "",
     quantity: "",
     unitPrice: "",
     lineAmount: "",
@@ -80,6 +84,7 @@ function lineUpdate(line: LineValues): InvoiceLineUpdate {
     description: value(line.description) || null,
     poNumber: value(line.poNumber) || null,
     poLineNumber: value(line.poLineNumber) ? Number(line.poLineNumber) : null,
+    doNumber: value(line.doNumber) || null,
     ...(value(line.quantity) ? { quantity: value(line.quantity) } : {}),
     ...(value(line.unitPrice) ? { unitPrice: value(line.unitPrice) } : {}),
     ...(value(line.lineAmount) ? { lineAmount: value(line.lineAmount) } : {}),
@@ -114,6 +119,8 @@ export function validate(
       errors.push(`${name}: the PO number has 7 digits.`);
     if (line.poLineNumber.trim() && !POSITIVE.test(line.poLineNumber.trim()))
       errors.push(`${name}: the PO line is a whole number from 1.`);
+    if (line.doNumber.trim().length > DO_NUMBER_MAX)
+      errors.push(`${name}: the DO number is longer than ${DO_NUMBER_MAX} characters.`);
     if (line.quantity.trim() && !QUANTITY.test(line.quantity.trim()))
       errors.push(`${name}: the quantity has up to 3 decimals.`);
     if (line.unitPrice.trim() && !UNIT_PRICE.test(line.unitPrice.trim()))

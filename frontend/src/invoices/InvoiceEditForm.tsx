@@ -18,6 +18,7 @@ const LINE_COLUMNS: readonly { key: keyof LineValues; label: string }[] = [
   { key: "description", label: "Description" },
   { key: "poNumber", label: "PO number" },
   { key: "poLineNumber", label: "PO line" },
+  { key: "doNumber", label: "DO number" },
   { key: "quantity", label: "Quantity" },
   { key: "unitPrice", label: "Unit price" },
   { key: "lineAmount", label: "Line amount" },

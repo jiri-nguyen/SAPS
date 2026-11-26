@@ -14,18 +14,21 @@ export const STATUS_LABEL: Record<InvoiceStatus, string> = {
   ON_HOLD: "On hold",
 };
 
-/** Exception types of the PoC (DEC-033). */
+/** Exception types (DEC-033, DEC-068). */
 export const EXCEPTION_TITLE: Record<ExceptionCode, string> = {
   EX1: "Invoice unreadable",
   EX2: "Non-PO invoice",
   EX3: "Invalid or missing PO number",
-  EX4: "PO or PO line not found",
+  EX4: "PO or PO line not found or not open",
   EX5: "Trade and non-trade POs",
   EX6: "Unit price outside tolerance",
   EX7: "Quantity above expected",
   EX8: "Missing goods receipt",
   EX9: "Duplicate invoice",
   EX10: "Vendor does not match the PO",
+  EX11: "DO number missing",
+  EX12: "No purchasing info record",
+  EX13: "Invalid DO number",
 };
 
 /** "Title: message", without repeating the title when the message already starts with it. */

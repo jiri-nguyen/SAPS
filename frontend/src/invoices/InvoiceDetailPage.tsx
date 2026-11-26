@@ -394,9 +394,10 @@ export function InvoiceDetailPage({
                 <th>Line</th>
                 <th>Description</th>
                 <th>PO</th>
+                <th>DO number</th>
                 <th className="num">Quantity</th>
                 <th className="num">Unit price</th>
-                <th className="num">PO unit price</th>
+                <th className="num">Reference price</th>
                 <th className="num">Expected quantity</th>
                 <th>Match</th>
               </tr>
@@ -410,9 +411,20 @@ export function InvoiceDetailPage({
                     {text(line.poNumber)}
                     {line.poLineNumber != null ? ` / ${line.poLineNumber}` : ""}
                   </td>
+                  <td>
+                    {text(line.doNumber)}
+                    {line.matchedDoNumber && line.matchedDoNumber !== line.doNumber
+                      ? ` → lot ${line.matchedDoNumber}`
+                      : ""}
+                  </td>
                   <td className="num">{decimal(line.quantity, 0)}</td>
                   <td className="num">{decimal(line.unitPrice)}</td>
-                  <td className="num">{decimal(line.poUnitPrice)}</td>
+                  <td
+                    className="num"
+                    title={line.pirUnitPrice == null ? "PO unit price" : "Purchasing info record"}
+                  >
+                    {decimal(line.pirUnitPrice ?? line.poUnitPrice)}
+                  </td>
                   <td className="num">{decimal(line.expectedQuantity, 0)}</td>
                   <td>{line.matchStatus.replace("_", " ").toLowerCase()}</td>
                 </tr>
