@@ -3,7 +3,7 @@ title: Decision Log
 status: draft            # draft | in-review | approved
 owner: "Solution Architect (our company)"
 reviewers: ["PM (TBD)"]
-last_updated: 2026-12-15
+last_updated: 2027-03-01
 related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, MTG-20261210, MTG-20261211, MTG-20261214]
 ---
 
@@ -45,14 +45,14 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, 
 | [DEC-031](#dec-031) | 2026-12-08 | Lines without a PO number on a PO invoice raise EX3 | Business | confirmed |
 | [DEC-032](#dec-032) | 2026-12-08 | Invoice quantity must not exceed the expected quantity | Business | confirmed |
 | [DEC-033](#dec-033) | 2026-12-08 | Exception types EX1–EX10 and demo scenarios DS-01 … DS-20 | Business | confirmed |
-| [DEC-034](#dec-034) | 2026-12-08 | Match cumulatively per PO line; no DO / GR reference in the PoC | Scope | confirmed |
+| [DEC-034](#dec-034) | 2026-12-08 | Match cumulatively per PO line; no DO / GR reference in the PoC | Scope | superseded |
 | [DEC-035](#dec-035) | 2026-12-10 | Exception types that may be accepted as is | Business | confirmed |
 | [DEC-036](#dec-036) | 2026-12-10 | Accounting Manager may release any claim | Business | confirmed |
 | [DEC-037](#dec-037) | 2026-12-10 | Repeated exception after re-matching notifies the claimant only | Business | confirmed |
 | [DEC-038](#dec-038) | 2026-12-11 | Any Accounting Manager may decide an approval; first decision is final | Business | confirmed |
 | [DEC-039](#dec-039) | 2026-12-11 | No return for correction in the PoC; reject only | Scope | confirmed |
 | [DEC-040](#dec-040) | 2026-12-11 | No notification on rejection in the PoC | Business | confirmed |
-| [DEC-041](#dec-041) | 2026-12-11 | No four-eyes rule at final review in the PoC | Scope | confirmed |
+| [DEC-041](#dec-041) | 2026-12-11 | No four-eyes rule at final review in the PoC | Scope | superseded |
 | [DEC-042](#dec-042) | 2026-12-14 | Normalize invoice numbers for duplicate detection | Business | confirmed |
 | [DEC-043](#dec-043) | 2026-12-14 | Duplicate check ignores rejected invoices | Business | confirmed |
 | [DEC-044](#dec-044) | 2026-12-15 | Dependency audit gate: runtime blocking, dev-only report when no fix exists | Process | confirmed |
@@ -74,6 +74,12 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, 
 | [DEC-060](#dec-060) | 2027-03-01 | Customers are subsidiaries of one group in several countries | Business | confirmed |
 | [DEC-061](#dec-061) | 2027-03-01 | One shared Entra ID; one e-mail domain per subsidiary | Business | confirmed |
 | [DEC-062](#dec-062) | 2027-03-01 | [CR] Processing calendar per company | Scope | confirmed |
+| [DEC-063](#dec-063) | 2027-03-01 | [CR] Straight-through posting; no final review | Scope | confirmed |
+| [DEC-064](#dec-064) | 2027-03-01 | Post invoices through an ERP posting port; mock posting; status Posted | Business | confirmed |
+| [DEC-065](#dec-065) | 2027-03-01 | [CR] Trade PO invoices are matched per received lot (PO or DO number) | Scope | confirmed |
+| [DEC-066](#dec-066) | 2027-03-01 | Trade PO unit price checked against the purchasing info record | Business | confirmed |
+| [DEC-067](#dec-067) | 2027-03-01 | Dummy ERP data in Phase 2: open PO list, DO numbers, PIR prices | Scope | confirmed |
+| [DEC-068](#dec-068) | 2027-03-01 | Exception types EX11 – EX13 | Business | confirmed |
 
 ## 2. Decisions
 
@@ -153,7 +159,7 @@ It succeeds when the end-to-end flow is demonstrated for different cases, includ
 | Decided by | Customer representative (Customer) |
 | Source | [MTG-20261121](meetings/2026-11-21-requirements-workshop.md) D2 |
 | Impacts | [scope.md](scope.md) SCP-IN-02 (changed), SCP-IN-09, SCP-OUT-01, SCP-OUT-02 |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Extended to Phase 2 by [DEC-067](#dec-067) |
 
 **Context:** Real extraction needs sample invoices and OCR/AI services; real ERP data needs SAP integration.
 
@@ -205,7 +211,7 @@ extraction data is open ([MTG-20261121](meetings/2026-11-21-requirements-worksho
 | Decided by | Customer representative (Customer) |
 | Source | [MTG-20261121](meetings/2026-11-21-requirements-workshop.md) D4 |
 | Impacts | [scope.md](scope.md) SCP-IN-03, SCP-OUT-06, SCP-OUT-07 |
-| Supersedes / Superseded by | Quantity rule partly superseded by [DEC-032](#dec-032) |
+| Supersedes / Superseded by | Quantity rule partly superseded by [DEC-032](#dec-032); price reference for trade PO invoices partly superseded by [DEC-066](#dec-066) |
 
 **Context:** Matching level and tolerances were open (MTG-20261114 Q14–Q16).
 
@@ -232,7 +238,7 @@ extraction data is open ([MTG-20261121](meetings/2026-11-21-requirements-worksho
 | Decided by | Customer representative (Customer), on a proposal by the Solution Architect (our company) |
 | Source | [MTG-20261121](meetings/2026-11-21-requirements-workshop.md) D5 |
 | Impacts | [scope.md](scope.md) SCP-IN-03, SCP-IN-04, SCP-OUT-05 |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Refined by [DEC-065](#dec-065) for trade PO invoices |
 
 **Context:** The customer asked the SA to propose handling in line with common AP practice (MTG-20261114 Q17).
 
@@ -307,7 +313,7 @@ non-PO invoices, and whether the threshold is configurable ([MTG-20261121](meeti
 | Decided by | Customer representative (Customer) |
 | Source | [MTG-20261121](meetings/2026-11-21-requirements-workshop.md) D8 |
 | Impacts | [scope.md](scope.md) SCP-IN-04 |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Refined by [DEC-063](#dec-063) (re-run after the last exception is closed) |
 
 **Context:** Behavior after a manual update was open (MTG-20261114 Q25).
 
@@ -373,7 +379,7 @@ extraction data. Uploading a file from the set loads its data. Uploading any oth
 | Decided by | Product Owner (Customer) |
 | Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D3 |
 | Impacts | [scope.md](scope.md) SCP-IN-06; [§6.2 Runtime View](../02-architecture/arc42/06-runtime-view.md) |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Partly superseded by [DEC-063](#dec-063) (no final review; approval stays, before posting) |
 
 **Context:** The order of approval and final review, and the scope of the approval rule, were open (MTG-20261121 Q2, Q4).
 
@@ -395,7 +401,7 @@ The approval rule applies to all invoice types, including non-PO invoices.
 | Decided by | Product Owner (Customer) |
 | Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D4, R15 |
 | Impacts | [scope.md](scope.md) SCP-IN-14 |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Partly superseded by [DEC-063](#dec-063) (no rejection at final review) |
 
 **Context:** Handling of rejected invoices was open (MTG-20261121 Q3).
 
@@ -560,7 +566,7 @@ exception type EX1–EX9.
 | Decided by | Product Owner (Customer) |
 | Source | [MTG-20261128](meetings/2026-11-28-poc-flow-review.md) D11, R17 |
 | Impacts | [scope.md](scope.md) SCP-IN-08 |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Partly superseded by [DEC-063](#dec-063) (no final review notification) |
 
 **Context:** Who receives in-app notifications was open (MTG-20261128 Q4).
 
@@ -608,7 +614,7 @@ exception type EX1–EX9.
 | Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
 | Source | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) D2 |
 | Impacts | [data-model.md §4.2](../02-architecture/data-model.md#42-external-entities-read-through-ports-not-stored); refines [DEC-007](#dec-007) |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Refined by [DEC-064](#dec-064) (Posted counts) |
 
 **Context:** Received-not-invoiced and PO-not-yet-invoiced quantities need an "already invoiced" quantity per PO line.
 In SAP it grows only when an invoice is posted and is checked again at posting; the PoC has no posting step.
@@ -814,7 +820,7 @@ The invoice type comes from the lines with a PO number.
 | Decided by | Product Owner (Customer) |
 | Source | [MTG-20261208](meetings/2026-12-08-matching-rules.md) D2 |
 | Impacts | [SAPS-19](../03-features/SAPS-19-invoice-matching.md) BR-09; partly supersedes [DEC-006](#dec-006) (quantity rule); refines [DEC-007](#dec-007) |
-| Supersedes / Superseded by | Partly supersedes [DEC-006](#dec-006) (quantity rule only) |
+| Supersedes / Superseded by | Partly supersedes [DEC-006](#dec-006) (quantity rule only); refined by [DEC-065](#dec-065) (per lot) |
 
 **Context:** DEC-006 said "quantity must match exactly", DEC-007 said "above it → exception"; the two readings differ for partial invoicing.
 
@@ -837,7 +843,7 @@ Product Owner first chose exact matching, then changed to this rule after the SA
 | Decided by | Product Owner (Customer) |
 | Source | [MTG-20261208](meetings/2026-12-08-matching-rules.md) D3 |
 | Impacts | [scope.md](scope.md) SCP-IN-04; [SAPS-19](../03-features/SAPS-19-invoice-matching.md); [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml); [test-strategy.md §11](../05-testing/test-strategy.md#11-poc-demo-acceptance) |
-| Supersedes / Superseded by | Supersedes [DEC-018](#dec-018) and [DEC-025](#dec-025) |
+| Supersedes / Superseded by | Supersedes [DEC-018](#dec-018) and [DEC-025](#dec-025); extended by [DEC-068](#dec-068) |
 
 **Context:** The vendor on an invoice can differ from the vendor of the PO it refers to; EX1–EX9 had no type for this.
 
@@ -869,11 +875,11 @@ The demo scenario catalog DS-01 … DS-20 in the test strategy (DS-20 covers EX1
 |---|---|
 | Date | 2026-12-08 |
 | Category | Scope |
-| Status | confirmed |
+| Status | superseded |
 | Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
 | Source | [MTG-20261208](meetings/2026-12-08-matching-rules.md) D4 |
 | Impacts | [scope.md](scope.md) SCP-OUT-13; [SAPS-19](../03-features/SAPS-19-invoice-matching.md); confirms [DEC-007](#dec-007) |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Superseded by [DEC-065](#dec-065) |
 
 **Context:** Matching can be cumulative per PO line, or GR-based (each invoice line references a goods receipt or delivery order).
 
@@ -895,7 +901,7 @@ Invoices carry no delivery order (DO) or goods receipt (GR) reference. GR-based 
 | Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
 | Source | [MTG-20261210](meetings/2026-12-10-exception-handling-rules.md) D1 |
 | Impacts | [SAPS-20](../03-features/SAPS-20-exception-handling.md) BR-06; `resolveInvoiceExceptions` in [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Refined by [DEC-063](#dec-063) (accepted exceptions on a re-run) |
 
 **Context:** An Accounting Member can correct the data, accept the invoice as is, or reject it. Which exception types
 allow acceptance without correction was open.
@@ -1031,11 +1037,11 @@ exception on an unclaimed invoice still notifies all Accounting Members.
 |---|---|
 | Date | 2026-12-11 |
 | Category | Scope |
-| Status | confirmed |
+| Status | superseded |
 | Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
 | Source | [MTG-20261211](meetings/2026-12-11-approval-review-rules.md) D4 |
 | Impacts | [SAPS-21](../03-features/SAPS-21-final-result-review.md) BR-02; [SCP-OUT-15](scope.md#4-out-of-scope) |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Superseded by [DEC-063](#dec-063) (no final review) |
 
 **Context:** Segregation of duties would forbid the member who uploaded an invoice or accepted its exceptions from confirming it.
 
@@ -1521,3 +1527,185 @@ month to the 5th of the next month, and on weekends. This was not in the Phase 2
 **Consequences & follow-ups:** Feature spec and Linear issue [SAPS-52](https://linear.app/jiringuyen/issue/SAPS-52). The
 new status On hold changes the invoice lifecycle; the sweeper ignores held invoices.
 
+### DEC-063
+**[CR] Straight-through posting; no final review**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Scope |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301-9](meetings/2027-03-01-po-invoice-posting-and-matching.md) D1, R2, R11, R12, Q1 – Q3, Q12, Q13 |
+| Impacts | [scope.md](scope.md) version 0.10: SCP-IN-03, -04, -05 (withdrawn), -06, -08, -14, -17; [SAPS-21](../03-features/SAPS-21-final-result-review.md), [SAPS-20](../03-features/SAPS-20-exception-handling.md), [SAPS-22](../03-features/SAPS-22-invoice-approval.md); invoice lifecycle; [SAPS-49](https://linear.app/jiringuyen/issue/SAPS-49) |
+| Supersedes / Superseded by | Supersedes [DEC-041](#dec-041); partly supersedes [DEC-013](#dec-013) (order with final review), [DEC-014](#dec-014) (rejection at final review), [DEC-021](#dec-021) (final review notification); refines [DEC-010](#dec-010), [DEC-035](#dec-035) |
+
+**Context:** Every invoice ends at a final review by an Accounting Member ([DEC-013](#dec-013)). The Product Owner wants invoices
+without problems, or whose problems were corrected, posted to the ERP without anybody reviewing them.
+
+**Decision:**
+- The workflow ends with posting to the ERP ([DEC-064](#dec-064)) for every invoice type. There is no final review any more.
+- An invoice whose workflow passes is posted automatically. Above the approval threshold it is posted after the
+  Accounting Manager approves ([DEC-009](#dec-009) stays).
+- When an Accounting Member closes the last open exception (correction or acceptance as is), the workflow runs again
+  with fresh ERP data. If it passes, the invoice is posted automatically (or goes to approval). Non-PO invoices are
+  posted after the manual review (EX2) in the same way.
+- "Workflow" here means the processing after extraction: duplicate detection, type derivation, matching, the approval
+  decision and posting. A re-run never repeats extraction (OCR / AI later), because of its cost.
+- An exception accepted as is stays accepted on a re-run while the values it was raised on are unchanged (line,
+  quantity, unit price, vendor, invoice number); the re-run does not raise it again. A changed value or a new problem
+  raises a new exception.
+- Invoices in Pending review at the upgrade are posted by a one-time run. The final review screen and the notification
+  "ready for final review" are removed; the outcome stays visible in the invoice detail and All invoices.
+- An invoice can be rejected at approval and during exception handling (two rejection points).
+
+**Rationale:** Stated by the Product Owner: touchless processing; people act only on exceptions and approvals.
+The details are the Solution Architect's proposals, accepted by the Product Owner.
+
+**Consequences & follow-ups:** The four-eyes candidate SCP-OUT-15 no longer applies to a final review. Feature spec
+[SAPS-49](https://linear.app/jiringuyen/issue/SAPS-49). Phase 2 demo scenarios change ([SAPS-47](https://linear.app/jiringuyen/issue/SAPS-47)).
+
+### DEC-064
+**Post invoices through an ERP posting port; mock posting; status Posted**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20270301-9](meetings/2027-03-01-po-invoice-posting-and-matching.md) D2, R3, Q9, Q10 |
+| Impacts | [scope.md](scope.md) SCP-IN-17; invoice lifecycle (new status Posted); [glossary](../02-architecture/arc42/12-glossary.md) Completed; ADR-0013 (to write) |
+| Supersedes / Superseded by | Refines [DEC-023](#dec-023) |
+
+**Context:** Posting goes to the ERP through MuleSoft. There is no MuleSoft flow and no ERP yet.
+
+**Decision:**
+- The system posts invoices through an ERP posting port. Until MuleSoft and the ERP exist, a mock adapter accepts
+  every posting ("ok") and returns a mock ERP document number.
+- A posted invoice gets the new final status **Posted**, with the ERP document number and the posting time.
+  Invoices completed before this change stay Completed.
+- Posted counts as invoiced for the already invoiced quantity ([DEC-023](#dec-023)).
+- A posting rejected by the real ERP raises a new exception "Posting failed"; it is built with the MuleSoft adapter,
+  not now.
+
+**Rationale:** The port lets the MuleSoft adapter replace the mock later without changes to the workflow
+([ADR-0001](../02-architecture/adr/0001-isolate-extraction-and-erp-behind-ports.md)).
+
+**Consequences & follow-ups:** ADR-0013 on the posting port and posting exactly once.
+
+### DEC-065
+**[CR] Trade PO invoices are matched per received lot (PO or DO number)**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Scope |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301-9](meetings/2027-03-01-po-invoice-posting-and-matching.md) D3, R5, R6, R8, Q4 – Q6, Q8, Q14 |
+| Impacts | [scope.md](scope.md) SCP-IN-03, SCP-IN-21; [SAPS-19](../03-features/SAPS-19-invoice-matching.md); [SAPS-51](https://linear.app/jiringuyen/issue/SAPS-51) |
+| Supersedes / Superseded by | Supersedes [DEC-034](#dec-034); refines [DEC-007](#dec-007), [DEC-032](#dec-032) |
+
+**Context:** The PoC matches cumulatively per PO line, without a delivery order (DO) or goods receipt (GR) reference
+([DEC-034](#dec-034)). The Product Owner wants each invoice to pay exactly the lot that was received.
+
+**Decision:**
+- A trade PO invoice line is matched 3-way against one received lot:
+  - the PO line has one goods receipt → matched by PO number;
+  - the PO line has several goods receipts → the invoice line must carry the DO number of one of them.
+- The DO number is recorded on the goods receipt in the ERP at goods receipt; the system only reads it.
+- The invoice quantity must not exceed the not yet invoiced quantity of that lot; a larger quantity raises EX7.
+  A smaller quantity passes ([DEC-032](#dec-032)).
+- One invoice may cover several lots, one DO number per line.
+- Exceptions: no DO number when one is required → EX11; a DO number that no goods receipt of the PO line carries
+  → EX13; a PO line without any goods receipt → EX8 ([DEC-068](#dec-068)).
+- Non-trade PO invoices keep 2-way matching ([DEC-007](#dec-007)).
+
+**Rationale:** Stated by the Product Owner; the rule for one versus several deliveries is the Solution Architect's
+proposal, accepted.
+
+**Consequences & follow-ups:** Extraction delivers a DO number per invoice line (dummy sample set). Feature spec
+[SAPS-51](https://linear.app/jiringuyen/issue/SAPS-51).
+
+### DEC-066
+**Trade PO unit price checked against the purchasing info record**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301-9](meetings/2027-03-01-po-invoice-posting-and-matching.md) D4, R6, R7, Q7 |
+| Impacts | [SAPS-19](../03-features/SAPS-19-invoice-matching.md); [SAPS-51](https://linear.app/jiringuyen/issue/SAPS-51); [data-model.md](../02-architecture/data-model.md) ERP entities |
+| Supersedes / Superseded by | Partly supersedes [DEC-006](#dec-006) (price reference for trade PO invoices) |
+
+**Context:** The PoC checks the invoice unit price against the PO unit price ([DEC-006](#dec-006)).
+
+**Decision:**
+- The unit price of a trade PO invoice line is checked against the price of the purchasing info record (PIR) valid on
+  the invoice date. A PIR is identified by vendor, material and company and has a validity period.
+- PO lines carry a material number.
+- The configurable price tolerance applies (default 0.5 USD, [DEC-015](#dec-015), [DEC-045](#dec-045)); outside it → EX6.
+- No valid PIR → EX12 ([DEC-068](#dec-068)).
+- Non-trade PO invoices keep the check against the PO unit price.
+
+**Rationale:** Stated by the Product Owner.
+
+**Consequences & follow-ups:** PIR data comes from the dummy ERP until the ERP integration ([DEC-067](#dec-067)).
+
+### DEC-067
+**Dummy ERP data in Phase 2: open PO list, DO numbers, PIR prices**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Scope |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20270301-9](meetings/2027-03-01-po-invoice-posting-and-matching.md) D5, R4, R8, Q11 |
+| Impacts | [scope.md](scope.md) SCP-IN-09; dummy ERP adapter; [SAPS-51](https://linear.app/jiringuyen/issue/SAPS-51) |
+| Supersedes / Superseded by | Extends [DEC-004](#dec-004) to Phase 2 |
+
+**Context:** MuleSoft and the ERP are not available yet (SCP-IN-15).
+
+**Decision:** Until the ERP integration, the dummy ERP data per company holds the open PO list, goods receipts with DO
+numbers, and PIR prices. Only open POs are matched: a PO that is closed or fully invoiced raises EX4 with the message
+"PO is not open".
+
+**Rationale:** The ERP is already behind a port with dummy data
+([ADR-0001](../02-architecture/adr/0001-isolate-extraction-and-erp-behind-ports.md)); the MuleSoft adapter replaces it later.
+
+**Consequences & follow-ups:** None.
+
+### DEC-068
+**Exception types EX11 – EX13**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer) |
+| Source | [MTG-20270301-9](meetings/2027-03-01-po-invoice-posting-and-matching.md) D6, R13, Q4, Q6, Q7, Q14 |
+| Impacts | [scope.md](scope.md) SCP-IN-04; [saps-api.openapi.yaml](../02-architecture/api/saps-api.openapi.yaml) `ExceptionCode`; [SAPS-20](../03-features/SAPS-20-exception-handling.md) |
+| Supersedes / Superseded by | Extends [DEC-033](#dec-033) |
+
+**Context:** Matching per lot and the PIR check need new exception types; changes to the list need a new decision
+([DEC-033](#dec-033)).
+
+**Decision:**
+
+| Code | Exception | May be accepted as is ([DEC-035](#dec-035)) |
+|---|---|---|
+| EX11 | DO number missing: the PO line has several goods receipts and the invoice line has no DO number | No |
+| EX12 | No purchasing info record valid on the invoice date | No |
+| EX13 | Invalid DO number: no goods receipt of the PO line carries the DO number on the invoice line | No |
+
+EX8 stays for a PO line without any goods receipt.
+
+**Rationale:** Proposed by the Solution Architect, accepted by the Product Owner. EX11 – EX13 are errors in the source
+data, so they are corrected, not accepted (as EX4 and EX8).
+
+**Consequences & follow-ups:** "Posting failed" ([DEC-064](#dec-064)) gets its code when it is built.
