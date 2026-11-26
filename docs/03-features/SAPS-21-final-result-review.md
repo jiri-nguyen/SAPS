@@ -10,6 +10,10 @@ related: [UC-05, UC-06, SCP-IN-05, SCP-IN-14, DEC-013, DEC-014, DEC-021, DEC-039
 
 # SAPS-21 — Final result review
 
+> **Note ([SAPS-49](SAPS-49-straight-through-posting.md), 2027-03-01):** withdrawn in Phase 2
+> ([DEC-063](../01-requirements/decision-log.md#dec-063), SCP-IN-05). Invoices are posted to the ERP without a final review;
+> `confirmInvoice`, the review queue and the notification "ready for final review" are removed. This spec describes the PoC.
+
 ## 1. Summary
 The last step of the flow. Invoices in status PendingReview — matched without exceptions, accepted after exception
 handling, or approved by the Accounting Manager — wait for an Accounting Member to check the result. The member

@@ -22,6 +22,7 @@ The business flow was approved by the Product Owner in
 | — | Sign-in through Keycloak, token refresh, back-channel logout | UC-01 | [SAPS-44](../../03-features/SAPS-44-single-sign-on.md) §3.2 |
 | — | Invoice intake from a company mailbox, recovery after a crash | UC-02 | [SAPS-45](../../03-features/SAPS-45-mailbox-intake.md) §3.2 |
 | — | Closed day: hold, release by the calendar, "Process now" | UC-02, UC-10 | [SAPS-52](../../03-features/SAPS-52-processing-calendar.md) §3.2 |
+| — | Posting to the ERP after matching or approval; accepting exceptions runs the workflow again | UC-03, UC-04 | [SAPS-49](../../03-features/SAPS-49-straight-through-posting.md) §3.2 |
 
 ## 6.2 Invoice processing end to end (PoC)
 **Trigger:** An Accounting Member uploads an invoice file in the SAPS Web App.

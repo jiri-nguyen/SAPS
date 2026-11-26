@@ -10,6 +10,11 @@ related: [UC-03, UC-05, SCP-IN-04, SCP-IN-14, DEC-010, DEC-013, DEC-014, DEC-016
 
 # SAPS-20 — Exception handling
 
+> **Note ([SAPS-49](SAPS-49-straight-through-posting.md), 2027-03-01):** "Accept as is" (`resolveInvoiceExceptions`) now
+> answers `202`, sets the status `MATCHING` and runs the workflow again, without extraction; the accepted exceptions keep a
+> fingerprint of their values and are not raised again while the values are unchanged (BR-05). The result is Exception
+> (a new problem), Pending approval or Posting. Rejecting at the final review is gone ([DEC-063](../01-requirements/decision-log.md#dec-063)).
+
 > **Note ([SAPS-51](SAPS-51-trade-po-lot-matching.md), 2027-03-01):** EX11, EX12 and EX13 cannot be accepted as is
 > (BR-06, [DEC-068](../01-requirements/decision-log.md#dec-068)). The DO number of a line and the invoice date are
 > matching fields ([DEC-069](../01-requirements/decision-log.md#dec-069), BR-05).

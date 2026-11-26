@@ -10,6 +10,10 @@ related: [UC-04, UC-05, SCP-IN-06, SCP-IN-14, DEC-009, DEC-013, DEC-014, DEC-015
 
 # SAPS-22 — Invoice approval
 
+> **Note ([SAPS-49](SAPS-49-straight-through-posting.md), 2027-03-01):** an approval now sends the invoice to **Posting**
+> (posted to the ERP), not to the final review; nobody is notified of the approval
+> ([DEC-063](../01-requirements/decision-log.md#dec-063)). The rest of this spec is unchanged.
+
 ## 1. Summary
 Invoices whose total amount (tax included) is above the approval threshold wait in status PendingApproval for an
 Accounting Manager. The manager sees the invoice, its match result and any exceptions that an Accounting Member accepted

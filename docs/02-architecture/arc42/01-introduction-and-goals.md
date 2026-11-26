@@ -28,7 +28,7 @@ Scope: see [Scope Statement](../../01-requirements/scope.md).
 | UC-03 | Handle exception | Accounting Member | SCP-IN-04 | [SAPS-20](https://linear.app/jiringuyen/issue/SAPS-20) |
 | UC-04 | Approve invoice | Accounting Manager | SCP-IN-06 | [SAPS-22](https://linear.app/jiringuyen/issue/SAPS-22) |
 | UC-05 | Reject invoice | Accounting Member, Accounting Manager | SCP-IN-14 | [SAPS-29](https://linear.app/jiringuyen/issue/SAPS-29) |
-| UC-06 | Review final result | Accounting Member | SCP-IN-05 | [SAPS-21](https://linear.app/jiringuyen/issue/SAPS-21) |
+| UC-06 | Review final result | Accounting Member | SCP-IN-05 | [SAPS-21](https://linear.app/jiringuyen/issue/SAPS-21); **withdrawn** in Phase 2: invoices are posted without a final review ([DEC-063](../../01-requirements/decision-log.md#dec-063), [SAPS-49](https://linear.app/jiringuyen/issue/SAPS-49)) |
 | UC-07 | Change matching settings | Accounting Manager | SCP-IN-13 | [SAPS-28](https://linear.app/jiringuyen/issue/SAPS-28) |
 | UC-08 | View notifications | Accounting Member, Accounting Manager | SCP-IN-08 | [SAPS-24](https://linear.app/jiringuyen/issue/SAPS-24) |
 | UC-10 | Set processing calendar | Accounting Manager | SCP-IN-23 | [SAPS-52](https://linear.app/jiringuyen/issue/SAPS-52) |

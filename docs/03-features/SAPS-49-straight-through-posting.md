@@ -220,12 +220,12 @@ DS-17 (rejection at final review) is withdrawn.
 | Q4 | What should the Accounting Member see after posting? | The status Posted, the ERP document number and the posting time on the invoice detail; the status in All invoices | Product Owner (Customer) | — | answered: yes → §3.4, §3.6 ([MTG-20270301-11](../01-requirements/meetings/2027-03-01-straight-through-posting-details.md)) |
 
 ## 8. Documentation Checklist
-- [ ] API spec updated (`api/*.yaml`, 0.10.0)
-- [ ] Data model updated (Invoice, InvoiceException, lifecycle diagram and table)
-- [ ] Glossary: Posting, Posted, ERP posting port, ERP document number; Completed and Final review marked as PoC terms
-- [ ] arc42 §1: UC-06 withdrawn; arc42 §5: ERP Posting Port in the C4 L3 component list; arc42 §6: flow index row
+- [x] API spec updated (`api/*.yaml`, 0.10.0)
+- [x] Data model updated (Invoice, InvoiceException, lifecycle diagram and table)
+- [x] Glossary: Posting, Posted, ERP posting port, ERP document number; Completed and Final review marked as PoC terms
+- [x] arc42 §1: UC-06 withdrawn; arc42 §5: ERP Posting Port in the C4 L3 component list; arc42 §6: flow index row
 - [x] ADR-0013 accepted and listed in arc42 §9
-- [ ] SAPS-20, SAPS-21, SAPS-22 specs: notes on acceptance → re-run, final review withdrawn, approval → Posting
-- [ ] Test strategy: demo scenarios with end state Posted, DS-17 withdrawn
-- [ ] Developer Guide: how to see a posted invoice; `ERP_POSTING_ADAPTER`
+- [x] SAPS-20, SAPS-21, SAPS-22 specs: notes on acceptance → re-run, final review withdrawn, approval → Posting
+- [x] Test strategy: demo scenarios with end state Posted, DS-17 withdrawn
+- [x] Developer Guide: how to see a posted invoice; `ERP_POSTING_ADAPTER`
 - [ ] Release notes entry prepared

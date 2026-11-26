@@ -105,6 +105,11 @@ Scalability is verified by review (NFR-SCAL-001). Load tests and PSRs start afte
 `DS-NN` IDs are local to this document. Thresholds are the defaults: tolerance 0.5 USD, approval threshold 300 USD.
 "Member" = Accounting Member, "Manager" = Accounting Manager.
 
+**Phase 2 ([DEC-063](../01-requirements/decision-log.md#dec-063), [SAPS-49](../03-features/SAPS-49-straight-through-posting.md)):** there is no final
+review. A scenario that ends in Completed ends in **Posted** (ERP document `MOCK-…`) once the workflow passes or the Manager
+approves; "Member confirms" steps are dropped. Accepting exceptions as is runs the workflow again (DS-08, DS-12, DS-13). DS-17 is
+withdrawn. The automated checks run these flows in the CI smoke test.
+
 | ID | Scenario | Steps (summary) | Expected end state | Covers |
 |---|---|---|---|---|
 | DS-01 | Trade PO invoice, 3-way match, below threshold | Member uploads; all lines match PO and goods receipts; Member confirms | Completed | UC-02, UC-06; DEC-005, DEC-006 |
@@ -123,11 +128,11 @@ Scalability is verified by review (NFR-SCAL-001). Load tests and PSRs start afte
 | DS-14 | EX8 missing goods receipt | Trade PO without goods receipt; Member rejects | Rejected | EX8; DEC-014 |
 | DS-15 | EX9 duplicate invoice | Upload an invoice with the same vendor and invoice number as DS-01; Member rejects | Rejected | EX9; DEC-008 |
 | DS-16 | Rejection at approval | Invoice above threshold; Manager rejects with a reason | Rejected | UC-05; DEC-014 |
-| DS-17 | Rejection at final review | Matched invoice; Member rejects at final review | Rejected | UC-05; DEC-014 |
+| DS-17 | Rejection at final review | Matched invoice; Member rejects at final review | Rejected (PoC only; **withdrawn** in Phase 2, DEC-063) | UC-05; DEC-014 |
 | DS-18 | Change matching settings | Manager sets tolerance to 1.00 USD; an invoice with a 0.80 USD difference matches; Member cannot open the settings | Completed | UC-07; DEC-015 |
 | DS-19 | Sign-in and role access | Signed-out user is redirected to sign-in; Member cannot approve; Manager can | — | UC-01; NFR-SEC-001 |
 | DS-20 | EX10 vendor does not match the PO | Invoice of vendor V001 refers to a trade PO of vendor V002; Member rejects | Rejected | EX10; [DEC-033](../01-requirements/decision-log.md#dec-033) |
-| DS-21 | Phase 2: lot matched by DO number | PO with two goods receipts (6 and 4); the invoice for 4 carries the DO number of the second | Pending review (posted after SAPS-49); matched lot shown | [SAPS-51](../03-features/SAPS-51-trade-po-lot-matching.md); DEC-065, DEC-066 |
+| DS-21 | Phase 2: lot matched by DO number | PO with two goods receipts (6 and 4); the invoice for 4 carries the DO number of the second | Posted; matched lot shown | [SAPS-51](../03-features/SAPS-51-trade-po-lot-matching.md); DEC-065, DEC-066 |
 | DS-22 | Phase 2: EX11 DO number missing | Same PO shape; the invoice has no DO number; Member claims it, cannot accept it as is | Exception | EX11; DEC-068 |
 | DS-23 | Phase 2: EX13 invalid DO number | The invoice carries an unknown DO number; Member corrects it to a known DO number; matching re-runs | Pending review | EX13; DEC-068, DEC-069 |
 | DS-24 | Phase 2: EX12 no purchasing info record | The only PIR is valid after the invoice date; Member can fix the date | Exception | EX12; DEC-066, DEC-068 |

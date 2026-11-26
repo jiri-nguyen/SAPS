@@ -33,6 +33,7 @@ A C4 L3 diagram is drawn when the codebase structure is set up. The ports below 
 | Component | Responsibility | Depends on |
 |---|---|---|
 | Extraction Port | Provides extracted invoice data for a file | Dummy Extraction Adapter (PoC); Invoice Extraction Service (later) — [ADR-0001](../adr/0001-isolate-extraction-and-erp-behind-ports.md) |
-| ERP Data Port | Provides POs, goods receipts, vendors | Dummy ERP Adapter (PoC); MuleSoft APIs (later) — [ADR-0001](../adr/0001-isolate-extraction-and-erp-behind-ports.md) |
+| ERP Data Port | Provides POs, goods receipts, DO numbers, purchasing info records, vendors | Dummy ERP Adapter (PoC); MuleSoft APIs (later) — [ADR-0001](../adr/0001-isolate-extraction-and-erp-behind-ports.md) |
+| ERP Posting Port | Posts an invoice to the ERP, idempotent on the invoice ID | Mock ERP Posting Adapter (Phase 2 demo); MuleSoft APIs (later) — [ADR-0013](../adr/0013-post-invoices-through-an-erp-posting-port.md) |
 | Job Queue Port | Sends and receives processing jobs | SAPS Message Broker — [ADR-0004](../adr/0004-process-invoices-in-background-worker.md) |
 | File Storage Port | Stores and reads invoice files | SAPS File Storage — [ADR-0006](../adr/0006-store-invoice-files-in-seaweedfs.md) |
