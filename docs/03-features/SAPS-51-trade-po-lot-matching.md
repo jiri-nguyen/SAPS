@@ -5,7 +5,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2027-03-01
-related: [MTG-20270301-9, SCP-IN-03, SCP-IN-09, SCP-IN-21, DEC-005, DEC-007, DEC-015, DEC-023, DEC-024, DEC-032, DEC-035, DEC-042, DEC-065, DEC-066, DEC-067, DEC-068, NFR-SCAL-001, NFR-MAINT-001, ADR-0001, SAPS-19, SAPS-20, SAPS-42, SAPS-49]
+related: [MTG-20270301-9, MTG-20270301-10, DEC-069, SCP-IN-03, SCP-IN-09, SCP-IN-21, DEC-005, DEC-007, DEC-015, DEC-023, DEC-024, DEC-032, DEC-035, DEC-042, DEC-065, DEC-066, DEC-067, DEC-068, NFR-SCAL-001, NFR-MAINT-001, ADR-0001, SAPS-19, SAPS-20, SAPS-42, SAPS-49]
 ---
 
 # SAPS-51 — Trade PO matching per received lot and PIR price check
@@ -35,18 +35,18 @@ and non-PO invoices are unchanged.
 
 | ID | Rule | Source |
 |---|---|---|
-| BR-01 | **Open PO.** The ERP Data Port returns each requested PO with its open flag. A PO is **not open** when the ERP marks it closed, or when every line of the PO is fully invoiced (already invoiced quantity ≥ ordered quantity, [DEC-023](../01-requirements/decision-log.md#dec-023)). A line referring to a PO that is not open raises EX4 "PO {n} is not open"; its other checks are skipped. Applies to trade and non-trade POs. | DEC-067, MTG-20270301-9 Q11 |
-| BR-02 | **Lot.** A received lot is identified by (PO number, PO line number, DO number). Its received quantity is the sum of the goods receipt lines of that PO line whose goods receipt carries that DO number (Q3). | DEC-065 |
+| BR-01 | **Open PO.** The ERP Data Port returns each requested PO with its open flag. A PO is **not open** when the ERP marks it closed, or when every line of the PO is fully invoiced (already invoiced quantity ≥ ordered quantity, [DEC-023](../01-requirements/decision-log.md#dec-023)). A line referring to a PO that is not open raises EX4 "PO {n} is not open"; its other checks are skipped. Applies to trade and non-trade POs. | DEC-067, [MTG-20270301-10](../01-requirements/meetings/2027-03-01-trade-po-lot-matching-details.md) R5 |
+| BR-02 | **Lot.** A received lot is identified by (PO number, PO line number, DO number). Its received quantity is the sum of the goods receipt lines of that PO line whose goods receipt carries that DO number . | DEC-065, [MTG-20270301-10](../01-requirements/meetings/2027-03-01-trade-po-lot-matching-details.md) R3 |
 | BR-03 | **Lot selection (trade PO lines).** The PO line has no goods receipt → EX8. The PO line has exactly one lot: the line is matched against it; a DO number on the invoice line must be the DO number of that lot, else EX13. The PO line has several lots: the invoice line must carry a DO number (none → EX11) that is the DO number of one lot (none matches → EX13). | DEC-065, DEC-068 |
-| BR-04 | **DO number comparison.** DO numbers are compared after the normalization of [DEC-042](../01-requirements/decision-log.md#dec-042): case ignored; spaces, `-`, `.` and `/` removed; leading zeros kept (Q4). | proposal, Q4 |
+| BR-04 | **DO number comparison.** DO numbers are compared after the normalization of [DEC-042](../01-requirements/decision-log.md#dec-042): case ignored; spaces, `-`, `.` and `/` removed; leading zeros kept. | [MTG-20270301-10](../01-requirements/meetings/2027-03-01-trade-po-lot-matching-details.md) R4 |
 | BR-05 | **Matched lot.** When a lot is selected, matching stores its DO number on the invoice line (`matchedDoNumber`), whether the DO number came from the invoice or from the only lot. The extracted or edited DO number (`doNumber`) is not changed. | DEC-065 |
 | BR-06 | **Quantity per lot.** Expected quantity = received quantity of the lot − already invoiced quantity of the lot. Already invoiced quantity of a lot = sum of line quantities on **other** invoices of the company with the same PO line and the same `matchedDoNumber`, in the statuses of DEC-023 (Posted is added with [SAPS-49](https://linear.app/jiringuyen/issue/SAPS-49)). The invoice quantity must not exceed the expected quantity; above → EX7; smaller passes. Lines of the same invoice on the same lot are added up (SAPS-19 EC-01). | DEC-065, DEC-032 |
 | BR-07 | **Quantity per PO line.** The PO line check of SAPS-19 BR-07 stays as a second check: the sum of the invoice lines on the PO line must not exceed all goods receipts of the PO line minus its already invoiced quantity; above → EX7. It covers invoices matched before this feature, which have no matched lot. One EX7 per line at most. | DEC-032, §6 |
 | BR-08 | **PIR price.** For a trade PO line, the reference price is the PIR of (company, vendor of the PO, material number of the PO line) valid on the invoice date (`valid_from` ≤ invoice date ≤ `valid_to`; no `valid_to` = open-ended). `abs(invoice unit price − PIR price) ≤ price tolerance`, else EX6 (inclusive bound, tolerance from MatchingSettings, default 0.5 USD). The PO unit price is no longer checked for trade PO lines. | DEC-066, DEC-015 |
-| BR-09 | **No PIR.** No PIR valid on the invoice date, a PO line without a material number, or an invoice without an invoice date → EX12 on the line, with the reason in the message; the price check of that line is skipped (Q2). | DEC-066, DEC-068 |
+| BR-09 | **No PIR.** No PIR valid on the invoice date, a PO line without a material number, or an invoice without an invoice date → EX12 on the line, with the reason in the message; the price check of that line is skipped. | DEC-066, DEC-068, [MTG-20270301-10](../01-requirements/meetings/2027-03-01-trade-po-lot-matching-details.md) R2 |
 | BR-10 | **Non-trade PO lines** keep SAPS-19: 2-way, PO unit price, PO quantity not yet invoiced. A DO number on a non-trade line is ignored by matching. | DEC-065, DEC-066 |
 | BR-11 | **Order of the checks per line:** EX3 → EX4 (not found, not open) → EX10 vendor → price (EX12 / EX6) → lot (EX8 / EX11 / EX13) → quantity (EX7). EX4 and EX10 skip the later checks (as SAPS-19 BR-15); EX8, EX11 and EX13 skip the quantity check of that line. All other problems are reported together. | SAPS-19 EC-10 |
-| BR-12 | **Matching fields.** The DO number of a line and the invoice date become matching fields: changing them during exception handling re-runs matching (Q1; refines [DEC-024](../01-requirements/decision-log.md#dec-024)). | proposal, Q1 |
+| BR-12 | **Matching fields.** The DO number of a line and the invoice date become matching fields: changing them during exception handling re-runs matching. | [DEC-069](../01-requirements/decision-log.md#dec-069) (refines DEC-024) |
 | BR-13 | **Acceptance.** EX11, EX12 and EX13 cannot be accepted as is; the Accounting Member corrects the DO number, the invoice date or rejects the invoice. | DEC-068 |
 | BR-14 | **Extraction.** The extracted invoice line gets an optional DO number. The dummy sample set provides it where a demo scenario needs it. | DEC-065 |
 
@@ -115,7 +115,7 @@ sequenceDiagram
 | EC-04 | Two lines of one invoice on the same lot | Quantities added up for the lot check (BR-06) | EX7 on both lines if the sum fails |
 | EC-05 | Two lines of one invoice on two lots of the same PO line | Each lot checked on its own; the PO line check (BR-07) adds both | — |
 | EC-06 | Invoice matched before this feature (no matched lot) | Counts only in the PO line check (BR-07), not against a lot | — |
-| EC-07 | Two goods receipts of a PO line with the same DO number | One lot; quantities added up (BR-02, Q3) | — |
+| EC-07 | Two goods receipts of a PO line with the same DO number | One lot; quantities added up (BR-02) | — |
 | EC-08 | DO numbers "do-001 " and "DO001" | Equal after normalization (BR-04) | — |
 | EC-09 | Two PIRs of the same vendor and material valid on the same day | Rejected when the fixtures are loaded (overlapping validity) | Worker fails to start: `ErpFixtureError` |
 | EC-10 | PIR price exactly at the tolerance | Passes (inclusive bound) | Line MATCHED |
@@ -212,18 +212,18 @@ lot matched by DO number; EX11; EX13 corrected; EX12; PO not open (EX4).
 ## 7. Open Questions
 | # | Question | Proposal | Asked to | Due | Status |
 |---|---|---|---|---|---|
-| Q1 | The DO number and the invoice date now change the matching result. Should changing them during exception handling re-run matching, like the other matching fields (DEC-024)? | Yes; DEC-024 gets the two fields (BR-12) | Product Owner (Customer) | next meeting | open |
-| Q2 | A trade PO invoice without an invoice date: which exception? | EX12 with the message "no invoice date to select the PIR"; the member enters the date (BR-09) | Product Owner (Customer) | next meeting | open |
-| Q3 | Two goods receipts of the same PO line with the same DO number (one delivery received in two steps): one lot? | Yes, their quantities are added up (BR-02) | Product Owner (Customer) | next meeting | open |
-| Q4 | Compare DO numbers exactly, or with the normalization used for invoice numbers (DEC-042)? | Same normalization as DEC-042 (BR-04) | Product Owner (Customer) | next meeting | open |
-| Q5 | When every line of a PO is fully invoiced, EX4 "PO is not open" replaces EX7 (BR-01). Is that the intended message for the Accounting Member? | Yes, as agreed in MTG-20270301-9 Q11 | Product Owner (Customer) | next meeting | open |
+| Q1 | The DO number and the invoice date now change the matching result. Should changing them during exception handling re-run matching, like the other matching fields (DEC-024)? | Yes; DEC-024 gets the two fields (BR-12) | Product Owner (Customer) | — | answered: yes → DEC-069 ([MTG-20270301-10](../01-requirements/meetings/2027-03-01-trade-po-lot-matching-details.md)) |
+| Q2 | A trade PO invoice without an invoice date: which exception? | EX12 with the message "no invoice date to select the PIR"; the member enters the date (BR-09) | Product Owner (Customer) | — | answered: yes → BR-09 ([MTG-20270301-10](../01-requirements/meetings/2027-03-01-trade-po-lot-matching-details.md)) |
+| Q3 | Two goods receipts of the same PO line with the same DO number (one delivery received in two steps): one lot? | Yes, their quantities are added up (BR-02) | Product Owner (Customer) | — | answered: yes → BR-02 ([MTG-20270301-10](../01-requirements/meetings/2027-03-01-trade-po-lot-matching-details.md)) |
+| Q4 | Compare DO numbers exactly, or with the normalization used for invoice numbers (DEC-042)? | Same normalization as DEC-042 (BR-04) | Product Owner (Customer) | — | answered: yes → BR-04 ([MTG-20270301-10](../01-requirements/meetings/2027-03-01-trade-po-lot-matching-details.md)) |
+| Q5 | When every line of a PO is fully invoiced, EX4 "PO is not open" replaces EX7 (BR-01). Is that the intended message for the Accounting Member? | Yes, as agreed in MTG-20270301-9 Q11 | Product Owner (Customer) | — | answered: yes → BR-01 ([MTG-20270301-10](../01-requirements/meetings/2027-03-01-trade-po-lot-matching-details.md)) |
 
 ## 8. Documentation Checklist
 - [ ] API spec updated (`api/*.yaml`, 0.9.0)
 - [ ] Data model updated (`data-model.md`: InvoiceLine, §4.2 external entities and derived values)
 - [ ] Glossary updated for new terms (Delivery order (DO), Received lot, Purchasing info record (PIR), Open PO, EX11 – EX13)
 - [ ] SAPS-19 spec: note that BR-06 and BR-07 are refined by SAPS-51 for trade PO invoices
-- [ ] SAPS-20 spec: EX11 – EX13 not acceptable as is; DO number and invoice date are matching fields
+- [ ] SAPS-20 spec: EX11 – EX13 not acceptable as is; DO number and invoice date are matching fields (DEC-069)
 - [ ] Test strategy: new demo scenarios DS-21 … DS-25
 - [ ] Developer Guide: fixture fields of the dummy ERP
 - [ ] Release notes entry prepared

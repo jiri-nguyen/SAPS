@@ -80,6 +80,7 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, 
 | [DEC-066](#dec-066) | 2027-03-01 | Trade PO unit price checked against the purchasing info record | Business | confirmed |
 | [DEC-067](#dec-067) | 2027-03-01 | Dummy ERP data in Phase 2: open PO list, DO numbers, PIR prices | Scope | confirmed |
 | [DEC-068](#dec-068) | 2027-03-01 | Exception types EX11 – EX13 | Business | confirmed |
+| [DEC-069](#dec-069) | 2027-03-01 | DO number and invoice date are matching fields | Business | confirmed |
 
 ## 2. Decisions
 
@@ -639,7 +640,7 @@ another invoice was matched first.
 | Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
 | Source | [MTG-20261205](meetings/2026-12-05-poc-architecture-review.md) D3 |
 | Impacts | [data-model.md](../02-architecture/data-model.md); refines [DEC-010](#dec-010) |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Refined by [DEC-069](#dec-069) (invoice date and DO number added) |
 
 **Context:** DEC-010 re-runs matching when a matching field changes; the field list was open.
 
@@ -1709,3 +1710,27 @@ EX8 stays for a PO line without any goods receipt.
 data, so they are corrected, not accepted (as EX4 and EX8).
 
 **Consequences & follow-ups:** "Posting failed" ([DEC-064](#dec-064)) gets its code when it is built.
+
+### DEC-069
+**DO number and invoice date are matching fields**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20270301-10](meetings/2027-03-01-trade-po-lot-matching-details.md) D1, R1 |
+| Impacts | [SAPS-51](../03-features/SAPS-51-trade-po-lot-matching.md) BR-12; [SAPS-20](../03-features/SAPS-20-exception-handling.md) |
+| Supersedes / Superseded by | Refines [DEC-024](#dec-024) |
+
+**Context:** Trade PO invoices are matched per lot by DO number ([DEC-065](#dec-065)) and priced with the PIR valid on
+the invoice date ([DEC-066](#dec-066)). [DEC-024](#dec-024) lists the invoice date as a field that does not trigger
+re-matching.
+
+**Decision:** Matching fields are: vendor code, invoice number, invoice date, PO number, PO line number, DO number,
+quantity, unit price. A change of any of them during exception handling re-runs matching.
+
+**Rationale:** Both fields now change the matching result.
+
+**Consequences & follow-ups:** None.
