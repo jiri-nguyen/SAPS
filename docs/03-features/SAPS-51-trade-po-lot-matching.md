@@ -1,7 +1,7 @@
 ---
 id: "SAPS-51"
 title: "SAPS-51 — Trade PO matching per received lot and PIR price check"
-status: draft            # draft | in-review | approved | deprecated
+status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2027-03-01
