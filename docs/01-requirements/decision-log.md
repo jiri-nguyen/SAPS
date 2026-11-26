@@ -81,6 +81,7 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, MTG-20261205, MTG-20261208, 
 | [DEC-067](#dec-067) | 2027-03-01 | Dummy ERP data in Phase 2: open PO list, DO numbers, PIR prices | Scope | confirmed |
 | [DEC-068](#dec-068) | 2027-03-01 | Exception types EX11 – EX13 | Business | confirmed |
 | [DEC-069](#dec-069) | 2027-03-01 | DO number and invoice date are matching fields | Business | confirmed |
+| [DEC-070](#dec-070) | 2027-03-01 | Posting to the ERP waits on closed days of the processing calendar | Business | confirmed |
 
 ## 2. Decisions
 
@@ -1510,7 +1511,7 @@ history of changes and no history screen. The application log records the old an
 | Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
 | Source | [MTG-20270301-4](meetings/2027-03-01-processing-calendar.md) D1, R1 |
 | Impacts | [scope.md](scope.md) version 0.9: SCP-IN-23; invoice lifecycle (new status On hold); [SAPS-37](../03-features/SAPS-37-stuck-invoice-sweeper.md) sweeper; Phase 2 demo scenarios ([SAPS-47](https://linear.app/jiringuyen/issue/SAPS-47)) |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | Refined by [DEC-070](#dec-070) (posting is held too) |
 
 **Context:** The Product Owner wants companies to stop invoice processing in some periods, for example from the 25th of a
 month to the 5th of the next month, and on weekends. This was not in the Phase 2 scope ([DEC-048](#dec-048)).
@@ -1734,3 +1735,29 @@ quantity, unit price. A change of any of them during exception handling re-runs 
 **Rationale:** Both fields now change the matching result.
 
 **Consequences & follow-ups:** None.
+
+### DEC-070
+**Posting to the ERP waits on closed days of the processing calendar**
+
+| Field | Value |
+|---|---|
+| Date | 2027-03-01 |
+| Category | Business |
+| Status | confirmed |
+| Decided by | Product Owner (Customer), on a proposal by the Solution Architect (our company) |
+| Source | [MTG-20270301-11](meetings/2027-03-01-straight-through-posting-details.md) D1, R1 |
+| Impacts | [SAPS-49](../03-features/SAPS-49-straight-through-posting.md) BR-11; [SAPS-52](../03-features/SAPS-52-processing-calendar.md); [scope.md](scope.md) SCP-IN-23 |
+| Supersedes / Superseded by | Refines [DEC-062](#dec-062) |
+
+**Context:** [DEC-062](#dec-062) holds new invoices on closed days and says invoices in later steps are worked on as usual.
+Invoices are now posted to the ERP automatically ([DEC-063](#dec-063), [DEC-064](#dec-064)); a closed period such as a month-end
+closing may also mean that nothing is posted.
+
+**Decision:** An invoice that reaches Posting on a closed day of the company's processing calendar waits in Posting and is
+posted on the first open day, oldest first. Exception handling and approval are worked on as usual. Nobody is notified when an
+invoice is posted.
+
+**Rationale:** Proposed by the Solution Architect; accepted by the Product Owner.
+
+**Consequences & follow-ups:** The release timer of [SAPS-52](../03-features/SAPS-52-processing-calendar.md) also sends
+`post_invoice` for invoices waiting in Posting.

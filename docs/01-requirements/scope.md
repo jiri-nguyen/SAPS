@@ -1,11 +1,11 @@
 ---
 title: Scope Statement
-version: "0.10"           # 1.0 = first customer-approved version
+version: "0.11"           # 1.0 = first customer-approved version
 status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Solution Architect (our company)", "Product Owner (Customer)"]
 last_updated: 2027-03-01
-related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-003, DEC-004, DEC-011, DEC-012, DEC-013, DEC-014, DEC-015, DEC-016, DEC-017, DEC-018, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024, DEC-025, DEC-026, DEC-031, DEC-032, DEC-033, DEC-034, DEC-039, DEC-041, DEC-047, DEC-048, DEC-049, DEC-050, DEC-051, DEC-052, DEC-053, DEC-054, DEC-055, DEC-056, DEC-057, DEC-062, DEC-063, DEC-064, DEC-065, DEC-066, DEC-067, DEC-068, MTG-20270301, MTG-20270301-2, MTG-20270301-4, MTG-20270301-9]
+related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-003, DEC-004, DEC-011, DEC-012, DEC-013, DEC-014, DEC-015, DEC-016, DEC-017, DEC-018, DEC-020, DEC-021, DEC-022, DEC-023, DEC-024, DEC-025, DEC-026, DEC-031, DEC-032, DEC-033, DEC-034, DEC-039, DEC-041, DEC-047, DEC-048, DEC-049, DEC-050, DEC-051, DEC-052, DEC-053, DEC-054, DEC-055, DEC-056, DEC-057, DEC-062, DEC-063, DEC-064, DEC-065, DEC-066, DEC-067, DEC-068, DEC-070, MTG-20270301, MTG-20270301-2, MTG-20270301-4, MTG-20270301-9, MTG-20270301-11]
 ---
 
 # Scope Statement
@@ -53,7 +53,7 @@ All PoC items are priority Must (AS2, confirmed). Priorities of Phase 2 items fo
 | SCP-IN-20 | Multi-tenancy | Phase 2 (from SCP-OUT-12): the system serves several customer companies, about 3 in the Phase 2 demo; a user belongs to one company; matching settings, vendors and ERP data per company ([DEC-056](decision-log.md#dec-056)) | Must; first ([DEC-050](decision-log.md#dec-050)) | [SAPS-41](https://linear.app/jiringuyen/issue/SAPS-41), [SAPS-42](https://linear.app/jiringuyen/issue/SAPS-42) | [DEC-048](decision-log.md#dec-048) |
 | SCP-IN-21 | GR-based invoice verification | Phase 2 (from SCP-OUT-13): trade PO invoice lines are matched against one received lot: by PO number when the PO line has one goods receipt, by the DO number recorded on the goods receipt when it has several; new exceptions EX11 – EX13 | Must | [SAPS-51](https://linear.app/jiringuyen/issue/SAPS-51) | [DEC-048](decision-log.md#dec-048); [DEC-065](decision-log.md#dec-065), [DEC-068](decision-log.md#dec-068) |
 | SCP-IN-22 | Invoice list and search | Phase 2 (new): Accounting Members and Accounting Managers see and search all invoices of their company in every status, with filters; no export ([DEC-057](decision-log.md#dec-057)) | TBD ([MTG-20270301](meetings/2027-03-01-phase-2-kickoff.md) Q6) | [SAPS-46](https://linear.app/jiringuyen/issue/SAPS-46) | [DEC-048](decision-log.md#dec-048), [DEC-057](decision-log.md#dec-057) |
-| SCP-IN-23 | Processing calendar | Phase 2 (new): the Accounting Manager sets closed periods for the company (monthly day ranges, weekdays, specific dates, local time zone); new invoices received in a closed period are held (On hold) and processed when it ends; a manager can release one invoice at once | Must | [SAPS-52](https://linear.app/jiringuyen/issue/SAPS-52) | [DEC-062](decision-log.md#dec-062) `[CR]` |
+| SCP-IN-23 | Processing calendar | Phase 2 (new): the Accounting Manager sets closed periods for the company (monthly day ranges, weekdays, specific dates, local time zone); new invoices received in a closed period are held (On hold) and processed when it ends; a manager can release one invoice at once; automatic posting to the ERP waits on closed days too | Must | [SAPS-52](https://linear.app/jiringuyen/issue/SAPS-52) | [DEC-062](decision-log.md#dec-062) `[CR]`; [DEC-070](decision-log.md#dec-070) |
 
 ### 3.2 Integrations
 | ID | Item | Description | Priority | Backlog epic | Source |
@@ -145,3 +145,4 @@ Scope-relevant questions are tracked and answered in the meeting minutes listed 
 | 0.8 | 2027-03-01 | Solution Architect (our company) | BO3 demo date; SCP-IN-10, -18, -19, -20, -22 detailed | [DEC-052](decision-log.md#dec-052) to [DEC-057](decision-log.md#dec-057) |
 | 0.9 | 2027-03-01 | Solution Architect (our company) | `[CR]` SCP-IN-23 processing calendar added | [DEC-062](decision-log.md#dec-062) |
 | 0.10 | 2027-03-01 | Solution Architect (our company) | `[CR]` straight-through posting: SCP-IN-05 withdrawn; SCP-IN-03, -04, -06, -08, -09, -14 changed; SCP-IN-17, -21 detailed, priority Must | [DEC-063](decision-log.md#dec-063) to [DEC-068](decision-log.md#dec-068) |
+| 0.11 | 2027-03-01 | Solution Architect (our company) | SCP-IN-23 detailed: posting waits on closed days | [DEC-070](decision-log.md#dec-070) |
