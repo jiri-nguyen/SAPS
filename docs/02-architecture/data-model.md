@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect (our company)"
 reviewers: ["Tech Lead (TBD)"]
 last_updated: 2027-03-01
-related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, ADR-0011, ADR-0012, SAPS-44, SAPS-45, SAPS-46, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-021, SAPS-31]
+related: [ADR-0001, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, ADR-0011, ADR-0012, SAPS-44, SAPS-45, SAPS-46, SAPS-52, DEC-062, DEC-005, DEC-006, DEC-007, DEC-008, DEC-010, DEC-012, DEC-014, DEC-015, DEC-016, DEC-021, SAPS-31]
 ---
 
 # Data Model
@@ -34,6 +34,7 @@ erDiagram
     Tenant ||--o{ Invoice : "owns"
     Tenant ||--o{ InboundMail : "receives"
     InboundMail ||--o{ Invoice : "delivers"
+    Tenant ||--o{ ProcessingCalendarRule : "closes days with"
     Tenant ||--|| MatchingSettings : "configures"
     UserAccount ||--o{ UserSession : "signs in with"
     UserAccount ||--o{ Invoice : "uploads"
@@ -56,6 +57,12 @@ erDiagram
         string username UK
         string idp_subject
         enum role
+    }
+    ProcessingCalendarRule {
+        uuid id PK
+        uuid tenant_id FK
+        enum kind
+        int position
     }
     InboundMail {
         uuid id PK
@@ -234,7 +241,7 @@ An uploaded vendor invoice and its processing state.
 | Attribute | Type | Null | Key | Class. | Description |
 |---|---|---|---|---|---|
 | id | uuid | No | PK | Internal | Surrogate key |
-| status | enum | No | — | Internal | `UPLOADED`, `MATCHING`, `EXCEPTION`, `PENDING_APPROVAL`, `PENDING_REVIEW`, `COMPLETED`, `REJECTED` (§5) |
+| status | enum | No | — | Internal | `UPLOADED`, `MATCHING`, `EXCEPTION`, `PENDING_APPROVAL`, `PENDING_REVIEW`, `COMPLETED`, `REJECTED`, `ON_HOLD` (§5) |
 | invoice_type | enum | Yes | — | Internal | `TRADE_PO`, `NON_TRADE_PO`, `NON_PO`; null until derived ([DEC-005](../01-requirements/decision-log.md#dec-005)) |
 | vendor_code | string(20) | Yes | — | Confidential | Vendor identifier from extraction; with `invoice_number` used for duplicate detection ([DEC-008](../01-requirements/decision-log.md#dec-008)) |
 | vendor_name | string(200) | Yes | — | Confidential | Vendor name from extraction |
@@ -259,14 +266,45 @@ An uploaded vendor invoice and its processing state.
 | file_storage_key | string(500) | No | — | Internal | Object key in SAPS File Storage |
 | idempotency_key | string(64) | No | UK (with tenant_id) | Internal | `Idempotency-Key` of the upload request; a repeated request returns this invoice ([SAPS-17](../03-features/SAPS-17-invoice-upload.md)) |
 | rejected_reason | string(1000) | Yes | — | Internal | Reason entered at rejection ([DEC-014](../01-requirements/decision-log.md#dec-014)) |
+| released_from_hold_at | timestamp UTC | Yes | — | Internal | Set when an Accounting Manager let the invoice through a closed period ("Process now", [SAPS-52](../03-features/SAPS-52-processing-calendar.md)); it is then never held again |
 
 Unique index: (`tenant_id`, `idempotency_key`). Index (not unique): (`tenant_id`, `vendor_code`, `invoice_number_normalized`) for duplicate detection. It is not a unique
 key because a duplicate is stored and raised as EX9; rejected invoices are ignored by the check ([DEC-043](../01-requirements/decision-log.md#dec-043)).
+
+Index (`tenant_id`, `status`, `created_at`) serves the release of held invoices, oldest first ([SAPS-52](../03-features/SAPS-52-processing-calendar.md), migration 0011).
 
 Search indexes ([SAPS-46](../03-features/SAPS-46-invoice-search.md), migration 0010): (`tenant_id`, `created_at`, `id`) for
 the default order and paging, (`tenant_id`, `invoice_date`) and (`tenant_id`, `total_amount`) for the range filters. The vendor
 and invoice number filters use no index of their own: with one year of invoices of one company (about 365,000) every filter
 answers in 3 to 50 ms, so no trigram index is added (volume check TS-07 of the spec).
+
+### ProcessingCalendarRule
+One rule of a company's processing calendar ([SAPS-52](../03-features/SAPS-52-processing-calendar.md),
+[DEC-062](../01-requirements/decision-log.md#dec-062)). A day that matches any rule of the company is closed: new invoices
+are held (status On hold) instead of being processed. The rules of a company are replaced together by its Accounting Manager.
+
+| Property | Value |
+|---|---|
+| Data store / table | SAPS Database / `processing_calendar_rule` |
+| Owning container | SAPS API |
+| Lifecycle | replaced as a whole by the Accounting Manager; no history (the last change is shown) |
+| Retention | kept while the company exists |
+| Expected volume | a few rules per company (at most 100) |
+
+| Attribute | Type | Null | Key | Class. | Description |
+|---|---|---|---|---|---|
+| id | uuid | No | PK | Internal | Surrogate key |
+| position | integer | No | — | Internal | Order given by the manager |
+| kind | enum | No | — | Internal | `MONTHLY_RANGE`, `WEEKDAY`, `DATE` |
+| from_day | integer | Yes | — | Internal | `MONTHLY_RANGE`: first day of the month, 1 to 31 |
+| to_day | integer | Yes | — | Internal | `MONTHLY_RANGE`: last day, 1 to 31; before `from_day` the range runs into the next month; a day after the end of a month means its last day |
+| weekday | integer | Yes | — | Internal | `WEEKDAY`: 1 (Monday) to 7 (Sunday) |
+| day | date | Yes | — | Internal | `DATE`: one specific date |
+| label | string(100) | Yes | — | Internal | Free text, for example `Public holiday` |
+
+The check `ck_processing_calendar_rule_kind` allows only the columns of the rule's kind. Days are days of the company's
+time zone (`Tenant.time_zone`). Row-level security like every tenant-owned table
+([ADR-0009](adr/0009-isolate-tenant-data-in-a-shared-database.md)).
 
 ### InboundMail
 A mail read from a company mailbox and what became of it ([SAPS-45](../03-features/SAPS-45-mailbox-intake.md),
@@ -458,7 +496,9 @@ State names in the diagram map to the `Invoice.status` enum values (`PendingAppr
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Uploaded: Accounting Member uploads file
+    [*] --> Uploaded: file uploaded or received by mail
+    Uploaded --> OnHold: closed day of the processing calendar (SAPS-52)
+    OnHold --> Uploaded: open day, or Process now by an Accounting Manager
     Uploaded --> Exception: EX1 extraction failed or unknown file
     Uploaded --> Matching: data extracted
     Matching --> Exception: EX2–EX10
@@ -479,6 +519,7 @@ stateDiagram-v2
 | State | Meaning | Waiting for |
 |---|---|---|
 | Uploaded | File received; processing message sent | SAPS Worker |
+| OnHold | Received on a closed day of the company's processing calendar; not extracted or matched | End of the closed period, or "Process now" by an Accounting Manager |
 | Matching | Extraction, duplicate check, type derivation and matching in progress | SAPS Worker |
 | Exception | Automatic processing stopped (EX1–EX10); in the shared exception queue | Accounting Member |
 | PendingApproval | Total amount above the approval threshold | Accounting Manager |

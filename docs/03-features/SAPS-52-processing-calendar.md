@@ -70,11 +70,11 @@ Design rules:
   all pass here, so no channel can skip the calendar.
 - **Release (BR-05, BR-07):** a timer in each SAPS Worker process, started like the sweeper
   ([SAPS-37](SAPS-37-stuck-invoice-sweeper.md)): every `HOLD_RELEASE_SECONDS`, for each company whose today is open,
-  the oldest held invoices (at most `HOLD_RELEASE_BATCH`) go back to Uploaded with the event `RELEASE` by `system`, then
+  the oldest held invoices (at most `HOLD_RELEASE_BATCH`) go back to Uploaded with the event `RELEASE_HOLD` by `system`, then
   `process_invoice` is sent. An advisory lock lets one process release at a time. A failed send is recovered by the
   sweeper as for any Uploaded invoice.
 - **Process now (BR-06):** `releaseInvoice` sets `released_from_hold_at`, moves the invoice to Uploaded with the
-  event `RELEASE` by the manager, and sends `process_invoice`. The hold check skips an invoice with
+  event `RELEASE_HOLD` by the manager, and sends `process_invoice`. The hold check skips an invoice with
   `released_from_hold_at`, also when the sweeper re-sends it.
 - **Sweeper:** On hold is not a stuck status; the sweeper keeps looking only at Uploaded and Matching.
 - **Duplicate detection:** an invoice On hold has no data yet, like Uploaded; it is not compared
@@ -102,7 +102,7 @@ sequenceDiagram
     end
     Note over Worker: Release timer, every HOLD_RELEASE_SECONDS
     Worker->>DB: Companies whose today is open, oldest held invoices, advisory lock [SQL]
-    Worker->>DB: Status Uploaded, event RELEASE by system [SQL]
+    Worker->>DB: Status Uploaded, event RELEASE_HOLD by system [SQL]
     Worker->>Broker: process_invoice for each released invoice [Redis]
 ```
 
@@ -121,7 +121,7 @@ sequenceDiagram
     alt Invoice not On hold
         API-->>Web: 409, the invoice is not on hold
     else On hold
-        API->>DB: Status Uploaded, released_from_hold_at, event RELEASE by the manager [SQL]
+        API->>DB: Status Uploaded, released_from_hold_at, event RELEASE_HOLD by the manager [SQL]
         API->>Broker: process_invoice [Redis]
         API-->>Web: 200 Invoice
     end
@@ -155,8 +155,8 @@ change for strict clients; the only client is the SAPS Web App, changed in the s
 | — | `InvoiceStatus` | new value `ON_HOLD` | Yes (enum value) | ″ |
 
 ### 3.5 Event Changes
-None for messages (`process_invoice` is unchanged). New invoice event actions: `HOLD` (`system`), `RELEASE` (`system`
-or the manager's name; details `{"by": "calendar" | "manager"}`).
+None for messages (`process_invoice` is unchanged). New invoice event actions: `HOLD` (`system`), `RELEASE_HOLD` (`system`
+or the manager's name; details `{"by": "calendar" | "manager"}`; `RELEASE` already means releasing a claim in exception handling).
 
 ### 3.6 Data Model Changes
 | Entity | Change | Migration | Backward compatible |
@@ -221,10 +221,10 @@ refuses while invoices are On hold.
 | Q7 | "Process now" recorded on the invoice (`released_from_hold_at`) so a lost message and the sweeper's re-send do not hold it again? Proposal: yes. | Solution Architect / Tech Lead | before implementation | answered: proposal accepted (2027-03-01) |
 
 ## 8. Documentation Checklist
-- [ ] API spec 0.8.0 (calendar operations, `releaseInvoice`, `ON_HOLD`)
-- [ ] Data model: ProcessingCalendarRule, Invoice changes, lifecycle diagram and table
-- [ ] arc42 §1: UC-10 Set processing calendar
-- [ ] Glossary: Processing calendar, Closed day, On hold
-- [ ] SAPS-37 spec: On hold is not a stuck status (note)
-- [ ] Developer Guide: how to try the calendar in the demo
+- [x] API spec 0.8.0 (calendar operations, `releaseInvoice`, `ON_HOLD`)
+- [x] Data model: ProcessingCalendarRule, Invoice changes, lifecycle diagram and table
+- [x] arc42 §1: UC-10 Set processing calendar
+- [x] Glossary: Processing calendar, Closed day, On hold
+- [x] SAPS-37 spec: On hold is not a stuck status (note)
+- [x] Developer Guide: how to try the calendar in the demo
 - [ ] Release notes entry prepared
