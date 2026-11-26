@@ -212,10 +212,12 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Mark the open exceptions as resolved without re-matching
+         * Accept the open exceptions as is and run the workflow again
          * @description For an invoice in status `EXCEPTION` claimed by the caller, e.g. a reviewed non-PO invoice (EX2, DEC-006).
-         *     Sets the next status: `PENDING_APPROVAL` when the total amount is above the approval threshold
-         *     (DEC-009, DEC-013), otherwise `PENDING_REVIEW`. The claim is cleared.
+         *     The open exceptions are resolved by the caller, the status becomes `MATCHING` and the workflow runs again without
+         *     extraction (DEC-063): accepted exceptions are not raised again while the values they were raised on are unchanged;
+         *     the result is `EXCEPTION` (a new problem, the claim stays), `PENDING_APPROVAL` (total above the approval
+         *     threshold, DEC-009) or `POSTING`. Poll the invoice to see the result.
          *     Only EX2, EX6, EX7 and EX9 may be accepted as is (DEC-035); if any other exception is open, `422`.
          */
         post: operations["resolveInvoiceExceptions"];
@@ -238,32 +240,10 @@ export interface paths {
         put?: never;
         /**
          * Approve or reject an invoice above the approval threshold
-         * @description Allowed in status `PENDING_APPROVAL` (DEC-009). `APPROVED` → `PENDING_REVIEW`; `REJECTED` → `REJECTED`,
+         * @description Allowed in status `PENDING_APPROVAL` (DEC-009). `APPROVED` → `POSTING` (posted to the ERP, DEC-063); `REJECTED` → `REJECTED`,
          *     a final state (DEC-014). A comment is required when rejecting.
          */
         post: operations["decideInvoiceApproval"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/invoices/{invoiceId}/confirmation": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                invoiceId: components["parameters"]["InvoiceId"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Confirm the final result
-         * @description Allowed in status `PENDING_REVIEW`; sets `COMPLETED`.
-         */
-        post: operations["confirmInvoice"];
         delete?: never;
         options?: never;
         head?: never;
@@ -305,8 +285,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Reject an invoice during exception handling or at final review
-         * @description Allowed in status `EXCEPTION` (claimed by the caller) or `PENDING_REVIEW`; sets `REJECTED`, a final state
+         * Reject an invoice during exception handling
+         * @description Allowed in status `EXCEPTION` (claimed by the caller); sets `REJECTED`, a final state
          *     (DEC-014). The Accounting Manager rejects through `decideInvoiceApproval`.
          */
         post: operations["rejectInvoice"];
@@ -476,10 +456,10 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
-         * @description Invoice lifecycle state (data model §5). `ON_HOLD` = received on a closed day of the processing calendar and waiting to be processed (SAPS-52)
+         * @description Invoice lifecycle state (data model §5). `ON_HOLD` = received on a closed day of the processing calendar and waiting to be processed (SAPS-52). `POSTING` = waiting to be posted to the ERP, `POSTED` = posted (SAPS-49, DEC-063, DEC-064). `PENDING_REVIEW` and `COMPLETED` exist only for invoices of earlier versions
          * @enum {string}
          */
-        InvoiceStatus: "UPLOADED" | "MATCHING" | "EXCEPTION" | "PENDING_APPROVAL" | "PENDING_REVIEW" | "COMPLETED" | "REJECTED" | "ON_HOLD";
+        InvoiceStatus: "UPLOADED" | "MATCHING" | "EXCEPTION" | "PENDING_APPROVAL" | "PENDING_REVIEW" | "COMPLETED" | "REJECTED" | "ON_HOLD" | "POSTING" | "POSTED";
         /**
          * @description Derived from the PO number (DEC-005)
          * @enum {string}
@@ -598,6 +578,10 @@ export interface components {
             source: components["schemas"]["InvoiceSource"];
             file: components["schemas"]["InvoiceFile"];
             rejectedReason?: string | null;
+            /** @description ERP document of the posting; set when the status is POSTED (SAPS-49) */
+            erpDocumentNumber?: string | null;
+            /** Format: date-time */
+            postedAt?: string | null;
             lines: components["schemas"]["InvoiceLine"][];
             exceptions: components["schemas"]["InvoiceException"][];
             approval?: components["schemas"]["Approval"] | null;
@@ -1334,8 +1318,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Exceptions resolved; next status set */
-            200: {
+            /** @description Exceptions accepted; the workflow runs again (status `MATCHING`) */
+            202: {
                 headers: {
                     ETag: components["headers"]["ETag"];
                     [name: string]: unknown;
@@ -1388,37 +1372,6 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["UnprocessableEntity"];
-            500: components["responses"]["InternalError"];
-        };
-    };
-    confirmInvoice: {
-        parameters: {
-            query?: never;
-            header?: {
-                /** @description Propagated to logs and to the SAPS Worker; generated if absent */
-                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
-            };
-            path: {
-                invoiceId: components["parameters"]["InvoiceId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Completed */
-            200: {
-                headers: {
-                    ETag: components["headers"]["ETag"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Invoice"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
             500: components["responses"]["InternalError"];
         };
     };

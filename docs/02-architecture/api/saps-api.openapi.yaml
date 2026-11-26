@@ -3,13 +3,13 @@
 openapi: 3.1.0
 info:
   title: SAPS API
-  version: "0.9.0"
+  version: "0.10.0"
   description: |
     HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload and mail intake, the exception queue,
-    approval, final review, notifications and matching settings.
+    approval, posting to the ERP, notifications and matching settings.
 
     Owner container: SAPS API — see arc42 §5 (`docs/02-architecture/arc42/05-building-block-view.md`).
-    Runtime flow: arc42 §6.2. Business rules: decision log DEC-005 … DEC-037.
+    Runtime flow: arc42 §6.2. Business rules: decision log DEC-005 … DEC-070.
 
     **Conventions**
     - Money and quantities are decimal strings (no floating point). Currency is ISO 4217; only `USD` in the PoC (DEC-006).
@@ -40,7 +40,7 @@ tags:
   - name: Session
     description: Sign-in with simple user accounts (NFR-SEC-001)
   - name: Invoices
-    description: Invoice upload, exception handling, approval, final review and the release of held invoices
+    description: Invoice upload, exception handling, approval, posting status and the release of held invoices
   - name: Notifications
     description: In-app notifications (DEC-021)
   - name: MatchingSettings
@@ -396,11 +396,13 @@ paths:
       - $ref: "#/components/parameters/InvoiceId"
     post:
       operationId: resolveInvoiceExceptions
-      summary: Mark the open exceptions as resolved without re-matching
+      summary: Accept the open exceptions as is and run the workflow again
       description: |
         For an invoice in status `EXCEPTION` claimed by the caller, e.g. a reviewed non-PO invoice (EX2, DEC-006).
-        Sets the next status: `PENDING_APPROVAL` when the total amount is above the approval threshold
-        (DEC-009, DEC-013), otherwise `PENDING_REVIEW`. The claim is cleared.
+        The open exceptions are resolved by the caller, the status becomes `MATCHING` and the workflow runs again without
+        extraction (DEC-063): accepted exceptions are not raised again while the values they were raised on are unchanged;
+        the result is `EXCEPTION` (a new problem, the claim stays), `PENDING_APPROVAL` (total above the approval
+        threshold, DEC-009) or `POSTING`. Poll the invoice to see the result.
         Only EX2, EX6, EX7 and EX9 may be accepted as is (DEC-035); if any other exception is open, `422`.
       tags: [Invoices]
       x-roles: [ACCOUNTING_MEMBER]
@@ -408,8 +410,8 @@ paths:
         - $ref: "#/components/parameters/IfMatch"
         - $ref: "#/components/parameters/CorrelationId"
       responses:
-        "200":
-          description: Exceptions resolved; next status set
+        "202":
+          description: Exceptions accepted; the workflow runs again (status `MATCHING`)
           headers:
             ETag: { $ref: "#/components/headers/ETag" }
           content:
@@ -431,7 +433,7 @@ paths:
       operationId: decideInvoiceApproval
       summary: Approve or reject an invoice above the approval threshold
       description: |
-        Allowed in status `PENDING_APPROVAL` (DEC-009). `APPROVED` → `PENDING_REVIEW`; `REJECTED` → `REJECTED`,
+        Allowed in status `PENDING_APPROVAL` (DEC-009). `APPROVED` → `POSTING` (posted to the ERP, DEC-063); `REJECTED` → `REJECTED`,
         a final state (DEC-014). A comment is required when rejecting.
       tags: [Invoices]
       x-roles: [ACCOUNTING_MANAGER]
@@ -456,31 +458,6 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
-        "500": { $ref: "#/components/responses/InternalError" }
-
-  /v1/invoices/{invoiceId}/confirmation:
-    parameters:
-      - $ref: "#/components/parameters/InvoiceId"
-    post:
-      operationId: confirmInvoice
-      summary: Confirm the final result
-      description: Allowed in status `PENDING_REVIEW`; sets `COMPLETED`.
-      tags: [Invoices]
-      x-roles: [ACCOUNTING_MEMBER]
-      parameters:
-        - $ref: "#/components/parameters/CorrelationId"
-      responses:
-        "200":
-          description: Completed
-          headers:
-            ETag: { $ref: "#/components/headers/ETag" }
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Invoice" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "409": { $ref: "#/components/responses/Conflict" }
         "500": { $ref: "#/components/responses/InternalError" }
 
   /v1/invoices/{invoiceId}/release:
@@ -515,9 +492,9 @@ paths:
       - $ref: "#/components/parameters/InvoiceId"
     post:
       operationId: rejectInvoice
-      summary: Reject an invoice during exception handling or at final review
+      summary: Reject an invoice during exception handling
       description: |
-        Allowed in status `EXCEPTION` (claimed by the caller) or `PENDING_REVIEW`; sets `REJECTED`, a final state
+        Allowed in status `EXCEPTION` (claimed by the caller); sets `REJECTED`, a final state
         (DEC-014). The Accounting Manager rejects through `decideInvoiceApproval`.
       tags: [Invoices]
       x-roles: [ACCOUNTING_MEMBER]
@@ -800,8 +777,8 @@ components:
     # ---------- enums (values = data model enums) ----------
     InvoiceStatus:
       type: string
-      enum: [UPLOADED, MATCHING, EXCEPTION, PENDING_APPROVAL, PENDING_REVIEW, COMPLETED, REJECTED, ON_HOLD]
-      description: "Invoice lifecycle state (data model §5). `ON_HOLD` = received on a closed day of the processing calendar and waiting to be processed (SAPS-52)"
+      enum: [UPLOADED, MATCHING, EXCEPTION, PENDING_APPROVAL, PENDING_REVIEW, COMPLETED, REJECTED, ON_HOLD, POSTING, POSTED]
+      description: "Invoice lifecycle state (data model §5). `ON_HOLD` = received on a closed day of the processing calendar and waiting to be processed (SAPS-52). `POSTING` = waiting to be posted to the ERP, `POSTED` = posted (SAPS-49, DEC-063, DEC-064). `PENDING_REVIEW` and `COMPLETED` exist only for invoices of earlier versions"
     InvoiceType:
       type: string
       enum: [TRADE_PO, NON_TRADE_PO, NON_PO]
@@ -930,6 +907,8 @@ components:
         source: { $ref: "#/components/schemas/InvoiceSource" }
         file: { $ref: "#/components/schemas/InvoiceFile" }
         rejectedReason: { type: [string, "null"], maxLength: 1000 }
+        erpDocumentNumber: { type: [string, "null"], maxLength: 50, description: "ERP document of the posting; set when the status is POSTED (SAPS-49)" }
+        postedAt: { type: [string, "null"], format: date-time }
         lines:
           type: array
           items: { $ref: "#/components/schemas/InvoiceLine" }
