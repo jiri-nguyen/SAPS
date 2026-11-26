@@ -24,6 +24,7 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-033, D
 | Accounts Payable | The process and ledger for amounts the company owes its vendors. | Công nợ phải trả | Payables |
 | Approval | The Accounting Manager's decision (approve or reject) on an invoice above the approval threshold. Entity `Approval` ([data model](../data-model.md#approval)). | Phê duyệt | Sign-off |
 | Approval threshold | Invoice total amount, tax included, above which Accounting Manager approval is required. Configurable by the Accounting Manager; default 300 USD ([DEC-015](../../01-requirements/decision-log.md#dec-015)). | Ngưỡng phê duyệt | Approval limit |
+| Closed day | A day of the company's time zone on which its processing calendar holds new invoices ([SAPS-52](../../03-features/SAPS-52-processing-calendar.md)). | Ngày đóng xử lý | Blackout day |
 | Completed | Final invoice state after the Accounting Member confirms the result: ready for posting. Posting to the ERP and payment happen outside Smart-AP-Suite ([SCP-OUT-03](../../01-requirements/scope.md#4-out-of-scope), [SCP-OUT-08](../../01-requirements/scope.md#4-out-of-scope)). | Hoàn tất | Paid, closed |
 | Credit note | Vendor document that reduces an amount previously invoiced. Out of the PoC scope. | Hóa đơn điều chỉnh giảm | Credit memo |
 | Delivery order | Vendor document that accompanies a delivery; the goods receipt is created from it. Not referenced by invoices in the PoC ([DEC-034](../../01-requirements/decision-log.md#dec-034)). | Phiếu giao hàng | DO, delivery note |
@@ -49,6 +50,8 @@ related: [MTG-20261114, MTG-20261121, MTG-20261128, DEC-012, DEC-015, DEC-033, D
 | Partial invoicing | Invoicing part of a PO line quantity; allowed as long as the quantity does not exceed the expected quantity ([DEC-032](../../01-requirements/decision-log.md#dec-032)). | Xuất hóa đơn từng phần | Partial billing |
 | PO number | Identifier of a purchase order: 7 characters, digits only. The first digit gives the PO type. | Số PO | PO ID |
 | Price tolerance | Maximum allowed difference between the invoice unit price and the PO unit price on a line. Configurable by the Accounting Manager; default 0.5 USD ([DEC-015](../../01-requirements/decision-log.md#dec-015)). | Sai lệch giá cho phép | Price variance |
+| On hold | Invoice state: received on a closed day and waiting to be processed; released at the end of the closed period or by an Accounting Manager ("Process now"). | Đang tạm giữ | Paused, Held |
+| Processing calendar | The days on which a company does not process new invoices, set by its Accounting Manager with monthly ranges, weekdays and specific dates. Entity `ProcessingCalendarRule` ([DEC-062](../../01-requirements/decision-log.md#dec-062)). | Lịch xử lý | Schedule, Blackout calendar |
 | Processing job | Unit of background work (process or re-match an invoice), sent as a message to the SAPS Message Broker and run by the SAPS Worker. Not stored as an entity. | Tác vụ xử lý | Task |
 | Product Owner | The customer's single representative and decision maker for Smart-AP-Suite. | Chủ sản phẩm | Customer representative |
 | Proof of Concept | First project phase: a locally run demo of the end-to-end flow, using dummy data. | Bản thử nghiệm khái niệm | Prototype, pilot |

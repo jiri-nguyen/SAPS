@@ -11,6 +11,9 @@ related: [ADR-0004, DEC-026, SAPS-17, SAPS-18, SAPS-20, TD-04]
 # SAPS-37 — Stuck-invoice sweeper
 
 ## 1. Summary
+> **Note ([SAPS-52](SAPS-52-processing-calendar.md), 2027-03-01):** an invoice On hold waits on purpose. It is not a stuck
+> status: the sweeper still looks only at Uploaded and Matching.
+
 The SAPS API commits an invoice and only then sends a message to the SAPS Message Broker. When sending fails, Redis loses the
 message, or a SAPS Worker dies in the middle of a job, the invoice stays in Uploaded or Matching and nobody notices. A timer in the
 SAPS Worker finds such invoices and sends the missing message again. This is the recovery path chosen in

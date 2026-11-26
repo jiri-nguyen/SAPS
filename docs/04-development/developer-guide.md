@@ -4,7 +4,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Solution Architect / Tech Lead (our company)"
 reviewers: []
 last_updated: 2027-03-01
-related: [DEC-028, DEC-029, DEC-030, ADR-0001, ADR-0008, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0011, ADR-0012, SAPS-26, SAPS-44, SAPS-45, SAPS-46]
+related: [DEC-028, DEC-029, DEC-030, ADR-0001, ADR-0008, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0011, ADR-0012, SAPS-26, SAPS-44, SAPS-45, SAPS-46, SAPS-52]
 ---
 
 # Developer Guide
@@ -139,6 +139,12 @@ cd ../frontend && npm ci && npm run dev                        # SAPS Web App on
   `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` of `.env`, master realm); realm `saps` has the groups `/companies/vn`,
   `/companies/sg`, `/companies/my`, the roles Accounting Member and Accounting Manager and the 9 demo users of
   `fixtures/companies.json`. Passwords, roles and company groups are changed here, not in the SAPS Database.
+- Processing calendar ([SAPS-52](../03-features/SAPS-52-processing-calendar.md)): sign in as `manager1@sg.example.com`, open **Processing calendar**,
+  add the rule *Specific date* with today's date (days are days of the company's time zone, Asia/Singapore for Demo Singapore) and
+  save: the banner "Demo Singapore is in a closed period until …" shows for every user. Upload DS-12 as `member1@sg.example.com`: the invoice
+  stays **On hold**. As the manager open it and click **Process now**: it is processed although the company is closed. Delete the rule and
+  save: within `HOLD_RELEASE_SECONDS` (60 s) the other held invoices are processed, oldest first. A monthly range 25 → 5, weekdays and
+  dates can be combined; log lines `invoice_held` and `invoices_released` show what the worker did.
 - Search ([SAPS-46](../03-features/SAPS-46-invoice-search.md)): the menu item **All invoices** (both roles) lists every invoice of the
   company in every status, newest upload first. Try the status boxes, the vendor (`alpha`), the invoice number typed with other
   spaces or dashes (`aos 2026 1001` finds `AOS-2026-1001`), the PO number (7 digits), the channel (Upload or Mail), and the ranges of
@@ -320,6 +326,7 @@ All settings are environment variables, read in `backend/src/saps/config.py`. `.
 | `OIDC_DISCOVERY_URL`, `OIDC_ISSUER` | Discovery document as the SAPS API reaches Keycloak, and the issuer in the tokens (the public URL) — set in `compose.yaml` from `KEYCLOAK_PUBLIC_URL` | `compose.yaml` |
 | `OIDC_CLIENT_ID`, `OIDC_GROUPS_CLAIM`, `OIDC_ROLES_CLAIM` | Client and claim names — defaults `saps-web`, `groups`, `roles` ([ADR-0010](../02-architecture/adr/0010-use-one-keycloak-realm-with-company-groups.md)) | defaults |
 | `MAIL_ADAPTER` | Mail intake: `imap` (set in `compose.yaml` for the SAPS Worker) or `none` (default when unset) — `graph` for Outlook comes later ([SAPS-45](../03-features/SAPS-45-mailbox-intake.md)) | `compose.yaml` |
+| `HOLD_RELEASE_SECONDS`, `HOLD_RELEASE_BATCH` | Interval of the release of held invoices and invoices released per company and tick — defaults 60 and 200 ([SAPS-52](../03-features/SAPS-52-processing-calendar.md)) | `.env.example` |
 | `MAIL_POLL_SECONDS`, `MAIL_BATCH_SIZE` | Interval of the mail intake and mails read per mailbox and tick — defaults 60 and 50 | `.env.example` |
 | `IMAP_HOST`, `IMAP_PORT`, `IMAP_SSL` | Mail server of the IMAP adapter — `mail`, `3143`, `false` in Docker Compose | `compose.yaml` |
 | `IMAP_PASSWORD` | Password used for every demo mailbox; the test mail server accepts any value | `.env.example` |

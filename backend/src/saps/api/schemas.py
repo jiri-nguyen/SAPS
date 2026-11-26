@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 from pydantic.alias_generators import to_camel
 
+from saps.application.processing_calendar import CalendarStatus
 from saps.domain.invoices import (
     ApprovalDecision,
     ExceptionCode,
@@ -19,6 +20,8 @@ from saps.domain.invoices import (
 )
 from saps.domain.mail_intake import IntakeChannel
 from saps.domain.matching import MatchingRules
+from saps.domain.processing_calendar import CalendarRule as DomainRule
+from saps.domain.processing_calendar import RuleKind
 from saps.domain.users import CurrentUser, Role
 from saps.ports.invoices import InvoiceEventView, InvoiceSummaryView, InvoiceView
 from saps.ports.matching_settings import MatchingSettingsView
@@ -283,6 +286,60 @@ class MatchingSettingsUpdate(CamelModel):
 
     def rules(self) -> MatchingRules:
         return MatchingRules(Decimal(self.price_tolerance_usd), Decimal(self.approval_threshold_usd))
+
+
+class CalendarRule(CamelModel):
+    """OpenAPI `CalendarRule` (SAPS-52 BR-01); which fields a kind needs is checked by the domain (EC-10)."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
+
+    kind: RuleKind
+    from_day: int | None = None
+    to_day: int | None = None
+    weekday: int | None = None
+    day: date | None = Field(default=None, alias="date")  # `date` would hide the type in this class
+    label: Annotated[str, StringConstraints(strip_whitespace=True)] | None = None
+
+    @classmethod
+    def from_rule(cls, rule: DomainRule) -> Self:
+        return cls(
+            kind=rule.kind,
+            from_day=rule.from_day,
+            to_day=rule.to_day,
+            weekday=rule.weekday,
+            day=rule.day,
+            label=rule.label,
+        )
+
+    def rule(self) -> DomainRule:
+        return DomainRule(self.kind, self.from_day, self.to_day, self.weekday, self.day, self.label)
+
+
+class ProcessingCalendar(CamelModel):
+    rules: list[CalendarRule]
+    time_zone: str
+    closed_today: bool
+    open_again_on: date | None
+    updated_at: datetime | None
+    updated_by: str | None
+
+    @classmethod
+    def from_status(cls, status: CalendarStatus) -> Self:
+        view = status.view
+        return cls(
+            rules=[CalendarRule.from_rule(r) for r in view.rules],
+            time_zone=view.time_zone,
+            closed_today=status.closed_today,
+            open_again_on=status.open_again_on,
+            updated_at=view.updated_at,
+            updated_by=view.updated_by,
+        )
+
+
+class ProcessingCalendarUpdate(CamelModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
+
+    rules: list[CalendarRule]
 
 
 class Notification(_ReadModel):

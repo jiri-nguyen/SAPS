@@ -14,6 +14,10 @@ from saps.adapters.persistence.exception_repository import SqlExceptionUnitOfWor
 from saps.adapters.persistence.invoice_repository import SqlInvoiceRepository
 from saps.adapters.persistence.matching_settings_repository import SqlMatchingSettingsRepository
 from saps.adapters.persistence.notification_inbox import SqlNotificationInbox
+from saps.adapters.persistence.processing_calendar_repository import (
+    SqlHoldUnitOfWork,
+    SqlProcessingCalendarRepository,
+)
 from saps.adapters.persistence.user_repository import SqlUserRepository
 from saps.adapters.queue.dramatiq_queue import DramatiqJobQueue
 from saps.adapters.security.fernet_cipher import FernetTokenCipher
@@ -23,6 +27,7 @@ from saps.application.auth import AuthService
 from saps.application.exception_handling import ExceptionHandlingService
 from saps.application.matching_settings import MatchingSettingsService
 from saps.application.notifications import NotificationInboxService
+from saps.application.processing_calendar import InvoiceHoldService, ProcessingCalendarService
 from saps.application.review import ReviewService
 from saps.application.upload import UploadInvoiceService
 from saps.config import get_settings
@@ -211,6 +216,22 @@ async def review_service(
     """SAPS-21: one transaction per confirmation; the invoice row lock makes the first action win."""
     sessions = session_factory(app_engine(), user.tenant_id)
     return ReviewService(SqlExceptionUnitOfWork(sessions), repository, utc_now)
+
+
+# --- Processing calendar (SAPS-52) -------------------------------------------------------------------------
+
+
+def processing_calendar_service(session: TenantDb) -> ProcessingCalendarService:
+    """Runs in the request's transaction: the Accounting Manager's change applies at once (BR-07)."""
+    return ProcessingCalendarService(SqlProcessingCalendarRepository(session), utc_now)
+
+
+async def invoice_hold_service(
+    user: User, queue: Annotated[JobQueuePort, Depends(job_queue)]
+) -> InvoiceHoldService:
+    """Process now: one transaction, the invoice row locked, then the message is sent (SAPS-52 BR-06)."""
+    sessions = session_factory(app_engine(), user.tenant_id)
+    return InvoiceHoldService(SqlHoldUnitOfWork(sessions), queue, utc_now)
 
 
 # --- Matching settings (SAPS-28) ------------------------------------------------------------------------

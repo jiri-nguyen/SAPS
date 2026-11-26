@@ -34,6 +34,7 @@ def test_compared_statuses() -> None:  # BR-03
         InvoiceStatus.UPLOADED,
         InvoiceStatus.MATCHING,
         InvoiceStatus.REJECTED,
+        InvoiceStatus.ON_HOLD,  # no data yet, like Uploaded (SAPS-52)
     }
 
 

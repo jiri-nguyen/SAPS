@@ -127,6 +127,11 @@ async def run_processing(invoice_id: UUID, tenant_id: UUID | None = None) -> Pro
     if outcome is None:
         processing_log.info("processing_skipped", extra={"invoice_id": str(invoice_id)})
         return None
+    if outcome.held:  # SAPS-52 BR-03: received on a closed day, nothing was extracted or matched
+        processing_log.info(
+            "invoice_held", extra={"invoice_id": str(outcome.invoice_id), "tenant_id": str(outcome.tenant_id)}
+        )
+        return outcome
     processing_log.info(
         "extraction_completed",
         extra={

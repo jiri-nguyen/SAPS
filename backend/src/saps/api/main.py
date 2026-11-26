@@ -11,7 +11,7 @@ from saps.adapters.persistence.db import database_is_reachable, dispose_engines,
 from saps.api.deps import token_cipher
 from saps.api.origin_check import OriginCheckMiddleware
 from saps.api.problems import install_problem_handlers
-from saps.api.routers import invoices, matching_settings, notifications, session
+from saps.api.routers import invoices, matching_settings, notifications, processing_calendar, session
 from saps.api.routers.session import BACKCHANNEL_LOGOUT_PATH
 from saps.api.upload_limit import UploadSizeLimitMiddleware
 from saps.config import get_settings
@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(session.router)
     app.include_router(invoices.router)
     app.include_router(matching_settings.router)
+    app.include_router(processing_calendar.router)
     app.include_router(notifications.router)
 
     @app.get("/health", operation_id="getHealth", tags=["Health"])

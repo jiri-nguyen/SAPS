@@ -33,8 +33,9 @@ TENANT_TABLES = (
     "invoice_event",
     "notification",
 )
-# `inbound_mail` (SAPS-45) is not filled by these scenarios; test_mail_intake checks it (TS-06).
-CATALOG_TABLES = (*TENANT_TABLES, "inbound_mail")
+# `inbound_mail` (SAPS-45) and `processing_calendar_rule` (SAPS-52) are not filled by these scenarios;
+# test_mail_intake and test_processing_calendar check them.
+CATALOG_TABLES = (*TENANT_TABLES, "inbound_mail", "processing_calendar_rule")
 DS03 = FIXTURES / "ds-03/invoices/ds-03-above-threshold.pdf"  # Pending approval
 DS12 = FIXTURES / "ds-12/invoices/ds-12-price-outside-tolerance.pdf"  # Exception EX6
 

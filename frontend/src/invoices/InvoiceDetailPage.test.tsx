@@ -80,6 +80,50 @@ describe("InvoiceDetailPage", () => {
     expect(screen.queryByTestId("mail-source")).not.toBeInTheDocument();
   });
 
+  it("lets an Accounting Manager process a held invoice now (SAPS-52 BR-06, BR-09)", async () => {
+    const held = invoiceFixture({ status: "ON_HOLD", exceptions: [], lines: [], assignedTo: null });
+    const released = invoiceFixture({ status: "UPLOADED", exceptions: [], lines: [] });
+    const releaseHold = vi.fn().mockResolvedValue(versioned(released));
+    renderPage(
+      fakeExceptionApi({
+        getVersioned: vi.fn().mockResolvedValueOnce(versioned(held)).mockResolvedValue(versioned(released)),
+        releaseHold,
+      }),
+      MANAGER,
+    );
+    expect(await screen.findByText(/received in a closed period and is on hold/)).toHaveTextContent(
+      "Process now",
+    );
+    expect(screen.getByText("On hold")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Claim" })).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Process now" }));
+    expect(releaseHold).toHaveBeenCalledWith("inv-12");
+    expect(await screen.findByText("Released. The invoice is processed now.")).toBeInTheDocument();
+  });
+
+  it("tells a member that a held invoice waits for the end of the period, with no action", async () => {
+    const held = invoiceFixture({ status: "ON_HOLD", exceptions: [], lines: [], assignedTo: null });
+    renderPage(fakeExceptionApi({ getVersioned: vi.fn().mockResolvedValue(versioned(held)) }), MEMBER);
+    expect(
+      await screen.findByText(
+        "This invoice was received in a closed period and is on hold. It is processed when the period ends.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Process now" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Claim" })).not.toBeInTheDocument();
+  });
+
+  it("shows a refused Process now, for example an invoice that was released meanwhile", async () => {
+    const held = invoiceFixture({ status: "ON_HOLD", exceptions: [], lines: [] });
+    const releaseHold = vi.fn().mockRejectedValue(problem(409, "The invoice is not on hold."));
+    renderPage(
+      fakeExceptionApi({ getVersioned: vi.fn().mockResolvedValue(versioned(held)), releaseHold }),
+      MANAGER,
+    );
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Process now" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The invoice is not on hold.");
+  });
+
   it("shows an image file as an image", async () => {
     const image = invoiceFixture({
       file: { name: "scan.png", contentType: "image/png", sizeBytes: 1, sha256: "b".repeat(64) },

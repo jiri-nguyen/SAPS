@@ -7,6 +7,7 @@ import { UNAUTHORIZED, unauthorizedEvents } from "./api/client";
 import type { SessionApi, UserAccount } from "./api/session";
 import { browser } from "./auth/browser";
 import { useSession } from "./auth/session-context";
+import { calendarFixture, fakeCalendarApi } from "./test/calendar";
 import { fakeExceptionApi, summary } from "./test/invoices";
 import { fakeNotificationApi, notificationFixture, notificationPage } from "./test/notifications";
 import { fakeSettingsApi } from "./test/settings";
@@ -70,6 +71,7 @@ describe("App", () => {
     expect(menu).toHaveTextContent("Upload invoices");
     expect(menu).toHaveTextContent("Review queue");
     expect(menu).toHaveTextContent("All invoices");
+    expect(menu).not.toHaveTextContent("Processing calendar");
     expect(menu).not.toHaveTextContent("Approval queue");
     expect(menu).not.toHaveTextContent("Matching settings");
   });
@@ -152,6 +154,51 @@ describe("App", () => {
       "#/invoices?vendor=alpha",
     );
     expect(exceptionApi.getVersioned).toHaveBeenCalledWith("inv-12");
+  });
+
+  it("shows the processing calendar to a manager only, with the banner for everyone (SAPS-52)", async () => {
+    const closed = calendarFixture({ closedToday: true, openAgainOn: "2027-04-06" });
+    const calendarApi = fakeCalendarApi({ get: vi.fn().mockResolvedValue(closed) });
+    window.location.hash = "#/processing-calendar";
+    const { unmount } = render(
+      <App
+        sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MANAGER) })}
+        checkHealth={pending}
+        calendarApi={calendarApi}
+      />,
+    );
+    expect(await screen.findByRole("heading", { name: "Processing calendar" })).toBeInTheDocument();
+    expect(await screen.findByTestId("calendar-banner")).toHaveTextContent(
+      "Demo Vietnam is in a closed period until 2027-04-06: new invoices are held.",
+    );
+    expect(screen.getByRole("link", { name: "Processing calendar" })).toHaveAttribute("aria-current", "page");
+    unmount();
+
+    render(
+      <App
+        sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MEMBER) })}
+        checkHealth={pending}
+        calendarApi={calendarApi}
+      />,
+    );
+    expect(await screen.findByTestId("calendar-banner")).toBeInTheDocument(); // members see the banner
+    expect(screen.queryByRole("link", { name: "Processing calendar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Processing calendar" })).not.toBeInTheDocument();
+  });
+
+  it("reads the calendar again after the manager saved it", async () => {
+    const calendarApi = fakeCalendarApi();
+    window.location.hash = "#/processing-calendar";
+    render(
+      <App
+        sessionApi={fakeApi({ getSession: vi.fn().mockResolvedValue(MANAGER) })}
+        checkHealth={pending}
+        calendarApi={calendarApi}
+      />,
+    );
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Save calendar" }));
+    await vi.waitFor(() => expect(calendarApi.replace).toHaveBeenCalled());
+    await vi.waitFor(() => expect(calendarApi.get).toHaveBeenCalledTimes(3)); // the screen, the banner, the banner again
   });
 
   it("shows the approval queue and an invoice to approve to a manager (SAPS-22)", async () => {

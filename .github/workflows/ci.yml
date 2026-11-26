@@ -108,7 +108,7 @@ jobs:
           echo "::add-mask::$password"
           echo "::add-mask::$key"
           # A short stuck age and tick keep the lost-message check short (SAPS-37 Q2); the defaults stay 60 s and 10 s.
-          sed "s/^SEED_USER_PASSWORD=.*/SEED_USER_PASSWORD=$password/; s/^SESSION_ENCRYPTION_KEY=.*/SESSION_ENCRYPTION_KEY=$key/; s/^SWEEPER_INTERVAL_SECONDS=.*/SWEEPER_INTERVAL_SECONDS=5/; s/^MAIL_POLL_SECONDS=.*/MAIL_POLL_SECONDS=5/; s/^SWEEPER_STUCK_AFTER_SECONDS=.*/SWEEPER_STUCK_AFTER_SECONDS=15/" .env.example > .env
+          sed "s/^SEED_USER_PASSWORD=.*/SEED_USER_PASSWORD=$password/; s/^SESSION_ENCRYPTION_KEY=.*/SESSION_ENCRYPTION_KEY=$key/; s/^SWEEPER_INTERVAL_SECONDS=.*/SWEEPER_INTERVAL_SECONDS=5/; s/^MAIL_POLL_SECONDS=.*/MAIL_POLL_SECONDS=5/; s/^HOLD_RELEASE_SECONDS=.*/HOLD_RELEASE_SECONDS=5/; s/^SWEEPER_STUCK_AFTER_SECONDS=.*/SWEEPER_STUCK_AFTER_SECONDS=15/" .env.example > .env
       - name: Start all containers
         run: docker compose up -d --build --wait
       - name: SAPS Web App, proxy and SAPS API
@@ -350,6 +350,44 @@ jobs:
           test "$(code search-vn-jar --data-urlencode totalMin=10 --data-urlencode totalMax=5)" = 400
           test "$(code search-vn-jar --data-urlencode channel=FAX)" = 400
           test "$(curl -s -o /dev/null -w '%{http_code}' "$base/invoices")" = 401
+      - name: Processing calendar holds and releases invoices (SAPS-52)
+        run: |
+          web=http://localhost:5173
+          base=$web/v1
+          origin="Origin: $web"
+          password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
+          field() { python3 -c 'import json, sys; d = json.load(sys.stdin); print(eval(sys.argv[1]))' "$1"; }
+          sign_in() { .github/scripts/sign-in.sh $web "$1" "$password" "$2" > /dev/null; }
+          status_of() { curl -fsS -b calendar-member-jar "$base/invoices/$1" | field 'd["status"]'; }
+          wait_for() {  # $1 invoice id, $2 expected status
+            for i in $(seq 1 40); do [ "$(status_of "$1")" = "$2" ] && return 0; sleep 1; done
+            echo "invoice $1 is '$(status_of "$1")', expected '$2'"; docker compose logs worker; return 1
+          }
+          sign_in manager1@sg.example.com calendar-manager-jar
+          sign_in member1@sg.example.com calendar-member-jar
+          # Demo Singapore closes today (a day of its own time zone): new invoices are held
+          today="$(python3 -c 'import datetime, zoneinfo; print(datetime.datetime.now(zoneinfo.ZoneInfo("Asia/Singapore")).date())')"
+          put() { curl -fsS -b calendar-manager-jar -H "$origin" -H 'Content-Type: application/json' -X PUT -d "$1" "$base/processing-calendar"; }
+          put "{\"rules\":[{\"kind\":\"DATE\",\"date\":\"$today\",\"label\":\"CI\"}]}" | grep -q '"closedToday":true'
+          curl -fsS -b calendar-member-jar "$base/processing-calendar" | grep -q '"closedToday":true'   # members see the banner too
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b calendar-member-jar -H "$origin" -H 'Content-Type: application/json' -X PUT -d '{"rules":[]}' "$base/processing-calendar")" = 403
+          upload() { curl -fsS -b calendar-member-jar -H "$origin" -H "Idempotency-Key: $2-$GITHUB_RUN_ID" -F "file=@$1;type=application/pdf" "$base/invoices" | field 'd["id"]'; }
+          first="$(upload backend/fixtures/ds-12/invoices/ds-12-price-outside-tolerance.pdf ci-hold-1)"
+          second="$(upload backend/fixtures/ds-03/invoices/ds-03-above-threshold.pdf ci-hold-2)"
+          wait_for "$first" ON_HOLD
+          wait_for "$second" ON_HOLD
+          # "Process now": only a manager; the invoice is processed although the company is closed, the other stays held
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b calendar-member-jar -H "$origin" -X POST "$base/invoices/$first/release")" = 403
+          curl -fsS -b calendar-manager-jar -H "$origin" -X POST "$base/invoices/$first/release" | grep -q '"status":"UPLOADED"'
+          wait_for "$first" EXCEPTION   # DS-12: price outside the tolerance (EX6)
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b calendar-manager-jar -H "$origin" -X POST "$base/invoices/$first/release")" = 409
+          sleep 12   # more than two release ticks: a closed company keeps its held invoices
+          test "$(status_of "$second")" = ON_HOLD
+          # the calendar changes: the held invoice is released and processed within the release interval
+          put '{"rules":[]}' | grep -q '"closedToday":false'
+          wait_for "$second" PENDING_APPROVAL   # DS-03: above the approval threshold
+          docker compose logs worker | grep -q '"message": "invoice_held"'
+          docker compose logs worker | grep -q '"message": "invoices_released"'
       - name: Keycloak realm with the demo companies (SAPS-43)
         run: |
           kc=http://localhost:8080

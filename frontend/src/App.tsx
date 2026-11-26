@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { type ApiHealth, fetchApiHealth } from "./api/health";
+import type { CalendarApi } from "./api/calendar";
 import type { ExceptionApi } from "./api/exceptions";
 import type { InvoiceApi } from "./api/invoices";
 import type { NotificationApi } from "./api/notifications";
@@ -37,12 +38,14 @@ function Screens({
   exceptionApi,
   settingsApi,
   notificationApi,
+  calendarApi,
 }: {
   footer: ReactNode;
   invoiceApi?: InvoiceApi;
   exceptionApi?: ExceptionApi;
   settingsApi?: SettingsApi;
   notificationApi?: NotificationApi;
+  calendarApi?: CalendarApi;
 }) {
   const { user } = useSession();
   if (user === undefined) return <p>Loading…</p>;
@@ -61,6 +64,7 @@ function Screens({
       exceptionApi={exceptionApi}
       settingsApi={settingsApi}
       notificationApi={notificationApi}
+      calendarApi={calendarApi}
     />
   );
 }
@@ -72,6 +76,7 @@ export function App({
   exceptionApi,
   settingsApi,
   notificationApi,
+  calendarApi,
 }: {
   checkHealth?: () => Promise<ApiHealth>;
   sessionApi?: SessionApi;
@@ -79,6 +84,7 @@ export function App({
   exceptionApi?: ExceptionApi;
   settingsApi?: SettingsApi;
   notificationApi?: NotificationApi;
+  calendarApi?: CalendarApi;
 }) {
   const api = useMemo(() => sessionApi ?? createSessionApi(), [sessionApi]);
   return (
@@ -89,6 +95,7 @@ export function App({
         exceptionApi={exceptionApi}
         settingsApi={settingsApi}
         notificationApi={notificationApi}
+        calendarApi={calendarApi}
       />
     </SessionProvider>
   );

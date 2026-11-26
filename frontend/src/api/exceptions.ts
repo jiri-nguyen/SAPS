@@ -83,6 +83,8 @@ export interface ExceptionApi {
   list(query: ListQuery): Promise<InvoiceSummaryPage>;
   claim(invoiceId: string): Promise<Versioned>;
   release(invoiceId: string): Promise<void>;
+  /** `releaseInvoice` (SAPS-52): "Process now" for an invoice On hold; Accounting Managers only. */
+  releaseHold(invoiceId: string): Promise<Versioned>;
   update(invoiceId: string, body: InvoiceUpdate, etag: string): Promise<UpdateResult>;
   resolve(invoiceId: string, etag: string): Promise<Versioned>;
   reject(invoiceId: string, reason: string): Promise<Versioned>;
@@ -121,6 +123,9 @@ export function createExceptionApi(fetchImpl: typeof fetch = fetch): ExceptionAp
     },
     async release(invoiceId) {
       await call(path(invoiceId, "/claim"), { method: "DELETE" });
+    },
+    async releaseHold(invoiceId) {
+      return versioned(await call(path(invoiceId, "/release"), { method: "POST" }));
     },
     async update(invoiceId, body, etag) {
       const response = await call(path(invoiceId), {

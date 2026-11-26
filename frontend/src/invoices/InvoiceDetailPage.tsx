@@ -88,6 +88,7 @@ export function InvoiceDetailPage({
   const manager = user.role === "ACCOUNTING_MANAGER";
   const waiting = invoice.status === "PENDING_APPROVAL"; // SAPS-22
   const reviewing = invoice.status === "PENDING_REVIEW"; // SAPS-21
+  const held = invoice.status === "ON_HOLD"; // SAPS-52
   const openCodes = invoice.exceptions.filter((e) => e.status === "OPEN").map((e) => e.code);
   const refused = refusedCodes(openCodes);
 
@@ -138,6 +139,11 @@ export function InvoiceDetailPage({
     void run(
       () => api.resolve(invoiceId, etag),
       (result) => (result ? `Accepted. Next step: ${STATUS_LABEL[result.invoice.status]}.` : null),
+    );
+  const processNow = () =>
+    void run(
+      () => api.releaseHold(invoiceId),
+      () => "Released. The invoice is processed now.",
     );
   const claim = () =>
     void run(
@@ -194,6 +200,13 @@ export function InvoiceDetailPage({
             : "This invoice waits for approval by an Accounting Manager."}
         </p>
       )}
+      {held && (
+        <p className="banner info" role="status">
+          {manager
+            ? "This invoice was received in a closed period and is on hold. It is processed when the period ends, or now with Process now."
+            : "This invoice was received in a closed period and is on hold. It is processed when the period ends."}
+        </p>
+      )}
       {reviewing && (
         <p className="banner info" role="status">
           {member
@@ -220,6 +233,14 @@ export function InvoiceDetailPage({
         <p className="banner error" role="alert">
           {error}
         </p>
+      )}
+
+      {held && manager && mode === "view" && (
+        <div className="actions" aria-label="On hold">
+          <button type="button" className="primary" disabled={busy} onClick={processNow}>
+            Process now
+          </button>
+        </div>
       )}
 
       {reviewing && member && mode === "view" && (
