@@ -270,6 +270,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/invoices/{invoiceId}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoiceId: components["parameters"]["InvoiceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Process a held invoice now
+         * @description Lets one invoice `ON_HOLD` through although the company is in a closed period (SAPS-52 BR-06, DEC-062): the
+         *     invoice goes back to `UPLOADED` and is processed; it is not held again. `409` when the invoice is not on hold.
+         */
+        post: operations["releaseInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/invoices/{invoiceId}/rejection": {
         parameters: {
             query?: never;
@@ -393,6 +416,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/processing-calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the processing calendar of the caller's company
+         * @description The rules, the company's time zone, whether today (in that time zone) is closed and the first open day
+         *     (`openAgainOn`, null when the company is open today or no day within a year is open). Both roles read it: every
+         *     user sees the banner of a closed period (SAPS-52 BR-08).
+         */
+        get: operations["getProcessingCalendar"];
+        /**
+         * Replace the rules of the processing calendar
+         * @description Only the Accounting Manager (DEC-062). All rules are sent together and replace the old ones; the change applies
+         *     at once, also to invoices already on hold (SAPS-52 BR-07). A rule that is not valid is a `422` whose `errors`
+         *     name the field (`rules[2].fromDay`); nothing is saved.
+         */
+        put: operations["updateProcessingCalendar"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/matching-settings": {
         parameters: {
             query?: never;
@@ -425,10 +476,10 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
-         * @description Invoice lifecycle state (data model §5)
+         * @description Invoice lifecycle state (data model §5). `ON_HOLD` = received on a closed day of the processing calendar and waiting to be processed (SAPS-52)
          * @enum {string}
          */
-        InvoiceStatus: "UPLOADED" | "MATCHING" | "EXCEPTION" | "PENDING_APPROVAL" | "PENDING_REVIEW" | "COMPLETED" | "REJECTED";
+        InvoiceStatus: "UPLOADED" | "MATCHING" | "EXCEPTION" | "PENDING_APPROVAL" | "PENDING_REVIEW" | "COMPLETED" | "REJECTED" | "ON_HOLD";
         /**
          * @description Derived from the PO number (DEC-005)
          * @enum {string}
@@ -681,6 +732,39 @@ export interface components {
         MatchingSettingsUpdate: {
             priceToleranceUsd: components["schemas"]["UnitPrice"];
             approvalThresholdUsd: components["schemas"]["Amount"];
+        };
+        /**
+         * @description One rule of the calendar (SAPS-52 BR-01). `MONTHLY_RANGE`: `fromDay` to `toDay` of every month, both included;
+         *     when `fromDay` is after `toDay` the range runs into the next month (25 to 5); a day after the end of a month
+         *     means its last day. `WEEKDAY`: `weekday` 1 (Monday) to 7 (Sunday). `DATE`: one `date`.
+         */
+        CalendarRule: {
+            /** @enum {string} */
+            kind: "MONTHLY_RANGE" | "WEEKDAY" | "DATE";
+            fromDay?: number;
+            toDay?: number;
+            weekday?: number;
+            /** Format: date */
+            date?: string;
+            /** @description For example `Public holiday` */
+            label?: string | null;
+        };
+        ProcessingCalendar: {
+            rules: components["schemas"]["CalendarRule"][];
+            /** @description IANA time zone of the company; the days are days of this time zone */
+            timeZone: string;
+            closedToday: boolean;
+            /**
+             * Format: date
+             * @description First open day while the company is closed today; null otherwise
+             */
+            openAgainOn?: string | null;
+            /** Format: date-time */
+            readonly updatedAt?: string | null;
+            readonly updatedBy?: string | null;
+        };
+        ProcessingCalendarUpdate: {
+            rules: components["schemas"]["CalendarRule"][];
         };
         InvoiceSummaryPage: {
             items: components["schemas"]["InvoiceSummary"][];
@@ -1331,6 +1415,37 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
+    releaseInvoice: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Propagated to logs and to the SAPS Worker; generated if absent */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                invoiceId: components["parameters"]["InvoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Released; processing queued */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invoice"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
     rejectInvoice: {
         parameters: {
             query?: never;
@@ -1512,6 +1627,64 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getProcessingCalendar: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Propagated to logs and to the SAPS Worker; generated if absent */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The processing calendar */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessingCalendar"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    updateProcessingCalendar: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Propagated to logs and to the SAPS Worker; generated if absent */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProcessingCalendarUpdate"];
+            };
+        };
+        responses: {
+            /** @description The processing calendar now in force */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessingCalendar"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["UnprocessableEntity"];
             500: components["responses"]["InternalError"];
         };
     };

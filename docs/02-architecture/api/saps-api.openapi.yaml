@@ -3,7 +3,7 @@
 openapi: 3.1.0
 info:
   title: SAPS API
-  version: "0.7.0"
+  version: "0.8.0"
   description: |
     HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload and mail intake, the exception queue,
     approval, final review, notifications and matching settings.
@@ -40,11 +40,13 @@ tags:
   - name: Session
     description: Sign-in with simple user accounts (NFR-SEC-001)
   - name: Invoices
-    description: Invoice upload, exception handling, approval and final review
+    description: Invoice upload, exception handling, approval, final review and the release of held invoices
   - name: Notifications
     description: In-app notifications (DEC-021)
   - name: MatchingSettings
     description: Price tolerance and approval threshold (DEC-015)
+  - name: ProcessingCalendar
+    description: Days on which a company does not process invoices (DEC-062)
   - name: Health
     description: Liveness of the SAPS API
 security:
@@ -481,6 +483,33 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /v1/invoices/{invoiceId}/release:
+    parameters:
+      - $ref: "#/components/parameters/InvoiceId"
+    post:
+      operationId: releaseInvoice
+      summary: Process a held invoice now
+      description: |
+        Lets one invoice `ON_HOLD` through although the company is in a closed period (SAPS-52 BR-06, DEC-062): the
+        invoice goes back to `UPLOADED` and is processed; it is not held again. `409` when the invoice is not on hold.
+      tags: [Invoices]
+      x-roles: [ACCOUNTING_MANAGER]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Released; processing queued
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /v1/invoices/{invoiceId}/rejection:
     parameters:
       - $ref: "#/components/parameters/InvoiceId"
@@ -625,6 +654,55 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /v1/processing-calendar:
+    get:
+      operationId: getProcessingCalendar
+      summary: Get the processing calendar of the caller's company
+      description: |
+        The rules, the company's time zone, whether today (in that time zone) is closed and the first open day
+        (`openAgainOn`, null when the company is open today or no day within a year is open). Both roles read it: every
+        user sees the banner of a closed period (SAPS-52 BR-08).
+      tags: [ProcessingCalendar]
+      x-roles: [ACCOUNTING_MEMBER, ACCOUNTING_MANAGER]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: The processing calendar
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProcessingCalendar" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    put:
+      operationId: updateProcessingCalendar
+      summary: Replace the rules of the processing calendar
+      description: |
+        Only the Accounting Manager (DEC-062). All rules are sent together and replace the old ones; the change applies
+        at once, also to invoices already on hold (SAPS-52 BR-07). A rule that is not valid is a `422` whose `errors`
+        name the field (`rules[2].fromDay`); nothing is saved.
+      tags: [ProcessingCalendar]
+      x-roles: [ACCOUNTING_MANAGER]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProcessingCalendarUpdate" }
+      responses:
+        "200":
+          description: The processing calendar now in force
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProcessingCalendar" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /v1/matching-settings:
     get:
       operationId: getMatchingSettings
@@ -722,8 +800,8 @@ components:
     # ---------- enums (values = data model enums) ----------
     InvoiceStatus:
       type: string
-      enum: [UPLOADED, MATCHING, EXCEPTION, PENDING_APPROVAL, PENDING_REVIEW, COMPLETED, REJECTED]
-      description: Invoice lifecycle state (data model §5)
+      enum: [UPLOADED, MATCHING, EXCEPTION, PENDING_APPROVAL, PENDING_REVIEW, COMPLETED, REJECTED, ON_HOLD]
+      description: "Invoice lifecycle state (data model §5). `ON_HOLD` = received on a closed day of the processing calendar and waiting to be processed (SAPS-52)"
     InvoiceType:
       type: string
       enum: [TRADE_PO, NON_TRADE_PO, NON_PO]
@@ -988,6 +1066,42 @@ components:
       properties:
         priceToleranceUsd: { $ref: "#/components/schemas/UnitPrice" }
         approvalThresholdUsd: { $ref: "#/components/schemas/Amount" }
+
+    # ---------- processing calendar ----------
+    CalendarRule:
+      type: object
+      description: |
+        One rule of the calendar (SAPS-52 BR-01). `MONTHLY_RANGE`: `fromDay` to `toDay` of every month, both included;
+        when `fromDay` is after `toDay` the range runs into the next month (25 to 5); a day after the end of a month
+        means its last day. `WEEKDAY`: `weekday` 1 (Monday) to 7 (Sunday). `DATE`: one `date`.
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [MONTHLY_RANGE, WEEKDAY, DATE] }
+        fromDay: { type: integer, minimum: 1, maximum: 31 }
+        toDay: { type: integer, minimum: 1, maximum: 31 }
+        weekday: { type: integer, minimum: 1, maximum: 7 }
+        date: { type: string, format: date }
+        label: { type: [string, "null"], maxLength: 100, description: "For example `Public holiday`" }
+    ProcessingCalendar:
+      type: object
+      required: [rules, timeZone, closedToday]
+      properties:
+        rules:
+          type: array
+          items: { $ref: "#/components/schemas/CalendarRule" }
+        timeZone: { type: string, maxLength: 64, description: "IANA time zone of the company; the days are days of this time zone" }
+        closedToday: { type: boolean }
+        openAgainOn: { type: [string, "null"], format: date, description: "First open day while the company is closed today; null otherwise" }
+        updatedAt: { type: [string, "null"], format: date-time, readOnly: true }
+        updatedBy: { type: [string, "null"], readOnly: true }
+    ProcessingCalendarUpdate:
+      type: object
+      required: [rules]
+      properties:
+        rules:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/CalendarRule" }
 
     # ---------- pages ----------
     InvoiceSummaryPage:
