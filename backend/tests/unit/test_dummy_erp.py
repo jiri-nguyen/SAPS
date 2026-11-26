@@ -45,7 +45,13 @@ def _po(number: str = "0100001", lines: int = 1) -> dict[str, object]:
         "vendor_code": "V001",
         "currency": "USD",
         "lines": [
-            {"po_line_number": 1, "description": "x", "ordered_quantity": "1", "unit_price": "1.00"}
+            {
+                "po_line_number": 1,
+                "description": "x",
+                "ordered_quantity": "1",
+                "unit_price": "1.00",
+                "material_number": "MAT-1",
+            }
             for _ in range(lines)
         ],
     }
@@ -54,15 +60,33 @@ def _po(number: str = "0100001", lines: int = 1) -> dict[str, object]:
 def _gr(number: str = "5000001", po: str = "0100001", po_line: int = 1) -> dict[str, object]:
     return {
         "gr_number": number,
+        "do_number": f"DO-{number}",
         "po_number": po,
         "receipt_date": "2026-12-01",
         "lines": [{"po_line_number": po_line, "received_quantity": "1"}],
     }
 
 
+def _pir(
+    valid_from: str = "2026-01-01", valid_to: str | None = None, material: str = "MAT-1"
+) -> dict[str, object]:
+    return {
+        "vendor_code": "V001",
+        "material_number": material,
+        "unit_price": "1.00",
+        "currency": "USD",
+        "valid_from": valid_from,
+        **({"valid_to": valid_to} if valid_to else {}),
+    }
+
+
 def test_the_demo_fixtures_are_valid() -> None:  # like SAPS-18 TS-04: broken demo data fails in CI
     adapter = DummyErpAdapter(FIXTURES)
-    assert [adapter.purchase_order_count(code) for code in ("vn", "sg", "my")] == [17, 17, 17]  # SAPS-42 Q4
+    assert [adapter.purchase_order_count(code) for code in ("vn", "sg", "my")] == [
+        22,
+        22,
+        22,
+    ]  # SAPS-42 Q4, SAPS-51 adds DS-21 to DS-25
 
 
 async def test_reads_orders_and_receipts_by_po_number() -> None:
@@ -72,6 +96,20 @@ async def test_reads_orders_and_receipts_by_po_number() -> None:
     assert orders["0100004"].lines[1].unit_price == Decimal("15.00")
     receipts = await adapter.get_goods_receipt_lines("vn", ["0100004"])
     assert sorted(r.received_quantity for r in receipts) == [Decimal(4), Decimal(6)]
+    assert sorted(r.do_number for r in receipts) == ["DO-5000004", "DO-5000005"]  # SAPS-51
+    assert orders["0100004"].is_open and orders["0100004"].lines[1].material_number == "MAT-0100004-1"
+
+
+async def test_reads_the_purchasing_info_records_of_the_requested_pairs_only() -> None:  # SAPS-51
+    adapter = DummyErpAdapter(FIXTURES)
+    pirs = await adapter.get_purchasing_info_records("vn", [("V001", "MAT-0100004-1"), ("V001", "none")])
+    assert [(p.material_number, p.unit_price) for p in pirs] == [("MAT-0100004-1", Decimal("15.00"))]
+    assert await adapter.get_purchasing_info_records("zz", [("V001", "MAT-0100004-1")]) == []
+
+
+async def test_a_closed_po_is_not_open() -> None:  # DS-25
+    orders = await DummyErpAdapter(FIXTURES).get_purchase_orders("vn", ["0100025"])
+    assert not orders["0100025"].is_open
 
 
 async def test_each_company_reads_its_own_files(tmp_path: Path) -> None:  # SAPS-42 BR-03
@@ -94,6 +132,7 @@ async def test_an_unknown_company_gets_no_data_and_is_logged_once(
     adapter = DummyErpAdapter(FIXTURES)
     assert await adapter.get_purchase_orders("zz", ["0100004"]) == {}
     assert await adapter.get_goods_receipt_lines("zz", ["0100004"]) == []
+    assert await adapter.get_purchasing_info_records("zz", [("V001", "MAT-1")]) == []
     assert [r.getMessage() for r in caplog.records] == ["erp_company_unknown"]
 
 
@@ -117,6 +156,21 @@ def test_a_pattern_without_files_fails_at_load(tmp_path: Path) -> None:  # EC-02
             "unknown PO 0100001 line 2",
         ),
         ({"a": {"goods_receipts": [_gr()]}}, "unknown PO 0100001"),
+        (
+            {"a": {"purchasing_info_records": [_pir("2026-01-01", "2026-06-30"), _pir("2026-06-30")]}},
+            "overlap",  # EC-09
+        ),
+        ({"a": {"purchasing_info_records": [_pir(), _pir("2026-07-01")]}}, "overlap"),  # open-ended
+        (
+            {
+                "a": {
+                    "purchase_orders": [
+                        {**_po(), "lines": [{**_po()["lines"][0], "material_number": None}]}  # type: ignore[index]
+                    ]
+                }
+            },
+            "has no material number",
+        ),
     ],
 )
 def test_inconsistent_fixtures_fail_at_load(
@@ -135,9 +189,24 @@ def test_inconsistent_fixtures_fail_at_load(
         {"purchase_orders": [{**_po(), "lines": [{**_po()["lines"][0], "ordered_quantity": "0"}]}]},  # type: ignore[index]
         {"purchase_orders": [{**_po(), "currency": "EUR"}]},
         {"unknown": []},
+        {"goods_receipts": [{k: v for k, v in _gr().items() if k != "do_number"}]},  # DO number required
+        {"purchase_orders": [{**_po(), "status": "ARCHIVED"}]},
+        {"purchasing_info_records": [{**_pir(), "currency": "EUR"}]},
     ],
 )
 def test_fixture_schema_is_enforced(tmp_path: Path, bad: dict[str, object]) -> None:
     _write(tmp_path, "a", bad)
     with pytest.raises(ValidationError):
         DummyErpAdapter(tmp_path)
+
+
+def test_pirs_of_different_materials_or_after_each_other_are_fine(tmp_path: Path) -> None:
+    pirs = [_pir("2026-01-01", "2026-06-30"), _pir("2026-07-01"), _pir(material="MAT-2")]
+    _write(tmp_path, "a", {"purchase_orders": [_po()], "purchasing_info_records": pirs})
+    assert DummyErpAdapter(tmp_path).purchase_order_count("aa") == 1
+
+
+def test_a_non_trade_po_needs_no_material_number(tmp_path: Path) -> None:
+    po = {**_po("1100001"), "lines": [{**_po()["lines"][0], "material_number": None}]}  # type: ignore[index]
+    _write(tmp_path, "a", {"purchase_orders": [po]})
+    assert DummyErpAdapter(tmp_path).purchase_order_count("aa") == 1

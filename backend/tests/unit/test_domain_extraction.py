@@ -51,6 +51,10 @@ def test_missing_values_are_still_usable() -> None:  # matching raises its own e
             "The PO number is longer than 20 characters.",
         ),
         (
+            replace(INVOICE, lines=[replace(LINE, do_number="D" * 51)]),
+            "The DO number is longer than 50 characters.",
+        ),
+        (
             replace(INVOICE, lines=[replace(LINE, description="d" * 501)]),
             "The description is longer than 500 characters.",
         ),

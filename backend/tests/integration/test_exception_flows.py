@@ -52,6 +52,37 @@ async def test_ds09_correct_the_po_number(api: Api) -> None:
     assert invoice["lines"][0]["matchStatus"] == "MATCHED"
 
 
+def _lot_line(po: str, qty: str, do: str | None) -> dict[str, Any]:
+    return {**line(1, "Label printer", po, 1, qty, "40.00", "240.00"), "doNumber": do}
+
+
+@pytest.mark.parametrize(
+    ("sample", "po", "do_number"),
+    [
+        ("ds-22/invoices/ds-22-do-number-missing.pdf", "0100022", "DO-7000022A"),  # EX11
+        ("ds-23/invoices/ds-23-invalid-do-number.pdf", "0100023", "DO-7000023A"),  # EX13
+    ],
+)
+async def test_ds22_ds23_correct_the_do_number(api: Api, sample: str, po: str, do_number: str) -> None:
+    _, invoice = await _fix_and_rematch(api, sample, {"lines": [_lot_line(po, "6", do_number)]})
+    assert invoice["status"] == "PENDING_REVIEW"
+    [item] = invoice["lines"]
+    assert item["matchStatus"] == "MATCHED" and item["expectedQuantity"] == "6.000"
+    assert item["doNumber"] == item["matchedDoNumber"] == do_number and item["pirUnitPrice"] == "40.0000"
+    assert [e["status"] for e in invoice["exceptions"]] == ["RESOLVED"]
+
+
+async def test_ds24_the_invoice_date_selects_another_pir(api: Api) -> None:  # EC-11
+    sample = "ds-24/invoices/ds-24-no-purchasing-info-record.pdf"
+    invoice_id = await api.sample(sample)
+    assert (await api.claim("alice", invoice_id)).status_code == 200
+    response = await api.update("alice", invoice_id, {"invoiceDate": "2027-01-05"})
+    assert response.status_code == 202
+    await api.rematch(invoice_id)
+    invoice = await api.get(invoice_id)
+    assert invoice["status"] == "PENDING_REVIEW" and invoice["lines"][0]["pirUnitPrice"] == "25.0000"
+
+
 async def test_ds13_correct_the_quantity(api: Api) -> None:
     body = {"lines": [line(1, "Monitor stand", "0100013", 1, "6", "18.00", "108.00")]}
     _, invoice = await _fix_and_rematch(api, "ds-13/invoices/ds-13-quantity-above-expected.pdf", body)
