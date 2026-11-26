@@ -83,6 +83,7 @@ class SqlProcessingRepository(SqlNotifications):
                 quantity=line.quantity,
                 unit_price=line.unit_price,
                 line_amount=line.line_amount,
+                do_number=line.do_number,
                 created_by=actor,
                 updated_by=actor,
             )

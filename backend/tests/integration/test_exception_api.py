@@ -130,12 +130,20 @@ async def test_other_fields_are_saved_without_rematch(api: Api) -> None:
     response = await api.update(
         "alice",
         invoice_id,
-        {"vendorName": "Alpha Office Supplies Co. (corrected)", "invoiceDate": "2026-12-20"},
+        {"vendorName": "Alpha Office Supplies Co. (corrected)", "totalAmount": "95.00"},
     )
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "EXCEPTION" and body["vendorName"].endswith("(corrected)")
-    assert body["invoiceDate"] == "2026-12-20" and api.queue.rematch == []
+    assert body["totalAmount"] == "95.00" and api.queue.rematch == []
+
+
+async def test_the_invoice_date_and_the_do_number_are_matching_fields(api: Api) -> None:  # DEC-069, BR-12
+    invoice_id = await api.sample(DS12)
+    await api.claim("alice", invoice_id)
+    response = await api.update("alice", invoice_id, {"invoiceDate": "2026-12-20"})
+    assert response.status_code == 202 and api.queue.rematch == [invoice_id]
+    assert response.json()["invoiceDate"] == "2026-12-20"
 
 
 async def test_update_without_a_real_change_saves_nothing(api: Api) -> None:  # EC-08
@@ -247,8 +255,9 @@ async def test_acceptable_exceptions_are_resolved(
 
 
 async def test_a_duplicate_can_be_accepted_as_is(api: Api) -> None:  # EX9 (and EX7 of the same invoice)
-    await api.sample(DS01)
-    second = await api.sample("ds-15/invoices/ds-15-duplicate-scan.png")
+    first_delivery = "ds-04/invoices/ds-04-first-delivery.pdf"  # lot DO-5000004, 6 of 10
+    await api.sample(first_delivery)
+    second = await api.sample(first_delivery)  # the same invoice again: the lot is taken (EX7) and EX9
     assert await _codes(api, second) == ["EX7", "EX9"]
     await api.claim("bob", second)
     response = await api.resolve("bob", second)
@@ -263,6 +272,10 @@ async def test_a_duplicate_can_be_accepted_as_is(api: Api) -> None:  # EX9 (and 
         ("ds-11/invoices/ds-11-trade-and-non-trade.pdf", "EX5"),
         ("ds-14/invoices/ds-14-missing-goods-receipt.pdf", "EX8"),
         ("ds-20/invoices/ds-20-vendor-mismatch.pdf", "EX10"),
+        ("ds-22/invoices/ds-22-do-number-missing.pdf", "EX11"),  # DEC-068
+        ("ds-24/invoices/ds-24-no-purchasing-info-record.pdf", "EX12"),
+        ("ds-23/invoices/ds-23-invalid-do-number.pdf", "EX13"),
+        ("ds-25/invoices/ds-25-po-not-open.pdf", "EX4"),
         ("ds-07/unregistered/ds-07-unknown-invoice.pdf", "EX1"),
     ],
 )

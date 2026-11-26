@@ -21,7 +21,19 @@ describe("edit model", () => {
         lines: [{ ...INVOICE_LINE, description: null, poNumber: null, poLineNumber: null, quantity: null }],
       }),
     );
-    expect(sparse[0]).toMatchObject({ description: "", poNumber: "", poLineNumber: "", quantity: "" });
+    expect(sparse[0]).toMatchObject({
+      description: "",
+      poNumber: "",
+      poLineNumber: "",
+      doNumber: "",
+      quantity: "",
+    });
+    const withDo = linesOf(
+      invoiceFixture({
+        lines: [{ ...INVOICE_LINE, doNumber: "DO-7000021B", matchedDoNumber: "DO-7000021B" }],
+      }),
+    );
+    expect(withDo[0]?.doNumber).toBe("DO-7000021B");
   });
 
   it("adds a line after the highest line number", () => {
@@ -44,6 +56,7 @@ describe("edit model", () => {
           description: "USB keyboard",
           poNumber: "0100012",
           poLineNumber: 1,
+          doNumber: null,
           quantity: "4",
           unitPrice: "20.00",
           lineAmount: "82.40",
@@ -56,7 +69,15 @@ describe("edit model", () => {
       description: null,
       poNumber: null,
       poLineNumber: null,
+      doNumber: null,
     });
+  });
+
+  it("sends the DO number of a line, or null when it is cleared", () => {
+    const body = changes(ORIGINAL, ORIGINAL.header, [{ ...LINE, doNumber: " DO-7 " }]);
+    expect(body.lines?.[0]).toMatchObject({ doNumber: "DO-7" });
+    const cleared = changes({ ...ORIGINAL, lines: [{ ...LINE, doNumber: "DO-7" }] }, ORIGINAL.header, [LINE]);
+    expect(cleared.lines?.[0]).toMatchObject({ doNumber: null });
   });
 
   it("accepts valid values", () => {
@@ -75,6 +96,7 @@ describe("edit model", () => {
         ...LINE,
         poNumber: "123",
         poLineNumber: "0",
+        doNumber: "D".repeat(51),
         quantity: "1.2345",
         unitPrice: "1.00001",
         lineAmount: "x",
@@ -88,6 +110,7 @@ describe("edit model", () => {
       "Line numbers must be unique whole numbers from 1.",
       "Line 1: the PO number has 7 digits.",
       "Line 1: the PO line is a whole number from 1.",
+      "Line 1: the DO number is longer than 50 characters.",
       "Line 1: the quantity has up to 3 decimals.",
       "Line 1: the unit price has up to 4 decimals.",
       "Line 1: the line amount has up to 2 decimals.",

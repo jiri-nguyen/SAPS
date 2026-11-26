@@ -31,6 +31,7 @@ class ExtractedLineFixture(_Model):
     quantity: Decimal | None = None
     unit_price: Decimal | None = None
     line_amount: Decimal | None = None
+    do_number: str | None = None
 
 
 class ExtractedInvoiceFixture(_Model):

@@ -295,6 +295,7 @@ async def update_invoice(
                 ln.quantity,
                 ln.unit_price,
                 ln.line_amount,
+                ln.do_number,
             )
             for ln in body.lines
         ]

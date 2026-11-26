@@ -19,7 +19,7 @@ from saps.adapters.persistence.processing_repository import SqlProcessingReposit
 from saps.application.matching import MatchingService, MatchOutcome
 from saps.application.processing import ProcessInvoiceService, ProcessOutcome
 from saps.domain.invoices import InvoiceStatus
-from saps.domain.matching import GoodsReceiptLine, PurchaseOrder
+from saps.domain.matching import GoodsReceiptLine, PurchaseOrder, PurchasingInfoRecord
 from saps.domain.users import CurrentUser, Role
 
 FIXTURES = Path(__file__).parents[2] / "fixtures"
@@ -42,6 +42,11 @@ class _AnyCompanyErp:
         self, company_code: str, po_numbers: Sequence[str]
     ) -> list[GoodsReceiptLine]:
         return await self._erp.get_goods_receipt_lines(self._company, po_numbers)
+
+    async def get_purchasing_info_records(
+        self, company_code: str, keys: Sequence[tuple[str, str]]
+    ) -> list[PurchasingInfoRecord]:
+        return await self._erp.get_purchasing_info_records(self._company, keys)
 
 
 ERP = _AnyCompanyErp(DummyErpAdapter(FIXTURES))

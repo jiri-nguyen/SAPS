@@ -18,7 +18,7 @@ def _sha(path: Path) -> str:
 
 async def test_finds_a_sample_by_sha256_only() -> None:
     adapter = DummyExtractionAdapter(FIXTURES)
-    assert adapter.sample_count == 19
+    assert adapter.sample_count == 24
     pdf = FIXTURES / "ds-01/invoices/ds-01-trade-po.pdf"
     result = await adapter.extract(StoredFile(_sha(pdf), "invoices/x/y", "application/pdf"))
     assert result is not None and result.invoice_number == "AOS-2026-1001" and len(result.lines) == 2

@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from typing import Protocol
 
-from saps.domain.matching import GoodsReceiptLine, PurchaseOrder
+from saps.domain.matching import GoodsReceiptLine, PurchaseOrder, PurchasingInfoRecord
 
 
 class ErpDataPort(Protocol):
@@ -17,4 +17,12 @@ class ErpDataPort(Protocol):
 
     async def get_goods_receipt_lines(
         self, company_code: str, po_numbers: Sequence[str]
-    ) -> list[GoodsReceiptLine]: ...
+    ) -> list[GoodsReceiptLine]:
+        """Goods receipt lines with their DO number (SAPS-51 BR-02)."""
+        ...
+
+    async def get_purchasing_info_records(
+        self, company_code: str, keys: Sequence[tuple[str, str]]
+    ) -> list[PurchasingInfoRecord]:
+        """Purchasing info records of the (vendor, material) pairs, all validity periods (SAPS-51)."""
+        ...

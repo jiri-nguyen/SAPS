@@ -18,14 +18,24 @@ Synthetic data only (public repository, DEC-028). One folder per demo scenario o
 {
   "purchase_orders": [
     {"po_number": "0100001", "vendor_code": "V001", "currency": "USD",
-     "lines": [{"po_line_number": 1, "description": "A4 copy paper, box", "ordered_quantity": "4", "unit_price": "25.00"}]}
+     "lines": [{"po_line_number": 1, "description": "A4 copy paper, box", "ordered_quantity": "4", "unit_price": "25.00",
+                "material_number": "MAT-0100001-1"}]}
   ],
   "goods_receipts": [
-    {"gr_number": "5000001", "po_number": "0100001", "receipt_date": "2026-12-01",
+    {"gr_number": "5000001", "do_number": "DO-5000001", "po_number": "0100001", "receipt_date": "2026-12-01",
      "lines": [{"po_line_number": 1, "received_quantity": "4"}]}
+  ],
+  "purchasing_info_records": [
+    {"vendor_code": "V001", "material_number": "MAT-0100001-1", "unit_price": "25.00", "currency": "USD",
+     "valid_from": "2026-01-01"}
   ]
 }
 ```
+
+- Trade POs (`0…`) need a `material_number` on every line (it selects the purchasing info record, SAPS-51); a PO may have
+  `"status": "CLOSED"` (not open, DS-25). Every goods receipt has a `do_number`; the goods receipts of one PO line with the same
+  DO number form one received lot. Validity periods (`valid_from`, optional `valid_to`) of one vendor and material must not
+  overlap. An invoice line may carry `do_number` (required when its PO line has several lots, DS-21 to DS-23).
 
 - Quantities and prices are strings (exact decimals). PO numbers are 7 digits starting with `0` (trade) or `1` (non-trade).
 - Every demo company lists its ERP files in `companies.json` (`"erp": ["ds-*/erp/*.json"]`; company-only files may live in

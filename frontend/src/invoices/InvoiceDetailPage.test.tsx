@@ -58,6 +58,68 @@ describe("InvoiceDetailPage", () => {
     expect(screen.getByText("Claimed by nobody")).toBeInTheDocument();
   });
 
+  it("shows the DO number, the matched lot and the PIR price of a trade PO line (SAPS-51)", async () => {
+    const [base] = invoiceFixture().lines;
+    if (!base) throw new Error("fixture has a line");
+    const withLot = invoiceFixture({
+      lines: [
+        {
+          ...base,
+          doNumber: null,
+          matchedDoNumber: "DO-7000021B",
+          pirUnitPrice: "40.0000",
+          poUnitPrice: "38.0000",
+          unitPrice: "40.0000",
+        },
+        {
+          ...base,
+          id: "line-2",
+          lineNumber: 2,
+          doNumber: "DO-7000021A",
+          matchedDoNumber: "DO-7000021A",
+          pirUnitPrice: null,
+          poUnitPrice: "15.0000",
+        },
+      ],
+    });
+    renderPage(fakeExceptionApi({ getVersioned: vi.fn().mockResolvedValue(versioned(withLot)) }));
+    await screen.findByRole("heading", { name: /AOS-2026-1013/ });
+    expect(screen.getByRole("columnheader", { name: "DO number" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Reference price" })).toBeInTheDocument();
+    const rows = screen.getAllByRole("row");
+    const first = rows[1] as HTMLElement;
+    const second = rows[2] as HTMLElement;
+    expect(first).toHaveTextContent("→ lot DO-7000021B"); // no DO on the invoice: the only lot was used
+    expect(first.querySelector("td[title]")).toHaveAttribute("title", "Purchasing info record");
+    expect(first).toHaveTextContent("40.00");
+    expect(second).toHaveTextContent("DO-7000021A");
+    expect(second).not.toHaveTextContent("→ lot");
+    expect(second.querySelector("td[title]")).toHaveAttribute("title", "PO unit price");
+  });
+
+  it("names the new exception types (DEC-068)", async () => {
+    const [template] = invoiceFixture().exceptions;
+    if (!template) throw new Error("fixture has an exception");
+    const open = (code: "EX11" | "EX12" | "EX13", message: string) => ({
+      ...template,
+      id: code,
+      code,
+      message,
+    });
+    const invoice = invoiceFixture({
+      exceptions: [
+        open("EX11", "Line 1: DO number required."),
+        open("EX12", "Line 1: no PIR."),
+        open("EX13", "Line 1: DO-X unknown."),
+      ],
+    });
+    renderPage(fakeExceptionApi({ getVersioned: vi.fn().mockResolvedValue(versioned(invoice)) }));
+    await screen.findByRole("heading", { name: /AOS-2026-1013/ });
+    expect(screen.getByText(/DO number missing: Line 1: DO number required/)).toBeInTheDocument();
+    expect(screen.getByText(/No purchasing info record: Line 1: no PIR/)).toBeInTheDocument();
+    expect(screen.getByText(/Invalid DO number: Line 1: DO-X unknown/)).toBeInTheDocument();
+  });
+
   it("shows where an invoice received by mail came from, and nothing for an upload (SAPS-45)", async () => {
     const mail = invoiceFixture({
       uploadedBy: null,

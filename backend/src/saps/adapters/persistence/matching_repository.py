@@ -1,12 +1,13 @@
 """SQL implementation of the matching port (SAPS-19); runs in the actor's transaction (ADR-0004, TD-01)."""
 
+from collections import defaultdict
 from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select, text, tuple_, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.orm import selectinload
 
 from saps.adapters.persistence.models import (
@@ -20,7 +21,15 @@ from saps.adapters.persistence.models import (
 from saps.adapters.persistence.notification_repository import SqlNotifications
 from saps.domain.duplicates import COMPARED_STATUSES, DuplicateCandidate
 from saps.domain.invoices import ExceptionStatus, InvoiceStatus
-from saps.domain.matching import InvoiceToMatch, LineToMatch, MatchingRules, PoLineKey
+from saps.domain.matching import (
+    InvoicedQuantities,
+    InvoiceToMatch,
+    LineToMatch,
+    LotKey,
+    MatchingRules,
+    PoLineKey,
+)
+from saps.domain.references import normalize_reference
 from saps.ports.matching import InvoiceForMatching, MatchUpdate, OpenException
 
 # DEC-023: invoices whose quantities are already taken from the PO line.
@@ -51,9 +60,16 @@ class SqlMatchingRepository(SqlNotifications):
             invoice=InvoiceToMatch(
                 vendor_code=invoice.vendor_code,
                 total_amount=invoice.total_amount,
+                invoice_date=invoice.invoice_date,
                 lines=[
                     LineToMatch(
-                        ln.id, ln.line_number, ln.po_number, ln.po_line_number, ln.quantity, ln.unit_price
+                        ln.id,
+                        ln.line_number,
+                        ln.po_number,
+                        ln.po_line_number,
+                        ln.quantity,
+                        ln.unit_price,
+                        ln.do_number,
                     )
                     for ln in invoice.lines
                 ],
@@ -101,22 +117,35 @@ class SqlMatchingRepository(SqlNotifications):
         return [DuplicateCandidate(i, number, status) for i, number, status in rows]
 
     async def already_invoiced(
-        self, tenant_id: UUID, keys: Sequence[PoLineKey], exclude_invoice_id: UUID
-    ) -> dict[PoLineKey, Decimal]:
-        if not keys:
-            return {}
+        self, tenant_id: UUID, po_numbers: Sequence[str], exclude_invoice_id: UUID
+    ) -> InvoicedQuantities:
+        if not po_numbers:
+            return InvoicedQuantities()
         rows = await self._session.execute(
-            select(InvoiceLine.po_number, InvoiceLine.po_line_number, func.sum(InvoiceLine.quantity))
+            select(
+                InvoiceLine.po_number,
+                InvoiceLine.po_line_number,
+                InvoiceLine.matched_do_number,
+                func.sum(InvoiceLine.quantity),
+            )
             .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
             .where(
                 InvoiceLine.tenant_id == tenant_id,
-                tuple_(InvoiceLine.po_number, InvoiceLine.po_line_number).in_(list(keys)),
+                InvoiceLine.po_number.in_(list(po_numbers)),
                 Invoice.status.in_(INVOICED_STATUSES),
                 Invoice.id != exclude_invoice_id,
             )
-            .group_by(InvoiceLine.po_number, InvoiceLine.po_line_number)
+            .group_by(InvoiceLine.po_number, InvoiceLine.po_line_number, InvoiceLine.matched_do_number)
         )
-        return {(po, line): total for po, line, total in rows if po and line is not None and total}
+        per_line: dict[PoLineKey, Decimal] = defaultdict(Decimal)
+        per_lot: dict[LotKey, Decimal] = defaultdict(Decimal)
+        for po, line, matched, total in rows:
+            if not po or line is None or not total:
+                continue
+            per_line[(po, line)] += total
+            if matched:  # invoices matched before SAPS-51 have no lot
+                per_lot[(po, line, normalize_reference(matched) or "")] += total
+        return InvoicedQuantities(dict(per_line), dict(per_lot))
 
     async def save_match(
         self, invoice: InvoiceForMatching, update_: MatchUpdate, *, actor: str, action: str, now: datetime
@@ -130,6 +159,8 @@ class SqlMatchingRepository(SqlNotifications):
                     match_status=result.match_status,
                     po_unit_price=result.po_unit_price,
                     expected_quantity=result.expected_quantity,
+                    matched_do_number=result.matched_do_number,
+                    pir_unit_price=result.pir_unit_price,
                     updated_by=actor,
                 )
             )

@@ -239,6 +239,9 @@ class InvoiceLine(AuditMixin, Base):
     )
     po_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
     expected_quantity: Mapped[Decimal | None] = mapped_column(Numeric(18, 3))
+    do_number: Mapped[str | None] = mapped_column(String(50))  # as on the invoice (SAPS-51)
+    matched_do_number: Mapped[str | None] = mapped_column(String(50))  # received lot of the last run
+    pir_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
 
     invoice: Mapped[Invoice] = relationship(back_populates="lines", lazy="raise")
 

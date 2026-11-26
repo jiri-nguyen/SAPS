@@ -117,6 +117,11 @@ DEMO_OUTCOMES = {
     "ds-17/invoices/ds-17-rejected-at-review.pdf": ("PENDING_REVIEW", ()),
     "ds-18/invoices/ds-18-settings-tolerance.pdf": ("EXCEPTION", ("EX6",)),  # matches after tolerance 1.00
     "ds-20/invoices/ds-20-vendor-mismatch.pdf": ("EXCEPTION", ("EX10",)),
+    "ds-21/invoices/ds-21-lot-by-do-number.pdf": ("PENDING_REVIEW", ()),  # SAPS-51
+    "ds-22/invoices/ds-22-do-number-missing.pdf": ("EXCEPTION", ("EX11",)),
+    "ds-23/invoices/ds-23-invalid-do-number.pdf": ("EXCEPTION", ("EX13",)),
+    "ds-24/invoices/ds-24-no-purchasing-info-record.pdf": ("EXCEPTION", ("EX12",)),
+    "ds-25/invoices/ds-25-po-not-open.pdf": ("EXCEPTION", ("EX4",)),
 }
 
 

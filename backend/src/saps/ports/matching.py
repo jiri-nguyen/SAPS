@@ -3,13 +3,12 @@
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
 from typing import Any, Protocol
 from uuid import UUID
 
 from saps.domain.duplicates import DuplicateCandidate
 from saps.domain.invoices import ExceptionCode, InvoiceStatus, InvoiceType
-from saps.domain.matching import InvoiceToMatch, LineResult, MatchingRules, PoLineKey
+from saps.domain.matching import InvoicedQuantities, InvoiceToMatch, LineResult, MatchingRules
 from saps.ports.notifications import NotificationPort
 
 
@@ -64,14 +63,15 @@ class MatchingRepository(NotificationPort, Protocol):
 
     async def get_rules(self, tenant_id: UUID) -> MatchingRules: ...
 
-    async def lock_po_lines(self, tenant_id: UUID, keys: Sequence[PoLineKey]) -> None:
+    async def lock_po_lines(self, tenant_id: UUID, keys: Sequence[tuple[str, int]]) -> None:
         """Transaction-level lock per PO line, in a fixed order (SAPS-19 EC-02)."""
         ...
 
     async def already_invoiced(
-        self, tenant_id: UUID, keys: Sequence[PoLineKey], exclude_invoice_id: UUID
-    ) -> dict[PoLineKey, Decimal]:
-        """BR-10: quantities on other invoices in PendingApproval, PendingReview or Completed."""
+        self, tenant_id: UUID, po_numbers: Sequence[str], exclude_invoice_id: UUID
+    ) -> InvoicedQuantities:
+        """BR-10: quantities on other invoices in PendingApproval, PendingReview or Completed, for every
+        line of the POs, per PO line and per received lot (SAPS-51 BR-06)."""
         ...
 
     async def lock_duplicate_key(self, tenant_id: UUID, vendor_code: str, invoice_number: str) -> None:

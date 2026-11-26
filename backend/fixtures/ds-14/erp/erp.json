@@ -9,10 +9,20 @@
           "po_line_number": 1,
           "description": "Network cable, 5 m",
           "ordered_quantity": "12",
-          "unit_price": "3.50"
+          "unit_price": "3.50",
+          "material_number": "MAT-0100014-1"
         }
       ]
     }
   ],
-  "goods_receipts": []
+  "goods_receipts": [],
+  "purchasing_info_records": [
+    {
+      "vendor_code": "V001",
+      "material_number": "MAT-0100014-1",
+      "unit_price": "3.50",
+      "currency": "USD",
+      "valid_from": "2026-01-01"
+    }
+  ]
 }

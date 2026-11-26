@@ -48,7 +48,7 @@ def test_committed_schema_is_up_to_date() -> None:
 
 
 def test_every_demo_scenario_has_its_samples() -> None:  # TS-05, BR-07
-    scenarios = {f"ds-{n:02d}" for n in range(1, 21)} - NO_SAMPLE_NEEDED
+    scenarios = {f"ds-{n:02d}" for n in range(1, 26)} - NO_SAMPLE_NEEDED
     with_samples = {Path(entry.data).parts[0] for entry in SAMPLES}
     unregistered = {p.parts[-3] for p in FIXTURES.glob("*/unregistered/*.*") if p.suffix != ".json"}
     assert scenarios == with_samples | unregistered
@@ -74,6 +74,7 @@ def test_pdf_shows_the_values_of_its_json(entry) -> None:
     expected = [sample.invoice_number, sample.vendor_name, str(sample.total_amount)]
     for line in sample.lines:
         expected += [line.po_number, str(line.quantity), str(line.unit_price), str(line.line_amount)]
+        expected += [line.do_number]  # SAPS-51
     for value in expected:
         if value is not None:
             assert value in text, f"{entry.file}: {value!r} not shown"

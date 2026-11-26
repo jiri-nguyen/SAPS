@@ -15,8 +15,9 @@ from saps.domain.users import AccessDeniedError, CurrentUser, Role
 ACCEPTABLE_AS_IS = frozenset({ExceptionCode.EX2, ExceptionCode.EX6, ExceptionCode.EX7, ExceptionCode.EX9})
 
 # BR-05 (DEC-024): a change to one of these sends the invoice to re-matching.
-MATCHING_HEADER_FIELDS = frozenset({"vendor_code", "invoice_number"})
-MATCHING_LINE_FIELDS = ("po_number", "po_line_number", "quantity", "unit_price")
+# DEC-069 adds the invoice date and the DO number.
+MATCHING_HEADER_FIELDS = frozenset({"vendor_code", "invoice_number", "invoice_date"})
+MATCHING_LINE_FIELDS = ("po_number", "po_line_number", "do_number", "quantity", "unit_price")
 
 HEADER_FIELDS = (
     "vendor_code",
@@ -42,6 +43,7 @@ class LineData:
     quantity: Decimal | None = None
     unit_price: Decimal | None = None
     line_amount: Decimal | None = None
+    do_number: str | None = None
 
 
 @dataclass(frozen=True)

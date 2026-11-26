@@ -5,6 +5,7 @@ import { decimal, exceptionText, refusedCodes, text, timestamp } from "./format"
 describe("format", () => {
   it("names the codes that cannot be accepted as is, once and in order", () => {
     expect(refusedCodes(["EX10", "EX2", "EX3", "EX3", "EX9", "EX6", "EX7"])).toEqual(["EX3", "EX10"]);
+    expect(refusedCodes(["EX13", "EX11", "EX12"])).toEqual(["EX11", "EX12", "EX13"]); // DEC-068
     expect(refusedCodes(["EX2", "EX6"])).toEqual([]);
   });
 

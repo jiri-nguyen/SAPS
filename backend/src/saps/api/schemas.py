@@ -83,7 +83,10 @@ class InvoiceLine(_ReadModel):
     quantity: Decimal | None
     unit_price: Decimal | None
     line_amount: Decimal | None
+    do_number: str | None
+    matched_do_number: str | None
     match_status: MatchStatus
+    pir_unit_price: Decimal | None
     po_unit_price: Decimal | None
     expected_quantity: Decimal | None
 
@@ -213,6 +216,7 @@ class InvoiceLineUpdate(CamelModel):
     quantity: Quantity | None = None
     unit_price: UnitPrice | None = None
     line_amount: Money | None = None
+    do_number: str | None = Field(default=None, max_length=50)
 
 
 class InvoiceUpdate(CamelModel):

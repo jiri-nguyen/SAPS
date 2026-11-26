@@ -359,8 +359,11 @@ One line of an invoice and its matching result.
 | unit_price | decimal(18,4) | Yes | — | Confidential | Invoiced unit price (USD) |
 | line_amount | decimal(18,2) | Yes | — | Confidential | Line amount (USD) |
 | match_status | enum | No | — | Internal | `NOT_MATCHED`, `MATCHED`, `MISMATCH`, `NOT_APPLICABLE` (non-PO) |
+| do_number | string(50) | Yes | — | Confidential | Delivery order (DO) number as on the invoice; selects the received lot of a trade PO line with several goods receipts ([DEC-065](../01-requirements/decision-log.md#dec-065)); a matching field ([DEC-069](../01-requirements/decision-log.md#dec-069)) |
+| matched_do_number | string(50) | Yes | — | Confidential | DO number of the received lot used in the last matching run (trade PO lines); null for other lines and for lines matched before [SAPS-51](../03-features/SAPS-51-trade-po-lot-matching.md) |
+| pir_unit_price | decimal(18,4) | Yes | — | Confidential | Purchasing info record price seen in the last matching run (trade PO lines, [DEC-066](../01-requirements/decision-log.md#dec-066)) |
 | po_unit_price | decimal(18,4) | Yes | — | Confidential | PO unit price seen in the last matching run |
-| expected_quantity | decimal(18,3) | Yes | — | Confidential | Received-not-invoiced quantity (3-way) or PO quantity not yet invoiced (2-way) in the last run |
+| expected_quantity | decimal(18,3) | Yes | — | Confidential | Not yet invoiced quantity of the received lot (trade PO, 3-way) or of the PO line (non-trade PO, 2-way) in the last run |
 
 Unique: (`invoice_id`, `line_number`). Index: (`tenant_id`, `po_number`, `po_line_number`) for the already invoiced quantity ([SAPS-19](../03-features/SAPS-19-invoice-matching.md) BR-10).
 
@@ -477,16 +480,20 @@ Field names of SAP / MuleSoft are mapped in the adapters later.
 |---|---|---|---|
 | ExtractedInvoice | Extraction Port | file_sha256 | vendor_code, vendor_name, invoice_number, invoice_date, currency, subtotal_amount, tax_amount, total_amount, lines (line_number, description, po_number, po_line_number, quantity, unit_price, line_amount) |
 | Vendor | ERP Data Port | vendor_code | name |
-| PurchaseOrder | ERP Data Port | po_number | vendor_code, currency |
-| PurchaseOrderLine | ERP Data Port | po_number, po_line_number | description, ordered_quantity, unit_price |
-| GoodsReceipt | ERP Data Port | gr_number | po_number, receipt_date |
+| PurchaseOrder | ERP Data Port | po_number | vendor_code, currency, is_open (false when the ERP marks the PO closed, [DEC-067](../01-requirements/decision-log.md#dec-067)) |
+| PurchaseOrderLine | ERP Data Port | po_number, po_line_number | description, ordered_quantity, unit_price, material_number (required for trade POs) |
+| GoodsReceipt | ERP Data Port | gr_number | po_number, receipt_date, do_number (delivery order, recorded on the goods receipt in the ERP; only read, [DEC-065](../01-requirements/decision-log.md#dec-065)) |
 | GoodsReceiptLine | ERP Data Port | gr_number, po_line_number | received_quantity |
+| PurchasingInfoRecord | ERP Data Port | vendor_code, material_number, valid_from | unit_price (USD), valid_to (empty = open-ended); validity periods of one vendor and material do not overlap ([DEC-066](../01-requirements/decision-log.md#dec-066)) |
 
 Derived values used in matching ([DEC-007](../01-requirements/decision-log.md#dec-007)):
 - **Already invoiced quantity** of a PO line = sum of `InvoiceLine.quantity` for that PO line on invoices in status
   `PENDING_APPROVAL`, `PENDING_REVIEW` or `COMPLETED` ([DEC-023](../01-requirements/decision-log.md#dec-023)); Exception and Rejected invoices do not count.
-- **Received-not-invoiced quantity** = sum of `GoodsReceiptLine.received_quantity` − already invoiced quantity.
-- **PO quantity not yet invoiced** = `PurchaseOrderLine.ordered_quantity` − already invoiced quantity.
+- **Received lot** of a PO line = the goods receipt lines with the same normalized DO number ([DEC-042](../01-requirements/decision-log.md#dec-042), [SAPS-51](../03-features/SAPS-51-trade-po-lot-matching.md) BR-02).
+- **Already invoiced quantity of a lot** = sum of `InvoiceLine.quantity` of the same PO line and the same normalized `matched_do_number`, in the statuses above.
+- **Received-not-invoiced quantity** of a lot = its received quantity − its already invoiced quantity; of a PO line (the second check, [SAPS-51](../03-features/SAPS-51-trade-po-lot-matching.md) BR-07) = all goods receipt lines − the already invoiced quantity of the PO line.
+- **PO quantity not yet invoiced** (non-trade) = `PurchaseOrderLine.ordered_quantity` − already invoiced quantity.
+- A PO is **open** when `is_open` is true and at least one of its lines has an ordered quantity above its already invoiced quantity ([SAPS-51](../03-features/SAPS-51-trade-po-lot-matching.md) BR-01).
 
 ## 5. Entity Lifecycles
 

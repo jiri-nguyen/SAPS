@@ -391,6 +391,7 @@ Strategy, levels and gates: [Test Strategy](../05-testing/test-strategy.md).
 | Lint and format | `cd backend && uv run ruff format && uv run ruff check --fix && uv run mypy src` / `cd frontend && npm run lint` |
 | Regenerate API client | `cd frontend && npm run gen:api` |
 | Regenerate the dummy sample set after editing a fixture JSON | `cd backend && make fixtures` (commit JSON, files, manifest and schema) |
+| Try matching per received lot ([SAPS-51](../03-features/SAPS-51-trade-po-lot-matching.md)) | Upload `backend/fixtures/ds-21/…` to `ds-25/…` as `member1@vn.example.com`. Trade POs need `material_number` on their lines, goods receipts need `do_number`, prices come from `purchasing_info_records` (all in `<scenario>/erp/erp.json`, format in `backend/fixtures/README.md`) |
 
 ## 11. Onboarding Checklist
 - [ ] Access granted (§2.2)

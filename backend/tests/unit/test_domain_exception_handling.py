@@ -36,6 +36,7 @@ def test_only_ex2_ex6_ex7_ex9_may_be_accepted_as_is() -> None:  # BR-06, DEC-035
 def test_refused_codes_are_unique_and_in_code_order() -> None:
     assert refused_codes([EX.EX10, EX.EX2, EX.EX3, EX.EX3, EX.EX9]) == [EX.EX3, EX.EX10]
     assert refused_codes([EX.EX2, EX.EX6, EX.EX7, EX.EX9]) == []
+    assert refused_codes([EX.EX13, EX.EX11, EX.EX12]) == [EX.EX11, EX.EX12, EX.EX13]  # DEC-068
 
 
 @pytest.mark.parametrize(
@@ -44,7 +45,7 @@ def test_refused_codes_are_unique_and_in_code_order() -> None:
         ({"vendor_code": "V002"}, True),
         ({"invoice_number": "INV-2"}, True),
         ({"vendor_name": "Alpha Ltd."}, False),
-        ({"invoice_date": date(2026, 12, 2)}, False),
+        ({"invoice_date": date(2026, 12, 2)}, True),  # DEC-069
         ({"total_amount": D("80.00")}, False),
     ],
 )
@@ -69,6 +70,7 @@ def test_an_update_without_a_real_change_is_empty() -> None:  # EC-08
         ({"quantity": D("3")}, True),
         ({"po_number": "0100002"}, True),
         ({"po_line_number": 3}, True),
+        ({"do_number": "DO-7"}, True),  # DEC-069
         ({"description": "Copy paper"}, False),
         ({"line_amount": D("21.00")}, False),
     ],

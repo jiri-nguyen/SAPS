@@ -1,0 +1,21 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1024",
+  "invoice_date": "2026-12-17",
+  "currency": "USD",
+  "subtotal_amount": "75.00",
+  "tax_amount": "7.50",
+  "total_amount": "82.50",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Binding machine",
+      "po_number": "0100024",
+      "po_line_number": 1,
+      "quantity": "3",
+      "unit_price": "25.00",
+      "line_amount": "75.00"
+    }
+  ]
+}

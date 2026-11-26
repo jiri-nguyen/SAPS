@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal as D
 from uuid import UUID, uuid4
 
@@ -20,12 +20,14 @@ from saps.domain.invoices import (
 )
 from saps.domain.matching import (
     GoodsReceiptLine,
+    InvoicedQuantities,
     InvoiceToMatch,
     LineToMatch,
     MatchingRules,
     PoLineKey,
     PurchaseOrder,
     PurchaseOrderLine,
+    PurchasingInfoRecord,
 )
 from saps.domain.users import Role
 from saps.ports.matching import InvoiceForMatching, MatchUpdate, OpenException
@@ -41,20 +43,28 @@ class FakeErp:
     def __init__(self) -> None:
         self.calls: list[str] = []
         self.companies: list[str] = []
+        self.pir_keys: list[tuple[str, str]] = []
 
     async def get_purchase_orders(
         self, company_code: str, po_numbers: Sequence[str]
     ) -> dict[str, PurchaseOrder]:
         self.calls.append("orders")
         self.companies.append(company_code)
-        lines = {1: PurchaseOrderLine(1, "Paper", D("10"), D("10.00"))}
+        lines = {1: PurchaseOrderLine(1, "Paper", D("10"), D("10.00"), "MAT1")}
         return {n: PurchaseOrder(n, "V001", "USD", lines) for n in po_numbers if n != "0199999"}
 
     async def get_goods_receipt_lines(
         self, company_code: str, po_numbers: Sequence[str]
     ) -> list[GoodsReceiptLine]:
         self.calls.append("receipts")
-        return [GoodsReceiptLine("GR1", n, 1, D("10")) for n in po_numbers]
+        return [GoodsReceiptLine("GR1", n, 1, D("10"), "DO1") for n in po_numbers]
+
+    async def get_purchasing_info_records(
+        self, company_code: str, keys: Sequence[tuple[str, str]]
+    ) -> list[PurchasingInfoRecord]:
+        self.calls.append("pirs")
+        self.pir_keys.extend(keys)
+        return [PurchasingInfoRecord(v, m, D("10.00"), date(2026, 1, 1)) for v, m in keys]
 
 
 class FakeRepo:
@@ -84,9 +94,10 @@ class FakeRepo:
         self.locked.extend(keys)
 
     async def already_invoiced(
-        self, tenant_id: UUID, keys: Sequence[PoLineKey], exclude_invoice_id: UUID
-    ) -> dict[PoLineKey, D]:
-        return {}
+        self, tenant_id: UUID, po_numbers: Sequence[str], exclude_invoice_id: UUID
+    ) -> InvoicedQuantities:
+        self.invoiced_for = list(po_numbers)
+        return InvoicedQuantities()
 
     async def save_match(
         self, invoice: InvoiceForMatching, update: MatchUpdate, *, actor: str, action: str, now: datetime
@@ -117,7 +128,7 @@ def _invoice(*lines: LineToMatch, total: str = "20", **changes: object) -> Invoi
         vendor_name="Alpha Supplies",
         file_name="inv.pdf",
         assigned_to=None,
-        invoice=InvoiceToMatch("V001", D(total), lines or (LINE,)),
+        invoice=InvoiceToMatch("V001", D(total), lines or (LINE,), date(2026, 12, 1)),
         open_exceptions=(),
         company_code="sg",
     )
@@ -151,7 +162,10 @@ async def test_matched_invoice_below_threshold_goes_to_review_and_notifies_membe
     repo, outcome = await _match(_invoice(), erp)
     assert outcome is not None and outcome.status is InvoiceStatus.PENDING_REVIEW
     assert outcome.invoice_type is InvoiceType.TRADE_PO
-    assert erp.calls == ["orders", "receipts"] and repo.locked == [("0100001", 1)]
+    assert erp.calls == ["orders", "receipts", "pirs"] and repo.locked == [("0100001", 1)]
+    assert erp.pir_keys == [("V001", "MAT1")] and repo.invoiced_for == [
+        "0100001"
+    ]  # one call each (NFR-SCAL-001)
     assert erp.companies == ["sg"]  # the ERP data of the invoice's company (SAPS-42 BR-03)
     assert repo.saved is not None
     assert repo.saved.lines[LINE.id].match_status is MatchStatus.MATCHED
@@ -193,7 +207,7 @@ async def test_non_po_invoice_does_not_call_the_erp() -> None:
 async def test_non_trade_invoice_reads_no_goods_receipts() -> None:
     erp = FakeErp()
     await _match(_invoice(replace(LINE, po_number="1100001")), erp)
-    assert erp.calls == ["orders"]
+    assert erp.calls == ["orders"]  # 2-way: no goods receipts, no purchasing info records
 
 
 async def test_rematch_resolves_fixed_keeps_ex9_and_opens_new() -> None:  # BR-14, SAPS-23 BR-06

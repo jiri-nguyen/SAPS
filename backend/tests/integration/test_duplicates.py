@@ -90,7 +90,10 @@ async def test_ds15_after_ds01_gets_ex9_and_its_matching_exceptions(
     outcome = await process(engine, second)
     assert outcome is not None and outcome.matching is not None
     assert outcome.matching.status is InvoiceStatus.EXCEPTION
-    assert await _open_codes(engine, second) == ["EX7", "EX9"]  # DS-01 already took the received quantity
+    assert await _open_codes(engine, second) == [
+        "EX4",
+        "EX9",
+    ]  # DS-01 invoiced the whole PO: not open (SAPS-51)
     assert await _open_codes(engine, first) == []  # the earlier invoice is not changed (BR-04)
     async with session_factory(engine)() as session:
         message = await session.scalar(

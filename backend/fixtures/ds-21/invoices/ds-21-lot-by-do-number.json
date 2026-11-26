@@ -1,0 +1,22 @@
+{
+  "vendor_code": "V001",
+  "vendor_name": "Alpha Office Supplies Co.",
+  "invoice_number": "AOS-2026-1021",
+  "invoice_date": "2026-12-16",
+  "currency": "USD",
+  "subtotal_amount": "160.00",
+  "tax_amount": "16.00",
+  "total_amount": "176.00",
+  "lines": [
+    {
+      "line_number": 1,
+      "description": "Label printer",
+      "po_number": "0100021",
+      "po_line_number": 1,
+      "quantity": "4",
+      "unit_price": "40.00",
+      "line_amount": "160.00",
+      "do_number": "DO-7000021B"
+    }
+  ]
+}

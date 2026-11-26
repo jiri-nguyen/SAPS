@@ -1,0 +1,42 @@
+{
+  "purchase_orders": [
+    {
+      "po_number": "0100025",
+      "vendor_code": "V001",
+      "currency": "USD",
+      "status": "CLOSED",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "description": "Paper shredder",
+          "ordered_quantity": "2",
+          "unit_price": "30.00",
+          "material_number": "MAT-0100025-1"
+        }
+      ]
+    }
+  ],
+  "goods_receipts": [
+    {
+      "gr_number": "5000028",
+      "do_number": "DO-7000025",
+      "po_number": "0100025",
+      "receipt_date": "2026-12-12",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "received_quantity": "2"
+        }
+      ]
+    }
+  ],
+  "purchasing_info_records": [
+    {
+      "vendor_code": "V001",
+      "material_number": "MAT-0100025-1",
+      "unit_price": "30.00",
+      "currency": "USD",
+      "valid_from": "2026-01-01"
+    }
+  ]
+}

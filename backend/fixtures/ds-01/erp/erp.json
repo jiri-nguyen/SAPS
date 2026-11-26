@@ -9,13 +9,15 @@
           "po_line_number": 1,
           "description": "A4 copy paper, box",
           "ordered_quantity": "4",
-          "unit_price": "25.00"
+          "unit_price": "25.00",
+          "material_number": "MAT-0100001-1"
         },
         {
           "po_line_number": 2,
           "description": "Toner cartridge",
           "ordered_quantity": "2",
-          "unit_price": "45.00"
+          "unit_price": "45.00",
+          "material_number": "MAT-0100001-2"
         }
       ]
     }
@@ -34,7 +36,24 @@
           "po_line_number": 2,
           "received_quantity": "2"
         }
-      ]
+      ],
+      "do_number": "DO-5000001"
+    }
+  ],
+  "purchasing_info_records": [
+    {
+      "vendor_code": "V001",
+      "material_number": "MAT-0100001-1",
+      "unit_price": "25.00",
+      "currency": "USD",
+      "valid_from": "2026-01-01"
+    },
+    {
+      "vendor_code": "V001",
+      "material_number": "MAT-0100001-2",
+      "unit_price": "45.00",
+      "currency": "USD",
+      "valid_from": "2026-01-01"
     }
   ]
 }
