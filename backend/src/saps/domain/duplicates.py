@@ -1,12 +1,12 @@
 """Duplicate invoice rules (SAPS-23). Pure domain code: no framework imports (ADR-0001)."""
 
-import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
 from saps.domain.invoices import ExceptionCode, InvoiceStatus
 from saps.domain.matching import Finding
+from saps.domain.references import normalize_reference
 
 # BR-03 (DEC-039, DEC-043): Uploaded / Matching have no data yet; a Rejected one may be uploaded again.
 COMPARED_STATUSES = (
@@ -26,8 +26,6 @@ STATUS_LABEL = {
     InvoiceStatus.REJECTED: "Rejected",
 }
 
-_IGNORED = re.compile(r"[\s\-./]")
-
 
 @dataclass(frozen=True)
 class DuplicateCandidate:
@@ -40,10 +38,7 @@ class DuplicateCandidate:
 
 def normalize_invoice_number(number: str | None) -> str | None:
     """BR-02 (DEC-042): ignore case, spaces, `-`, `.` and `/`; keep leading zeros. "INV-0001" = "inv 0001"."""
-    if number is None:
-        return None
-    normalized = _IGNORED.sub("", number).casefold()
-    return normalized or None
+    return normalize_reference(number)
 
 
 def duplicate_finding(candidates: Sequence[DuplicateCandidate]) -> Finding:

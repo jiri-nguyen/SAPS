@@ -32,7 +32,7 @@ class MatchStatus(StrEnum):
 
 
 class ExceptionCode(StrEnum):
-    """Exception codes EX1 … EX10 (DEC-033)."""
+    """Exception codes EX1 … EX13 (DEC-033, DEC-068)."""
 
     EX1 = "EX1"
     EX2 = "EX2"
@@ -44,6 +44,9 @@ class ExceptionCode(StrEnum):
     EX8 = "EX8"
     EX9 = "EX9"
     EX10 = "EX10"
+    EX11 = "EX11"
+    EX12 = "EX12"
+    EX13 = "EX13"
 
 
 class ExceptionStatus(StrEnum):

@@ -45,6 +45,9 @@ class InvoiceLineView:
     match_status: MatchStatus
     po_unit_price: Decimal | None
     expected_quantity: Decimal | None
+    do_number: str | None = None
+    matched_do_number: str | None = None
+    pir_unit_price: Decimal | None = None
 
 
 @dataclass(frozen=True)

@@ -73,6 +73,7 @@ class SqlExceptionRepository(SqlNotifications):
                         ln.quantity,
                         ln.unit_price,
                         ln.line_amount,
+                        ln.do_number,
                     )
                     for ln in invoice.lines
                 ),
@@ -247,6 +248,7 @@ class SqlExceptionRepository(SqlNotifications):
                 "quantity": data.quantity,
                 "unit_price": data.unit_price,
                 "line_amount": data.line_amount,
+                "do_number": data.do_number,
                 "updated_by": actor,
             }
             line = existing.pop(data.line_number, None)

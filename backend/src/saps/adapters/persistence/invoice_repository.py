@@ -241,6 +241,9 @@ class SqlInvoiceRepository:
                     ln.match_status,
                     ln.po_unit_price,
                     ln.expected_quantity,
+                    ln.do_number,
+                    ln.matched_do_number,
+                    ln.pir_unit_price,
                 )
                 for ln in invoice.lines
             ],

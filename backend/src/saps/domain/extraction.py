@@ -15,6 +15,8 @@ class ExtractedLine:
     quantity: Decimal | None
     unit_price: Decimal | None
     line_amount: Decimal | None
+    do_number: str | None = None
+    """Delivery order number on the invoice line (SAPS-51)."""
 
 
 @dataclass(frozen=True)
@@ -37,6 +39,7 @@ _TEXT_LIMITS = {
     "invoice number": 50,
     "description": 500,
     "PO number": 20,
+    "DO number": 50,
 }
 _AMOUNT = (18, 2)
 _QUANTITY = (18, 3)
@@ -81,6 +84,7 @@ def unusable_reason(invoice: ExtractedInvoice) -> str | None:
     for line in invoice.lines:
         problems.append(_text_problem("description", line.description))
         problems.append(_text_problem("PO number", line.po_number))
+        problems.append(_text_problem("DO number", line.do_number))
         if line.po_line_number is not None and line.po_line_number < 1:
             problems.append(f"Line {line.line_number} has an invalid PO line number.")
         if line.quantity is not None and line.quantity < 0:

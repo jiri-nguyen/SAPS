@@ -1,6 +1,6 @@
 """Matching use case (SAPS-19), run by `rematch_invoice` and by `process_invoice` (SAPS-18)."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
@@ -13,7 +13,15 @@ from saps.domain.invoices import (
     InvoiceType,
     ensure_transition,
 )
-from saps.domain.matching import Finding, decide, derive_invoice_type, evaluate
+from saps.domain.matching import (
+    Finding,
+    InvoicedQuantities,
+    PurchaseOrder,
+    TypeDerivation,
+    decide,
+    derive_invoice_type,
+    evaluate,
+)
 from saps.ports.erp import ErpDataPort
 from saps.ports.matching import InvoiceForMatching, MatchingRepository, MatchUpdate, NewException
 
@@ -53,17 +61,19 @@ class MatchingService:
         duplicates = await self._find_duplicates(invoice)
         rules = await self._repo.get_rules(invoice.tenant_id)
         derivation = derive_invoice_type(invoice.invoice)
-        purchase_orders, receipts, invoiced = {}, [], {}
+        purchase_orders, receipts, pirs, invoiced = {}, [], [], InvoicedQuantities()
         if derivation.po_lines:
             purchase_orders = await self._erp.get_purchase_orders(invoice.company_code, derivation.po_numbers)
             if derivation.invoice_type is InvoiceType.TRADE_PO:
                 receipts = await self._erp.get_goods_receipt_lines(
                     invoice.company_code, derivation.po_numbers
                 )
-            keys = derivation.po_line_keys
-            await self._repo.lock_po_lines(invoice.tenant_id, keys)
-            invoiced = await self._repo.already_invoiced(invoice.tenant_id, keys, invoice.id)
-        result = evaluate(invoice.invoice, derivation, rules, purchase_orders, receipts, invoiced)
+                pirs = await self._erp.get_purchasing_info_records(
+                    invoice.company_code, _pir_keys(derivation, purchase_orders)
+                )
+            await self._repo.lock_po_lines(invoice.tenant_id, derivation.po_line_keys)
+            invoiced = await self._repo.already_invoiced(invoice.tenant_id, derivation.po_numbers, invoice.id)
+        result = evaluate(invoice.invoice, derivation, rules, purchase_orders, receipts, invoiced, pirs)
 
         findings = result.findings + ((duplicate_finding(duplicates),) if duplicates else ())
         opened, resolved, messages = _reconcile(invoice, findings)
@@ -119,6 +129,19 @@ class MatchingService:
         # Held until the job commits, so two copies processed in parallel cannot both pass (EC-01).
         await self._repo.lock_duplicate_key(invoice.tenant_id, vendor, number)
         return await self._repo.find_duplicates(invoice.tenant_id, vendor, number, invoice.id)
+
+
+def _pir_keys(
+    derivation: TypeDerivation, purchase_orders: Mapping[str, PurchaseOrder]
+) -> list[tuple[str, str]]:
+    """(vendor code, material number) of the referenced PO lines: one ERP call per invoice (NFR-SCAL-001)."""
+    keys: set[tuple[str, str]] = set()
+    for line in derivation.po_lines:
+        order = purchase_orders.get(line.po_number or "")
+        po_line = order.lines.get(line.po_line_number) if order and line.po_line_number is not None else None
+        if order and po_line and po_line.material_number:
+            keys.add((order.vendor_code, po_line.material_number))
+    return sorted(keys)
 
 
 def _code_order(code: ExceptionCode) -> int:
