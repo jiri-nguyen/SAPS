@@ -1,5 +1,6 @@
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
+import { type CalendarApi, createCalendarApi } from "../api/calendar";
 import { type ExceptionApi, createExceptionApi } from "../api/exceptions";
 import { type InvoiceApi, createInvoiceApi } from "../api/invoices";
 import { type NotificationApi, createNotificationApi } from "../api/notifications";
@@ -15,6 +16,8 @@ import { UploadPage } from "../invoices/UploadPage";
 import { NotificationBell } from "../notifications/NotificationBell";
 import { href, useRoute } from "../routing";
 import { MatchingSettingsPage } from "../settings/MatchingSettingsPage";
+import { ProcessingCalendarPage } from "../settings/ProcessingCalendarPage";
+import { CalendarBanner } from "./CalendarBanner";
 
 export function AppShell({
   user,
@@ -23,6 +26,7 @@ export function AppShell({
   exceptionApi,
   settingsApi,
   notificationApi,
+  calendarApi,
 }: {
   user: UserAccount;
   footer?: ReactNode;
@@ -30,12 +34,15 @@ export function AppShell({
   exceptionApi?: ExceptionApi;
   settingsApi?: SettingsApi;
   notificationApi?: NotificationApi;
+  calendarApi?: CalendarApi;
 }) {
   const { signOut } = useSession();
   const invoices = useMemo(() => invoiceApi ?? createInvoiceApi(), [invoiceApi]);
   const exceptions = useMemo(() => exceptionApi ?? createExceptionApi(), [exceptionApi]);
   const settings = useMemo(() => settingsApi ?? createSettingsApi(), [settingsApi]);
   const notifications = useMemo(() => notificationApi ?? createNotificationApi(), [notificationApi]);
+  const calendar = useMemo(() => calendarApi ?? createCalendarApi(), [calendarApi]);
+  const [calendarVersion, setCalendarVersion] = useState(0); // the banner reads the calendar again after a change
   const menu = MENU_BY_ROLE[user.role];
   const route = useRoute();
   // A route the role may not open (or none) shows the role's first screen (SAPS-27 BR-10).
@@ -88,6 +95,8 @@ export function AppShell({
         emptyText="No invoices wait for the final review."
       />
     );
+  } else if (current.id === "processing-calendar") {
+    page = <ProcessingCalendarPage api={calendar} onChanged={() => setCalendarVersion((n) => n + 1)} />;
   } else {
     page = <MatchingSettingsPage api={settings} />;
   }
@@ -116,6 +125,11 @@ export function AppShell({
         </ul>
       </nav>
       <main className="content">
+        <CalendarBanner
+          api={calendar}
+          company={user.companyName}
+          refreshKey={`${route.page}/${calendarVersion}`}
+        />
         <h1>{detail ? "Invoice" : current.label}</h1>
         {page}
       </main>

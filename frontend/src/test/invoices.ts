@@ -117,6 +117,7 @@ export function fakeExceptionApi(overrides: Partial<ExceptionApi> = {}): Excepti
     getVersioned: vi.fn().mockResolvedValue(versioned(invoiceFixture())),
     list: vi.fn().mockResolvedValue({ items: [], nextPageToken: null }),
     claim: vi.fn().mockResolvedValue(versioned(claimedBy(MEMBER))),
+    releaseHold: vi.fn(),
     release: vi.fn().mockResolvedValue(undefined),
     update: vi.fn(),
     resolve: vi.fn(),

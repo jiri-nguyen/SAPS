@@ -11,6 +11,7 @@ export const STATUS_LABEL: Record<InvoiceStatus, string> = {
   PENDING_REVIEW: "Pending review",
   COMPLETED: "Completed",
   REJECTED: "Rejected",
+  ON_HOLD: "On hold",
 };
 
 /** Exception types of the PoC (DEC-033). */

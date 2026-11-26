@@ -22,6 +22,7 @@ export const MENU_BY_ROLE: Record<Role, readonly [MenuItem, ...MenuItem[]]> = {
     { id: "approvals", label: "Approval queue" },
     { id: "exceptions", label: "Exception queue" }, // read-only; a manager may release any claim (DEC-036)
     { id: "invoices", label: "All invoices" },
+    { id: "processing-calendar", label: "Processing calendar" },
     { id: "matching-settings", label: "Matching settings" },
   ],
 };

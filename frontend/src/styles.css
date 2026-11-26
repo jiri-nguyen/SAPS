@@ -374,6 +374,11 @@ table.data th {
   color: var(--danger);
 }
 
+.badge.status.on_hold {
+  background: #fff4e5;
+  color: var(--warn);
+}
+
 .badge.status.pending_review,
 .badge.status.pending_approval,
 .badge.status.completed {
@@ -523,4 +528,9 @@ ul.banner {
 .field-error {
   color: var(--danger, #b42318);
   font-size: 0.8rem;
+}
+
+/* The banner of a closed period sits above the screen title (SAPS-52) */
+.content > .banner {
+  margin-bottom: 0.8rem;
 }
