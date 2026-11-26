@@ -1,7 +1,7 @@
 ---
 id: "SAPS-49"
 title: "SAPS-49 — Straight-through posting to the ERP"
-status: draft            # draft | in-review | approved | deprecated
+status: approved         # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2027-03-01
@@ -224,7 +224,7 @@ DS-17 (rejection at final review) is withdrawn.
 - [ ] Data model updated (Invoice, InvoiceException, lifecycle diagram and table)
 - [ ] Glossary: Posting, Posted, ERP posting port, ERP document number; Completed and Final review marked as PoC terms
 - [ ] arc42 §1: UC-06 withdrawn; arc42 §5: ERP Posting Port in the C4 L3 component list; arc42 §6: flow index row
-- [ ] ADR-0013 accepted and listed in arc42 §9
+- [x] ADR-0013 accepted and listed in arc42 §9
 - [ ] SAPS-20, SAPS-21, SAPS-22 specs: notes on acceptance → re-run, final review withdrawn, approval → Posting
 - [ ] Test strategy: demo scenarios with end state Posted, DS-17 withdrawn
 - [ ] Developer Guide: how to see a posted invoice; `ERP_POSTING_ADAPTER`

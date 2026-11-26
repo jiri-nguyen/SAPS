@@ -74,7 +74,7 @@ The Product Owner accepted the Solution Architect's proposals for all four quest
 | # | Action | Owner | Due | Status |
 |---|---|---|---|---|
 | A1 | Update the SAPS-49 spec with the answers | Solution Architect (our company) | 2027-03-01 | done |
-| A2 | Accept ADR-0013 | Solution Architect (our company) | with the spec approval | open |
+| A2 | Accept ADR-0013 | Solution Architect (our company) | 2027-03-01 | done |
 
 ## 9. Open Questions
 None new.

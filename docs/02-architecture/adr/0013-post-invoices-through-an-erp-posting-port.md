@@ -1,7 +1,7 @@
 ---
 id: ADR-0013
 title: "ADR-0013: Post invoices to the ERP through a posting port in a separate worker job"
-status: proposed         # proposed | accepted | rejected | deprecated | superseded
+status: accepted         # proposed | accepted | rejected | deprecated | superseded
 date: 2027-03-01         # date of the latest status change
 owner: "Solution Architect / Tech Lead (our company)"
 deciders: ["Solution Architect / Tech Lead (our company)"]
