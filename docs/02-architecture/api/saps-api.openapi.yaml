@@ -3,7 +3,7 @@
 openapi: 3.1.0
 info:
   title: SAPS API
-  version: "0.8.0"
+  version: "0.9.0"
   description: |
     HTTP API of Smart-AP-Suite, called by the SAPS Web App. Covers sign-in, invoice upload and mail intake, the exception queue,
     approval, final review, notifications and matching settings.
@@ -311,7 +311,7 @@ paths:
       description: |
         Allowed only in status `EXCEPTION` and only for the Accounting Member who claimed the invoice.
         Fields not sent stay unchanged; `lines`, when sent, replaces all lines.
-        If a matching field changes (vendorCode, invoiceNumber, poNumber, poLineNumber, quantity, unitPrice — DEC-024),
+        If a matching field changes (vendorCode, invoiceNumber, invoiceDate, poNumber, poLineNumber, doNumber, quantity, unitPrice — DEC-024, DEC-069),
         the status becomes `MATCHING`, re-matching is queued (DEC-010) and the response is `202`; otherwise `200`.
         While the status is `MATCHING`, update, resolve and reject return `409` (SAPS-20).
       tags: [Invoices]
@@ -808,8 +808,8 @@ components:
       description: Derived from the PO number (DEC-005)
     ExceptionCode:
       type: string
-      enum: [EX1, EX2, EX3, EX4, EX5, EX6, EX7, EX8, EX9, EX10]
-      description: Exception types of the PoC (DEC-033; EX10 added in API 0.2.0)
+      enum: [EX1, EX2, EX3, EX4, EX5, EX6, EX7, EX8, EX9, EX10, EX11, EX12, EX13]
+      description: Exception types (DEC-033; EX10 added in API 0.2.0; EX11 DO number missing, EX12 no purchasing info record, EX13 invalid DO number added in 0.9.0, DEC-068)
     ExceptionStatus:
       type: string
       enum: [OPEN, RESOLVED]
@@ -960,12 +960,18 @@ components:
         quantity: { oneOf: [{ $ref: "#/components/schemas/Quantity" }, { type: "null" }] }
         unitPrice: { oneOf: [{ $ref: "#/components/schemas/UnitPrice" }, { type: "null" }] }
         lineAmount: { oneOf: [{ $ref: "#/components/schemas/Amount" }, { type: "null" }] }
+        doNumber: { type: [string, "null"], maxLength: 50, description: "Delivery order (DO) number as on the invoice; selects the received lot of a trade PO line with several goods receipts (DEC-065)" }
+        matchedDoNumber: { type: [string, "null"], readOnly: true, description: "DO number of the received lot used in the last matching run (trade PO lines)" }
         matchStatus: { $ref: "#/components/schemas/MatchStatus" }
+        pirUnitPrice:
+          description: Purchasing info record price valid on the invoice date, seen in the last matching run (trade PO lines, DEC-066)
+          readOnly: true
+          oneOf: [{ $ref: "#/components/schemas/UnitPrice" }, { type: "null" }]
         poUnitPrice:
           description: PO unit price seen in the last matching run
           oneOf: [{ $ref: "#/components/schemas/UnitPrice" }, { type: "null" }]
         expectedQuantity:
-          description: Received-not-invoiced (3-way) or PO quantity not yet invoiced (2-way) in the last run (DEC-007, DEC-023)
+          description: Not yet invoiced quantity of the received lot (3-way, DEC-065) or of the PO line (2-way) in the last run (DEC-007, DEC-023)
           oneOf: [{ $ref: "#/components/schemas/Quantity" }, { type: "null" }]
     InvoiceException:
       type: object
@@ -1015,6 +1021,7 @@ components:
         quantity: { $ref: "#/components/schemas/Quantity" }
         unitPrice: { $ref: "#/components/schemas/UnitPrice" }
         lineAmount: { $ref: "#/components/schemas/Amount" }
+        doNumber: { type: [string, "null"], maxLength: 50 }
     ApprovalCreate:
       type: object
       required: [decision]

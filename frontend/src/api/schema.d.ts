@@ -166,7 +166,7 @@ export interface paths {
          * Correct invoice data during exception handling
          * @description Allowed only in status `EXCEPTION` and only for the Accounting Member who claimed the invoice.
          *     Fields not sent stay unchanged; `lines`, when sent, replaces all lines.
-         *     If a matching field changes (vendorCode, invoiceNumber, poNumber, poLineNumber, quantity, unitPrice — DEC-024),
+         *     If a matching field changes (vendorCode, invoiceNumber, invoiceDate, poNumber, poLineNumber, doNumber, quantity, unitPrice — DEC-024, DEC-069),
          *     the status becomes `MATCHING`, re-matching is queued (DEC-010) and the response is `202`; otherwise `200`.
          *     While the status is `MATCHING`, update, resolve and reject return `409` (SAPS-20).
          */
@@ -486,10 +486,10 @@ export interface components {
          */
         InvoiceType: "TRADE_PO" | "NON_TRADE_PO" | "NON_PO";
         /**
-         * @description Exception types of the PoC (DEC-033; EX10 added in API 0.2.0)
+         * @description Exception types (DEC-033; EX10 added in API 0.2.0; EX11 DO number missing, EX12 no purchasing info record, EX13 invalid DO number added in 0.9.0, DEC-068)
          * @enum {string}
          */
-        ExceptionCode: "EX1" | "EX2" | "EX3" | "EX4" | "EX5" | "EX6" | "EX7" | "EX8" | "EX9" | "EX10";
+        ExceptionCode: "EX1" | "EX2" | "EX3" | "EX4" | "EX5" | "EX6" | "EX7" | "EX8" | "EX9" | "EX10" | "EX11" | "EX12" | "EX13";
         /** @enum {string} */
         ExceptionStatus: "OPEN" | "RESOLVED";
         /** @enum {string} */
@@ -631,10 +631,16 @@ export interface components {
             quantity?: components["schemas"]["Quantity"] | null;
             unitPrice?: components["schemas"]["UnitPrice"] | null;
             lineAmount?: components["schemas"]["Amount"] | null;
+            /** @description Delivery order (DO) number as on the invoice; selects the received lot of a trade PO line with several goods receipts (DEC-065) */
+            doNumber?: string | null;
+            /** @description DO number of the received lot used in the last matching run (trade PO lines) */
+            readonly matchedDoNumber?: string | null;
             matchStatus: components["schemas"]["MatchStatus"];
+            /** @description Purchasing info record price valid on the invoice date, seen in the last matching run (trade PO lines, DEC-066) */
+            readonly pirUnitPrice?: components["schemas"]["UnitPrice"] | null;
             /** @description PO unit price seen in the last matching run */
             poUnitPrice?: components["schemas"]["UnitPrice"] | null;
-            /** @description Received-not-invoiced (3-way) or PO quantity not yet invoiced (2-way) in the last run (DEC-007, DEC-023) */
+            /** @description Not yet invoiced quantity of the received lot (3-way, DEC-065) or of the PO line (2-way) in the last run (DEC-007, DEC-023) */
             expectedQuantity?: components["schemas"]["Quantity"] | null;
         };
         InvoiceException: {
@@ -680,6 +686,7 @@ export interface components {
             quantity?: components["schemas"]["Quantity"];
             unitPrice?: components["schemas"]["UnitPrice"];
             lineAmount?: components["schemas"]["Amount"];
+            doNumber?: string | null;
         };
         ApprovalCreate: {
             decision: components["schemas"]["ApprovalDecision"];
