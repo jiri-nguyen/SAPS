@@ -27,6 +27,17 @@ IMAGE_FORMATS = {
     "ds-15/invoices/ds-15-duplicate-scan.json": "png",
 }
 COLUMNS = ("Line", "Description", "PO number", "PO line", "Quantity", "Unit price", "Amount")
+# A sample with a DO number on a line gets one more column (SAPS-51); other samples keep the layout above.
+COLUMNS_WITH_DO = (
+    "Line",
+    "Description",
+    "PO number",
+    "PO line",
+    "DO number",
+    "Quantity",
+    "Unit price",
+    "Amount",
+)
 
 
 def _text(value: object) -> str:
@@ -45,18 +56,22 @@ def invoice_text(sample: ExtractedInvoiceFixture, scenario: str) -> list[list[st
         "",
         list(COLUMNS),
     ]
+    with_do = any(line.do_number for line in sample.lines)
+    if with_do:
+        rows[-1] = list(COLUMNS_WITH_DO)
     for line in sample.lines:
-        rows.append(
-            [
-                str(line.line_number),
-                _text(line.description),
-                _text(line.po_number),
-                _text(line.po_line_number),
-                _text(line.quantity),
-                _text(line.unit_price),
-                _text(line.line_amount),
-            ]
-        )
+        cells = [
+            str(line.line_number),
+            _text(line.description),
+            _text(line.po_number),
+            _text(line.po_line_number),
+            _text(line.quantity),
+            _text(line.unit_price),
+            _text(line.line_amount),
+        ]
+        if with_do:
+            cells.insert(4, _text(line.do_number))
+        rows.append(cells)
     rows += [
         "",
         f"Subtotal: {_text(sample.subtotal_amount)}",
@@ -77,6 +92,11 @@ COLUMN_X = (
     455,
     520,
 )  # left edges in points (PDF) and in pixels at 1 px = 1 pt (images)
+COLUMN_X_WITH_DO = (40, 70, 215, 280, 325, 405, 450, 500)
+
+
+def _columns(row: list[str]) -> tuple[int, ...]:
+    return COLUMN_X_WITH_DO if len(row) == len(COLUMNS_WITH_DO) else COLUMN_X
 
 
 def render_pdf(rows: list[list[str] | str], path: Path) -> None:
@@ -91,7 +111,7 @@ def render_pdf(rows: list[list[str] | str], path: Path) -> None:
             canvas.drawString(40, y, row)
         else:
             canvas.setFont("Helvetica-Bold" if row[0] == COLUMNS[0] else "Helvetica", 9)
-            for x, cell in zip(COLUMN_X, row, strict=True):
+            for x, cell in zip(_columns(row), row, strict=True):
                 canvas.drawString(x, y, cell[:34])
         y -= 18
     canvas.showPage()
@@ -105,7 +125,7 @@ def render_image(rows: list[list[str] | str], path: Path, fmt: str) -> None:
     font = ImageFont.load_default(size=10 * scale)
     y = 40
     for row in rows:
-        cells = [(40, row)] if isinstance(row, str) else list(zip(COLUMN_X, row, strict=True))
+        cells = [(40, row)] if isinstance(row, str) else list(zip(_columns(row), row, strict=True))
         for x, cell in cells:
             draw.text(
                 (x * scale, y * scale),

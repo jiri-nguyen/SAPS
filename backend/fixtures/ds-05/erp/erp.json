@@ -9,7 +9,8 @@
           "po_line_number": 1,
           "description": "Whiteboard markers, pack",
           "ordered_quantity": "10",
-          "unit_price": "4.50"
+          "unit_price": "4.50",
+          "material_number": "MAT-0100005-1"
         }
       ]
     },
@@ -22,7 +23,8 @@
           "po_line_number": 1,
           "description": "Sticky notes, pack",
           "ordered_quantity": "20",
-          "unit_price": "2.00"
+          "unit_price": "2.00",
+          "material_number": "MAT-0100006-1"
         }
       ]
     }
@@ -37,7 +39,8 @@
           "po_line_number": 1,
           "received_quantity": "10"
         }
-      ]
+      ],
+      "do_number": "DO-5000006"
     },
     {
       "gr_number": "5000007",
@@ -48,7 +51,24 @@
           "po_line_number": 1,
           "received_quantity": "20"
         }
-      ]
+      ],
+      "do_number": "DO-5000007"
+    }
+  ],
+  "purchasing_info_records": [
+    {
+      "vendor_code": "V001",
+      "material_number": "MAT-0100005-1",
+      "unit_price": "4.50",
+      "currency": "USD",
+      "valid_from": "2026-01-01"
+    },
+    {
+      "vendor_code": "V001",
+      "material_number": "MAT-0100006-1",
+      "unit_price": "2.00",
+      "currency": "USD",
+      "valid_from": "2026-01-01"
     }
   ]
 }

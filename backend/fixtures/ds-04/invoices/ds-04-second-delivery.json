@@ -15,7 +15,8 @@
       "po_line_number": 1,
       "quantity": "4",
       "unit_price": "15.00",
-      "line_amount": "60.00"
+      "line_amount": "60.00",
+      "do_number": "DO-5000005"
     }
   ]
 }

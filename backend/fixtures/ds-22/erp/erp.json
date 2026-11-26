@@ -1,0 +1,53 @@
+{
+  "purchase_orders": [
+    {
+      "po_number": "0100022",
+      "vendor_code": "V001",
+      "currency": "USD",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "description": "Label printer",
+          "ordered_quantity": "10",
+          "unit_price": "40.00",
+          "material_number": "MAT-0100022-1"
+        }
+      ]
+    }
+  ],
+  "goods_receipts": [
+    {
+      "gr_number": "5000023",
+      "do_number": "DO-7000022A",
+      "po_number": "0100022",
+      "receipt_date": "2026-12-12",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "received_quantity": "6"
+        }
+      ]
+    },
+    {
+      "gr_number": "5000024",
+      "do_number": "DO-7000022B",
+      "po_number": "0100022",
+      "receipt_date": "2026-12-15",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "received_quantity": "4"
+        }
+      ]
+    }
+  ],
+  "purchasing_info_records": [
+    {
+      "vendor_code": "V001",
+      "material_number": "MAT-0100022-1",
+      "unit_price": "40.00",
+      "currency": "USD",
+      "valid_from": "2026-01-01"
+    }
+  ]
+}

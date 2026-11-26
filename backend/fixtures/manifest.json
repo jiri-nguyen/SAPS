@@ -16,12 +16,12 @@
       "data": "ds-03/invoices/ds-03-above-threshold.json"
     },
     {
-      "sha256": "c7db5f2e1ff14e02f3f4416831e3349f462b7c877876087673416c74ce10a8a5",
+      "sha256": "11328a327d40fc5ab658b0b9ac82067086e0f662d77889c19423bc3fea8a7c99",
       "file": "ds-04/invoices/ds-04-first-delivery.pdf",
       "data": "ds-04/invoices/ds-04-first-delivery.json"
     },
     {
-      "sha256": "9f2463c838b7e6c1487cfa244d37e0050813e2395f8e0544b827923e8d40c4b9",
+      "sha256": "af097e9c9e1858479fdb3f81503973e5e40b268e382d328e602e45abaaa37cd5",
       "file": "ds-04/invoices/ds-04-second-delivery.pdf",
       "data": "ds-04/invoices/ds-04-second-delivery.json"
     },
@@ -94,6 +94,31 @@
       "sha256": "7ab19d56509a7f8e140836d6552a39e46c890d849e79dc7a743d2a2117e197f5",
       "file": "ds-20/invoices/ds-20-vendor-mismatch.pdf",
       "data": "ds-20/invoices/ds-20-vendor-mismatch.json"
+    },
+    {
+      "sha256": "b41d5a6787dc17bd658aa33e5c19da05aeb4c1cb2b81df0965ec1c976cdd7cb3",
+      "file": "ds-21/invoices/ds-21-lot-by-do-number.pdf",
+      "data": "ds-21/invoices/ds-21-lot-by-do-number.json"
+    },
+    {
+      "sha256": "ca50a748d0e69c2329a114f846312a7da227bdb19763776110e2dd4ad996496c",
+      "file": "ds-22/invoices/ds-22-do-number-missing.pdf",
+      "data": "ds-22/invoices/ds-22-do-number-missing.json"
+    },
+    {
+      "sha256": "6734f2e233e08ba38d67a58743b0a2bbc5135881ef39de413f76aff00f881a6d",
+      "file": "ds-23/invoices/ds-23-invalid-do-number.pdf",
+      "data": "ds-23/invoices/ds-23-invalid-do-number.json"
+    },
+    {
+      "sha256": "6a9c10a9c0fbfd95116db280a7b1d8e7863d9acb099796ddb01d611a565b4b47",
+      "file": "ds-24/invoices/ds-24-no-purchasing-info-record.pdf",
+      "data": "ds-24/invoices/ds-24-no-purchasing-info-record.json"
+    },
+    {
+      "sha256": "bb51a7792f3a19f26683ae7c6fa6e93fa76b548aedef9d06bbabbe05bd86e5c0",
+      "file": "ds-25/invoices/ds-25-po-not-open.pdf",
+      "data": "ds-25/invoices/ds-25-po-not-open.json"
     }
   ]
 }

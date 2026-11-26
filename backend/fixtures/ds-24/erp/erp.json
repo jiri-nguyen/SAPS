@@ -1,0 +1,41 @@
+{
+  "purchase_orders": [
+    {
+      "po_number": "0100024",
+      "vendor_code": "V001",
+      "currency": "USD",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "description": "Binding machine",
+          "ordered_quantity": "3",
+          "unit_price": "25.00",
+          "material_number": "MAT-0100024-1"
+        }
+      ]
+    }
+  ],
+  "goods_receipts": [
+    {
+      "gr_number": "5000027",
+      "do_number": "DO-7000024",
+      "po_number": "0100024",
+      "receipt_date": "2026-12-12",
+      "lines": [
+        {
+          "po_line_number": 1,
+          "received_quantity": "3"
+        }
+      ]
+    }
+  ],
+  "purchasing_info_records": [
+    {
+      "vendor_code": "V001",
+      "material_number": "MAT-0100024-1",
+      "unit_price": "25.00",
+      "currency": "USD",
+      "valid_from": "2027-01-01"
+    }
+  ]
+}

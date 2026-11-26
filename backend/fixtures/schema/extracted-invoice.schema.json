@@ -87,6 +87,18 @@
           ],
           "default": null,
           "title": "Line Amount"
+        },
+        "do_number": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Do Number"
         }
       },
       "required": [

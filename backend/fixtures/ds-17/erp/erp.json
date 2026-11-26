@@ -9,7 +9,8 @@
           "po_line_number": 1,
           "description": "Desk organizer",
           "ordered_quantity": "5",
-          "unit_price": "9.00"
+          "unit_price": "9.00",
+          "material_number": "MAT-0100017-1"
         }
       ]
     }
@@ -24,7 +25,17 @@
           "po_line_number": 1,
           "received_quantity": "5"
         }
-      ]
+      ],
+      "do_number": "DO-5000017"
+    }
+  ],
+  "purchasing_info_records": [
+    {
+      "vendor_code": "V001",
+      "material_number": "MAT-0100017-1",
+      "unit_price": "9.00",
+      "currency": "USD",
+      "valid_from": "2026-01-01"
     }
   ]
 }

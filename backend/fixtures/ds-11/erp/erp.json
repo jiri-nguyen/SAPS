@@ -9,7 +9,8 @@
           "po_line_number": 1,
           "description": "Filing cabinet",
           "ordered_quantity": "1",
-          "unit_price": "120.00"
+          "unit_price": "120.00",
+          "material_number": "MAT-0100011-1"
         }
       ]
     },
@@ -37,7 +38,17 @@
           "po_line_number": 1,
           "received_quantity": "1"
         }
-      ]
+      ],
+      "do_number": "DO-5000011"
+    }
+  ],
+  "purchasing_info_records": [
+    {
+      "vendor_code": "V001",
+      "material_number": "MAT-0100011-1",
+      "unit_price": "120.00",
+      "currency": "USD",
+      "valid_from": "2026-01-01"
     }
   ]
 }

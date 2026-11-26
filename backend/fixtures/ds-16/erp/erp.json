@@ -9,7 +9,8 @@
           "po_line_number": 1,
           "description": "Laptop bag",
           "ordered_quantity": "8",
-          "unit_price": "45.00"
+          "unit_price": "45.00",
+          "material_number": "MAT-0100016-1"
         }
       ]
     }
@@ -24,7 +25,17 @@
           "po_line_number": 1,
           "received_quantity": "8"
         }
-      ]
+      ],
+      "do_number": "DO-5000016"
+    }
+  ],
+  "purchasing_info_records": [
+    {
+      "vendor_code": "V001",
+      "material_number": "MAT-0100016-1",
+      "unit_price": "45.00",
+      "currency": "USD",
+      "valid_from": "2026-01-01"
     }
   ]
 }
