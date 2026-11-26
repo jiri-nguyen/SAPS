@@ -5,7 +5,7 @@ status: draft            # draft | in-review | approved | deprecated
 owner: "Claude Code (developer)"
 reviewers: ["Solution Architect / Tech Lead (our company)"]
 last_updated: 2027-03-01
-related: [MTG-20270301-4, SCP-IN-23, DEC-062, DEC-056, DEC-015, NFR-SCAL-001, ADR-0004, ADR-0009, SAPS-17, SAPS-18, SAPS-24, SAPS-28, SAPS-37, SAPS-42, SAPS-45, SAPS-46]
+related: [MTG-20270301-4, MTG-20270301-8, SCP-IN-23, DEC-062, DEC-056, DEC-015, NFR-SCAL-001, ADR-0004, ADR-0009, SAPS-17, SAPS-18, SAPS-24, SAPS-28, SAPS-37, SAPS-42, SAPS-45, SAPS-46]
 ---
 
 # SAPS-52 — Processing calendar per company
@@ -31,19 +31,19 @@ approval or final review are worked on as usual. The Web App shows a banner whil
 | ID | Rule | Source |
 |---|---|---|
 | BR-01 | A company's calendar has rules of three kinds: a **monthly day range** (from day *a* to day *b* of every month; when *a* > *b* the range runs into the next month, e.g. 25 → 5), a **weekday** (e.g. Saturday), a **specific date** (e.g. a public holiday). A day matching any rule is **closed**; all other days are open. No times of day. | DEC-062 |
-| BR-02 | Days are days of the company's time zone (`tenant.time_zone`, [SAPS-42](SAPS-42-companies-and-demo-data.md)). In a monthly range both ends are included; a day number after the end of a month means its last day (31 in February = 28 or 29) (Q1). | DEC-062, proposal |
-| BR-03 | When automatic processing of a new invoice would start (status Uploaded) on a closed day, the invoice goes to **On hold** instead; it is not extracted or matched. This holds every way an invoice arrives: upload, mail ([SAPS-45](SAPS-45-mailbox-intake.md)), and invoices received before the period that were not processed yet (Q2). | DEC-062, proposal |
+| BR-02 | Days are days of the company's time zone (`tenant.time_zone`, [SAPS-42](SAPS-42-companies-and-demo-data.md)). In a monthly range both ends are included; a day number after the end of a month means its last day (31 in February = 28 or 29). | DEC-062, [MTG-20270301-8](../01-requirements/meetings/2027-03-01-processing-calendar-details.md) R1 |
+| BR-03 | When automatic processing of a new invoice would start (status Uploaded) on a closed day, the invoice goes to **On hold** instead; it is not extracted or matched. This holds every way an invoice arrives: upload, mail ([SAPS-45](SAPS-45-mailbox-intake.md)), and invoices received before the period that were not processed yet. | DEC-062, [MTG-20270301-8](../01-requirements/meetings/2027-03-01-processing-calendar-details.md) R2 |
 | BR-04 | Only automatic processing is held. Invoices in Exception, Pending approval or Pending review are worked on as usual, re-matching after a correction included; approvals and notifications are unchanged. | DEC-062 (Q9 of MTG-20270301-4) |
 | BR-05 | On the first open day, held invoices of the company return to Uploaded and are processed automatically, oldest first. | DEC-062 |
 | BR-06 | An Accounting Manager can release one held invoice at once ("Process now"): it is processed although the day is closed, and it is not held again. | DEC-062 |
 | BR-07 | Only the Accounting Manager of the company changes its calendar. A change applies at once: removing the rule of today releases the held invoices (BR-05); a new rule for today holds new invoices from then on. | DEC-062 |
-| BR-08 | On a closed day every user of the company sees a banner: "{Company} is in a closed period until {first open day}: new invoices are held." No notification when a period starts or ends. | DEC-062 |
-| BR-09 | An invoice On hold can be opened (file, history) and found in All invoices ([SAPS-46](SAPS-46-invoice-search.md)) with status On hold. It cannot be claimed, corrected or rejected while held (Q3). | proposal |
+| BR-08 | On a closed day every user of the company sees a banner: "{Company} is in a closed period until {first open day}: new invoices are held." ("until further notice" when no open day comes within a year). Only Accounting Managers see the calendar screen. No notification when a period starts or ends. | DEC-062, [MTG-20270301-8](../01-requirements/meetings/2027-03-01-processing-calendar-details.md) R4 |
+| BR-09 | An invoice On hold can be opened (file, history) and found in All invoices ([SAPS-46](SAPS-46-invoice-search.md)) with status On hold. It cannot be claimed, corrected or rejected while held. | [MTG-20270301-8](../01-requirements/meetings/2027-03-01-processing-calendar-details.md) R3 |
 
 ### 2.2 Affected NFRs
 | NFR | How this feature is affected |
 |---|---|
-| [NFR-SCAL-001](../01-requirements/nfr.md#nfr-scal-001) | A closed period of 10 days at about 1,000 invoices a day holds about 10,000 invoices; the release sends them in batches (§3.8, Q6) so the SAPS Worker is not flooded. |
+| [NFR-SCAL-001](../01-requirements/nfr.md#nfr-scal-001) | A closed period of 10 days at about 1,000 invoices a day holds about 10,000 invoices; the release sends them in batches (§3.8) so the SAPS Worker is not flooded. |
 
 ### 2.3 Out of Scope
 - Times of day, different rules per vendor or per invoice type.
@@ -63,8 +63,8 @@ approval or final review are worked on as usual. The Web App shows a banner whil
 
 Design rules:
 - **Pure rule:** `domain/processing_calendar.py`: `is_closed(day, rules)` and `next_open_day(day, rules)` (looks ahead at
-  most 366 days; if every day is closed, there is no open day and the banner says so) (Q4).
-- **Hold point (Q5):** at the start of `process_invoice` ([SAPS-18](SAPS-18-dummy-invoice-extraction.md)), in the same
+  most 366 days; if every day is closed, there is no open day and the banner says "until further notice").
+- **Hold point:** at the start of `process_invoice` ([SAPS-18](SAPS-18-dummy-invoice-extraction.md)), in the same
   transaction that would move the invoice to Matching: if the invoice is Uploaded, not released by a manager, and today
   is closed in the company's time zone → status On hold, event `HOLD` by `system`. Upload, mail, and the sweeper's re-sends
   all pass here, so no channel can skip the calendar.
@@ -73,7 +73,7 @@ Design rules:
   the oldest held invoices (at most `HOLD_RELEASE_BATCH`) go back to Uploaded with the event `RELEASE` by `system`, then
   `process_invoice` is sent. An advisory lock lets one process release at a time. A failed send is recovered by the
   sweeper as for any Uploaded invoice.
-- **Process now (BR-06, Q7):** `releaseInvoice` sets `released_from_hold_at`, moves the invoice to Uploaded with the
+- **Process now (BR-06):** `releaseInvoice` sets `released_from_hold_at`, moves the invoice to Uploaded with the
   event `RELEASE` by the manager, and sends `process_invoice`. The hold check skips an invoice with
   `released_from_hold_at`, also when the sweeper re-sends it.
 - **Sweeper:** On hold is not a stuck status; the sweeper keeps looking only at Uploaded and Matching.
@@ -174,8 +174,8 @@ or the manager's name; details `{"by": "calendar" | "manager"}`).
 ### 3.8 Configuration & Feature Flags
 | Key | Purpose | Default | Per environment |
 |---|---|---|---|
-| `HOLD_RELEASE_SECONDS` | Interval of the release timer | `60` (Q6) | shorter in CI |
-| `HOLD_RELEASE_BATCH` | Held invoices released per company and tick | `200` (Q6) | — |
+| `HOLD_RELEASE_SECONDS` | Interval of the release timer | `60` | shorter in CI |
+| `HOLD_RELEASE_BATCH` | Held invoices released per company and tick | `200` | — |
 
 ### 3.9 Observability
 - Logs: `invoice_held` (invoice, tenant), `invoices_released` (tenant, count, by calendar), `invoice_released`
@@ -206,18 +206,19 @@ refuses while invoices are On hold.
 | Hold at the start of `process_invoice`, not at upload or mail intake | One point for every channel, the sweeper included; the check uses the day processing really starts | — |
 | Release by a worker timer next to the sweeper | Same pattern as SAPS-37 and SAPS-45; no new container | — |
 | `released_from_hold_at` instead of a message flag | Survives a lost message and the sweeper's re-send | — |
+| Release timer defaults: every 60 s, at most 200 invoices per company and tick (Q6) | About 10,000 held invoices in under an hour without flooding the SAPS Worker; configurable | — |
 | Calendar as rule rows, not a list of closed days | The manager states the rule once (25 → 5, weekends); no yearly maintenance except holidays | — |
 
 ## 7. Open Questions
 | # | Question | Asked to | Due | Status |
 |---|---|---|---|---|
-| Q1 | Monthly range: both days included, a range like 25 → 5 runs into the next month, and a day after the end of a month means its last day (31 in February = 28/29)? Proposal: yes. | Product Owner (Customer) | before implementation | open |
-| Q2 | An invoice received on an open day but not processed yet when a closed day starts (e.g. uploaded at 23:50) is held too? Proposal: yes — the check is when processing starts. | Product Owner (Customer) | before implementation | open |
-| Q3 | What can be done with an invoice On hold? Proposal: open it and find it in All invoices; only the manager's "Process now"; no claim, correction or rejection while held. | Product Owner (Customer) | before implementation | open |
-| Q4 | Banner text and who sees the calendar? Proposal: banner for every user "{Company} is in a closed period until {first open day}: new invoices are held." ("until further notice" when no open day within a year); members see the banner only, the calendar screen is for managers. | Product Owner (Customer) | before implementation | open |
-| Q5 | Hold at the start of `process_invoice` (all channels and re-sends) rather than at upload or mail intake? Proposal: yes. | Solution Architect / Tech Lead | before implementation | open |
-| Q6 | Release timer defaults: every 60 s, at most 200 held invoices per company and tick (about 10,000 held invoices in under an hour)? Proposal: yes, configurable. | Solution Architect / Tech Lead | before implementation | open |
-| Q7 | "Process now" recorded on the invoice (`released_from_hold_at`) so a lost message and the sweeper's re-send do not hold it again? Proposal: yes. | Solution Architect / Tech Lead | before implementation | open |
+| Q1 | Monthly range: both days included, a range like 25 → 5 runs into the next month, and a day after the end of a month means its last day (31 in February = 28/29)? Proposal: yes. | Product Owner (Customer) | before implementation | answered: proposal accepted ([MTG-20270301-8](../01-requirements/meetings/2027-03-01-processing-calendar-details.md)) |
+| Q2 | An invoice received on an open day but not processed yet when a closed day starts (e.g. uploaded at 23:50) is held too? Proposal: yes — the check is when processing starts. | Product Owner (Customer) | before implementation | answered: proposal accepted ([MTG-20270301-8](../01-requirements/meetings/2027-03-01-processing-calendar-details.md)) |
+| Q3 | What can be done with an invoice On hold? Proposal: open it and find it in All invoices; only the manager's "Process now"; no claim, correction or rejection while held. | Product Owner (Customer) | before implementation | answered: proposal accepted ([MTG-20270301-8](../01-requirements/meetings/2027-03-01-processing-calendar-details.md)) |
+| Q4 | Banner text and who sees the calendar? Proposal: banner for every user "{Company} is in a closed period until {first open day}: new invoices are held." ("until further notice" when no open day within a year); members see the banner only, the calendar screen is for managers. | Product Owner (Customer) | before implementation | answered: proposal accepted ([MTG-20270301-8](../01-requirements/meetings/2027-03-01-processing-calendar-details.md)) |
+| Q5 | Hold at the start of `process_invoice` (all channels and re-sends) rather than at upload or mail intake? Proposal: yes. | Solution Architect / Tech Lead | before implementation | answered: proposal accepted (2027-03-01) |
+| Q6 | Release timer defaults: every 60 s, at most 200 held invoices per company and tick (about 10,000 held invoices in under an hour)? Proposal: yes, configurable. | Solution Architect / Tech Lead | before implementation | answered: proposal accepted (2027-03-01) |
+| Q7 | "Process now" recorded on the invoice (`released_from_hold_at`) so a lost message and the sweeper's re-send do not hold it again? Proposal: yes. | Solution Architect / Tech Lead | before implementation | answered: proposal accepted (2027-03-01) |
 
 ## 8. Documentation Checklist
 - [ ] API spec 0.8.0 (calendar operations, `releaseInvoice`, `ON_HOLD`)
