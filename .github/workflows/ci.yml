@@ -180,7 +180,7 @@ jobs:
           test "$(upload smoke.pdf "ci-unknown-$GITHUB_RUN_ID")" = "$unknown"   # same key → same invoice
           wait_for "$unknown" EXCEPTION EX1
           ds01="$(upload backend/fixtures/ds-01/invoices/ds-01-trade-po.pdf "ci-ds01-$GITHUB_RUN_ID")"
-          wait_for "$ds01" PENDING_REVIEW ""
+          wait_for "$ds01" POSTED ""   # no exception, below the threshold: posted to the ERP (SAPS-49)
           ds15="$(upload backend/fixtures/ds-15/invoices/ds-15-duplicate-scan.png "ci-ds15-$GITHUB_RUN_ID")"
           wait_for "$ds15" EXCEPTION EX4,EX9   # duplicate of DS-01 (SAPS-23); DS-01 invoiced the whole PO: not open (SAPS-51)
           ds12="$(upload backend/fixtures/ds-12/invoices/ds-12-price-outside-tolerance.pdf "ci-ds12-$GITHUB_RUN_ID")"
@@ -189,17 +189,18 @@ jobs:
           etag="$(curl -fsS -b upload-jar -D - -o /dev/null "$base/invoices/$ds12" | tr -d '\r' | awk -F': ' 'tolower($1)=="etag" {print $2}')"
           fix='{"lines":[{"lineNumber":1,"description":"USB keyboard","poNumber":"0100012","poLineNumber":1,"quantity":"4","unitPrice":"20.00","lineAmount":"80.00"}]}'
           test "$(curl -s -o /dev/null -w '%{http_code}' -b upload-jar -H "$origin" -H "If-Match: $etag" -H 'Content-Type: application/json' -X PATCH -d "$fix" "$base/invoices/$ds12")" = 202
-          wait_for "$ds12" PENDING_REVIEW ""   # SAPS-20: claim, correct the price, the worker re-matches
+          wait_for "$ds12" POSTED ""   # SAPS-20: claim, correct the price, the worker re-matches and posts
           ds03="$(upload backend/fixtures/ds-03/invoices/ds-03-above-threshold.pdf "ci-ds03-$GITHUB_RUN_ID")"
           wait_for "$ds03" PENDING_APPROVAL ""   # above the approval threshold (SAPS-19)
           sign_in manager1@vn.example.com manager-jar
           test "$(curl -s -o /dev/null -w '%{http_code}' -b upload-jar -H "$origin" -H 'Content-Type: application/json' -d '{"decision":"APPROVED"}' "$base/invoices/$ds03/approval")" = 403   # a member cannot decide
           test "$(curl -s -o /dev/null -w '%{http_code}' -b manager-jar -H "$origin" -H 'Content-Type: application/json' -d '{"decision":"REJECTED"}' "$base/invoices/$ds03/approval")" = 422
-          curl -fsS -b manager-jar -H "$origin" -H 'Content-Type: application/json' -d '{"decision":"APPROVED"}' "$base/invoices/$ds03/approval" | grep -q '"status":"PENDING_REVIEW"'   # SAPS-22
-          test "$(curl -s -o /dev/null -w '%{http_code}' -b manager-jar -H "$origin" -X POST "$base/invoices/$ds03/confirmation")" = 403
-          curl -fsS -b upload-jar -H "$origin" -X POST "$base/invoices/$ds03/confirmation" | grep -q '"status":"COMPLETED"'   # SAPS-21
-          curl -fsS -b upload-jar -H "$origin" -X POST "$base/invoices/$ds01/confirmation" | grep -q '"status":"COMPLETED"'
-          test "$(curl -s -o /dev/null -w '%{http_code}' -b upload-jar -H "$origin" -X POST "$base/invoices/$ds01/confirmation")" = 409
+          curl -fsS -b manager-jar -H "$origin" -H 'Content-Type: application/json' -d '{"decision":"APPROVED"}' "$base/invoices/$ds03/approval" | grep -q '"status":"POSTING"'   # SAPS-22, SAPS-49: an approval ends in posting
+          wait_for "$ds03" POSTED ""
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b upload-jar -H "$origin" -X POST "$base/invoices/$ds01/confirmation")" = 404   # the final review is gone (DEC-063)
+          curl -fsS -b upload-jar "$base/invoices/$ds01" | python3 -c 'import json, sys
+          d = json.load(sys.stdin)
+          assert d["status"] == "POSTED" and d["erpDocumentNumber"].startswith("MOCK-") and d["postedAt"], d'
       - name: Matching settings change the next matching run (SAPS-28, DS-18)
         run: |
           base=http://localhost:5173/v1
@@ -223,10 +224,10 @@ jobs:
             | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])')"
           for i in $(seq 1 30); do   # 50.80 against 50.00 matches with the tolerance 1.00
             state="$(curl -fsS -b settings-member-jar "$base/invoices/$ds18" | python3 -c 'import json, sys; print(json.load(sys.stdin)["status"])')"
-            [ "$state" = PENDING_REVIEW ] && break
+            [ "$state" = POSTED ] && break
             sleep 1
           done
-          test "$state" = PENDING_REVIEW || { echo "DS-18 is '$state', expected PENDING_REVIEW"; docker compose logs worker; exit 1; }
+          test "$state" = POSTED || { echo "DS-18 is '$state', expected POSTED"; docker compose logs worker; exit 1; }
           test "$(put 0.5 300)" = 200   # back to the defaults
       - name: Notifications for members and managers (SAPS-24)
         run: |
@@ -270,11 +271,10 @@ jobs:
             | python3 -c 'import json, sys; print(json.load(sys.stdin)["id"])')"
           for i in $(seq 1 30); do   # DS-01 is Completed in Demo Vietnam: no EX9 and no quantity used up here
             state="$(curl -fsS -b sg-jar "$base/invoices/$id" | python3 -c 'import json, sys; i = json.load(sys.stdin); print(i["status"], ",".join(e["code"] for e in i["exceptions"]))')"
-            [ "$state" = "PENDING_REVIEW " ] && break
+            [ "$state" = "POSTED " ] && break
             sleep 1
           done
-          test "$state" = "PENDING_REVIEW " || { echo "invoice is '$state'"; docker compose logs worker; exit 1; }
-          curl -fsS -b sg-jar -H "$origin" -X POST "$base/invoices/$id/confirmation" | grep -q '"status":"COMPLETED"'
+          test "$state" = "POSTED " || { echo "invoice is '$state'"; docker compose logs worker; exit 1; }
       - name: Invoice by mail reaches the company of its mailbox (SAPS-45)
         run: |
           web=http://localhost:5173
@@ -289,10 +289,10 @@ jobs:
           .github/scripts/sign-in.sh $web member1@my.example.com "$password" my-mail-jar > /dev/null
           for i in $(seq 1 60); do   # the worker reads the mailboxes every 5 s in CI
             id="$(curl -fsS -b my-mail-jar "$base/invoices?pageSize=100" | field '(d["items"][0]["id"] if d["items"] else "")')"
-            [ -n "$id" ] && state="$(curl -fsS -b my-mail-jar "$base/invoices/$id" | field 'd["status"]')" && [ "$state" = PENDING_REVIEW ] && break
+            [ -n "$id" ] && state="$(curl -fsS -b my-mail-jar "$base/invoices/$id" | field 'd["status"]')" && [ "$state" = POSTED ] && break
             sleep 1
           done
-          test "$state" = PENDING_REVIEW || { echo "mail invoice is '$state'"; docker compose logs worker; exit 1; }
+          test "$state" = POSTED || { echo "mail invoice is '$state'"; docker compose logs worker; exit 1; }
           curl -fsS -b my-mail-jar "$base/invoices/$id" | python3 -c 'import json, sys
           d = json.load(sys.stdin)
           assert d["uploadedBy"] is None, d["uploadedBy"]
@@ -329,15 +329,15 @@ jobs:
           sign_in member1@vn.example.com search-vn-jar
           sign_in member1@my.example.com search-my-jar
           sign_in member1@sg.example.com search-sg-jar
-          # DS-01 is Completed in Demo Vietnam; the number typed with spaces matches (DEC-042), a Completed invoice is listed
-          vn="$(search search-vn-jar --data-urlencode 'invoiceNumber=aos 2026 1001' --data-urlencode status=COMPLETED | field '[i["id"] for i in d["items"]]')"
+          # DS-01 is Posted in Demo Vietnam; the number typed with spaces matches (DEC-042), a Posted invoice is listed
+          vn="$(search search-vn-jar --data-urlencode 'invoiceNumber=aos 2026 1001' --data-urlencode status=POSTED | field '[i["id"] for i in d["items"]]')"
           test "$(echo "$vn" | python3 -c 'import ast, sys; print(len(ast.literal_eval(sys.stdin.read())))')" = 1
           test "$(search search-vn-jar --data-urlencode 'vendor=ALPHA office' --data-urlencode poNumber=0100001 | field 'len(d["items"])')" -ge 1
           test "$(search search-vn-jar --data-urlencode channel=MAIL | field 'len(d["items"])')" = 0   # Demo Vietnam got no mail invoice
           # the invoice that came by mail is in Demo Malaysia only
-          test "$(search search-my-jar --data-urlencode channel=MAIL | field '[(i["channel"], i["status"]) for i in d["items"]]')" = "[('MAIL', 'PENDING_REVIEW')]"
+          test "$(search search-my-jar --data-urlencode channel=MAIL | field '[(i["channel"], i["status"]) for i in d["items"]]')" = "[('MAIL', 'POSTED')]"
           # Demo Singapore has its own DS-01: same number, another invoice
-          sg="$(search search-sg-jar --data-urlencode 'invoiceNumber=aos 2026 1001' --data-urlencode status=COMPLETED | field '[i["id"] for i in d["items"]]')"
+          sg="$(search search-sg-jar --data-urlencode 'invoiceNumber=aos 2026 1001' --data-urlencode status=POSTED | field '[i["id"] for i in d["items"]]')"
           test "$(echo "$sg" | python3 -c 'import ast, sys; print(len(ast.literal_eval(sys.stdin.read())))')" = 1
           test "$sg" != "$vn"
           # upload days in the company time zone, and the refused filters
@@ -388,6 +388,16 @@ jobs:
           wait_for "$second" PENDING_APPROVAL   # DS-03: above the approval threshold
           docker compose logs worker | grep -q '"message": "invoice_held"'
           docker compose logs worker | grep -q '"message": "invoices_released"'
+          # posting waits on a closed day too (SAPS-49 BR-11, DEC-070): approval is worked on, posting is held
+          put "{\"rules\":[{\"kind\":\"DATE\",\"date\":\"$today\",\"label\":\"CI\"}]}" | grep -q '"closedToday":true'
+          curl -fsS -b calendar-manager-jar -H "$origin" -H 'Content-Type: application/json' -d '{"decision":"APPROVED"}' "$base/invoices/$second/approval" | grep -q '"status":"POSTING"'
+          for i in $(seq 1 20); do docker compose logs worker | grep -q '"message": "posting_held"' && break; sleep 1; done
+          docker compose logs worker | grep -q '"message": "posting_held"'
+          sleep 12   # more than two release ticks: a closed company keeps its held postings
+          test "$(status_of "$second")" = POSTING
+          put '{"rules":[]}' | grep -q '"closedToday":false'
+          wait_for "$second" POSTED
+          docker compose logs worker | grep -q '"message": "postings_released"'
       - name: Trade PO invoices are matched per received lot (SAPS-51, DS-21 to DS-25)
         run: |
           web=http://localhost:5173
@@ -404,7 +414,7 @@ jobs:
           }
           fixtures=backend/fixtures
           ds21="$(upload $fixtures/ds-21/invoices/ds-21-lot-by-do-number.pdf ci-ds21)"
-          wait_for "$ds21" PENDING_REVIEW ""   # the second lot of a two-lot PO, found by its DO number
+          wait_for "$ds21" POSTED ""   # the second lot of a two-lot PO, found by its DO number
           curl -fsS -b lot-jar "$base/invoices/$ds21" | python3 -c 'import json, sys
           line = json.load(sys.stdin)["lines"][0]
           assert line["doNumber"] == line["matchedDoNumber"] == "DO-7000021B", line
@@ -419,11 +429,38 @@ jobs:
           etag="$(curl -fsS -b lot-jar -D - -o /dev/null "$base/invoices/$ds23" | tr -d '\r' | awk -F': ' 'tolower($1)=="etag" {print $2}')"
           fix='{"lines":[{"lineNumber":1,"description":"Label printer","poNumber":"0100023","poLineNumber":1,"doNumber":"DO-7000023A","quantity":"6","unitPrice":"40.00","lineAmount":"240.00"}]}'
           test "$(curl -s -o /dev/null -w '%{http_code}' -b lot-jar -H "$origin" -H "If-Match: $etag" -H 'Content-Type: application/json' -X PATCH -d "$fix" "$base/invoices/$ds23")" = 202
-          wait_for "$ds23" PENDING_REVIEW ""   # the DO number is a matching field: the worker re-matches (DEC-069)
+          wait_for "$ds23" POSTED ""   # the DO number is a matching field: the worker re-matches (DEC-069)
           ds24="$(upload $fixtures/ds-24/invoices/ds-24-no-purchasing-info-record.pdf ci-ds24)"
           wait_for "$ds24" EXCEPTION EX12
           ds25="$(upload $fixtures/ds-25/invoices/ds-25-po-not-open.pdf ci-ds25)"
           wait_for "$ds25" EXCEPTION EX4
+      - name: Accepting exceptions runs the workflow again, approval ends in posting (SAPS-49, DS-08)
+        run: |
+          web=http://localhost:5173
+          base=$web/v1
+          origin="Origin: http://localhost:5173"
+          password="$(grep '^SEED_USER_PASSWORD=' .env | cut -d= -f2)"
+          field() { python3 -c 'import json, sys; d = json.load(sys.stdin); print(eval(sys.argv[1]))' "$1"; }
+          .github/scripts/sign-in.sh $web member1@vn.example.com "$password" accept-jar > /dev/null
+          .github/scripts/sign-in.sh $web manager1@vn.example.com "$password" accept-manager-jar > /dev/null
+          state_of() { curl -fsS -b accept-jar "$base/invoices/$1" | field 'd["status"] + " " + ",".join(sorted({e["code"] for e in d["exceptions"] if e["status"] == "OPEN"}, key=lambda c: int(c[2:])))'; }
+          wait_for() {  # $1 invoice id, $2 expected status, $3 expected open exception codes
+            for i in $(seq 1 40); do [ "$(state_of "$1")" = "$2 $3" ] && return 0; sleep 1; done
+            echo "invoice $1 is '$(state_of "$1")', expected '$2 $3'"; docker compose logs worker; return 1
+          }
+          ds08="$(curl -fsS -b accept-jar -H "$origin" -H "Idempotency-Key: ci-ds08-$GITHUB_RUN_ID" -F "file=@backend/fixtures/ds-08/invoices/ds-08-non-po.pdf;type=application/pdf" "$base/invoices" | field 'd["id"]')"
+          wait_for "$ds08" EXCEPTION EX2   # a non-PO invoice goes to the manual review
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b accept-jar -H "$origin" -X POST "$base/invoices/$ds08/claim")" = 200
+          etag="$(curl -fsS -b accept-jar -D - -o /dev/null "$base/invoices/$ds08" | tr -d '\r' | awk -F': ' 'tolower($1)=="etag" {print $2}')"
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b accept-jar -H "$origin" -H "If-Match: $etag" -X POST "$base/invoices/$ds08/resolution")" = 202   # the workflow runs again
+          wait_for "$ds08" PENDING_APPROVAL ""   # EX2 stays accepted (BR-05); 450 USD is above the threshold
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b accept-jar -H "$origin" -H 'Content-Type: application/json' -d '{"decision":"APPROVED"}' "$base/invoices/$ds08/approval")" = 403
+          curl -fsS -b accept-manager-jar -H "$origin" -H 'Content-Type: application/json' -d '{"decision":"APPROVED"}' "$base/invoices/$ds08/approval" | grep -q '"status":"POSTING"'
+          wait_for "$ds08" POSTED ""
+          curl -fsS -b accept-jar "$base/invoices/$ds08" | python3 -c 'import json, sys
+          d = json.load(sys.stdin)
+          assert d["erpDocumentNumber"].startswith("MOCK-") and d["postedAt"], d'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b accept-jar -H "$origin" -H 'Content-Type: application/json' -d '{"reason":"late"}' "$base/invoices/$ds08/rejection")" = 409   # a Posted invoice cannot be rejected
       - name: Keycloak realm with the demo companies (SAPS-43)
         run: |
           kc=http://localhost:8080
@@ -469,10 +506,10 @@ jobs:
           docker compose start worker
           for i in $(seq 1 60); do   # stuck after 15 s, swept at the next 5 s tick
             state="$(curl -fsS -b sweeper-jar "$base/invoices/$id" | python3 -c 'import json, sys; print(json.load(sys.stdin)["status"])')"
-            [ "$state" = PENDING_REVIEW ] && break
+            [ "$state" = POSTED ] && break
             sleep 1
           done
-          test "$state" = PENDING_REVIEW || { echo "invoice is '$state', expected PENDING_REVIEW"; docker compose logs worker; exit 1; }
+          test "$state" = POSTED || { echo "invoice is '$state', expected POSTED"; docker compose logs worker; exit 1; }
           curl -fsS -b sweeper-jar "$base/invoices/$id/events" | python3 -c 'import json, sys
           events = json.load(sys.stdin)["items"]
           actions = [(e["action"], e["actor"]) for e in events]
